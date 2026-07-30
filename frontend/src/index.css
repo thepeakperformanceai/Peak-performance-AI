@@ -1,0 +1,34 @@
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600&family=Syne:wght@600;700&display=swap');
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body { @apply bg-gray-50 text-gray-900; }
+}
+
+@layer components {
+  .btn {
+    @apply inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium
+           border border-gray-200 rounded-lg bg-white hover:bg-gray-50
+           transition-colors cursor-pointer;
+  }
+  .btn-primary {
+    @apply bg-pp-orange text-white border-pp-orange hover:bg-pp-orangeDark;
+  }
+  .btn-danger {
+    @apply bg-red-50 text-red-700 border-red-200 hover:bg-red-100;
+  }
+  .inp {
+    @apply w-full px-3 py-2 text-sm border border-gray-200 rounded-lg
+           bg-white focus:outline-none focus:ring-2 focus:ring-pp-orange/20
+           focus:border-pp-orange transition-colors;
+  }
+  .card {
+    @apply bg-white border border-gray-100 rounded-xl p-5;
+  }
+  .badge-red    { @apply inline-flex items-center text-xs font-semibold px-2.5 py-0.5 rounded-full bg-red-50 text-red-700; }
+  .badge-orange { @apply inline-flex items-center text-xs font-semibold px-2.5 py-0.5 rounded-full bg-amber-50 text-amber-800; }
+  .badge-green  { @apply inline-flex items-center text-xs font-semibold px-2.5 py-0.5 rounded-full bg-green-50 text-green-800; }
+  .badge-blue   { @apply inline-flex items-center text-xs font-semibold px-2.5 py-0.5 rounded-full bg-blue-50 text-blue-800; }
+}

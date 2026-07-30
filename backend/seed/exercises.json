@@ -1,0 +1,237 @@
+[
+  {
+    "name": "Bridge",
+    "description": "Lie on back knees bent. Lift hips to form straight line from knees to shoulders. Lower and repeat.",
+    "targets": "Core, Glutes, Hips"
+  },
+  {
+    "name": "Cat/cow stretch",
+    "description": "On hands and knees alternate between arching and rounding the back.",
+    "targets": "Spine, Lower Back, Core"
+  },
+  {
+    "name": "Lumbar rotation in crook lying",
+    "description": "Lie on back knees bent. Rotate both knees side to side keeping upper body still.",
+    "targets": "Lower Back, Spine, Hips"
+  },
+  {
+    "name": "Back row in standing (exercise band)",
+    "description": "Stand holding exercise band fixed in front. Pull elbows back squeezing shoulder blades together.",
+    "targets": "Upper Back, Shoulders, Shoulder Blades"
+  },
+  {
+    "name": "Bird Dog",
+    "description": "On hands and knees raise one arm and opposite leg simultaneously while keeping back straight.",
+    "targets": "Core, Hips, Lower Back, Balance"
+  },
+  {
+    "name": "Bridge (heels only)",
+    "description": "Like bridge but with only heels on the floor. Lift hips forming straight line from knees to shoulders.",
+    "targets": "Glutes, Hips, Core"
+  },
+  {
+    "name": "Calf raise",
+    "description": "Stand feet shoulder width apart. Rise onto toes then lower heels.",
+    "targets": "Calves, Ankles"
+  },
+  {
+    "name": "Single leg bridge",
+    "description": "Bridge on one leg. Lift other foot off mat and raise hips while keeping balance.",
+    "targets": "Glutes, Hips, Core, Balance"
+  },
+  {
+    "name": "Bike ergometer",
+    "description": "Cycle on stationary bike for prescribed duration.",
+    "targets": "Cardiovascular, Legs, Endurance"
+  },
+  {
+    "name": "Knee extension in sitting (exercise band)",
+    "description": "Sit with band around foot fixed behind. Straighten leg then lower slowly.",
+    "targets": "Knee, Quadriceps"
+  },
+  {
+    "name": "Clams (exercise band)",
+    "description": "Lie on side band above knees. Rotate top knee up and away keeping feet together.",
+    "targets": "Hip Abductors, Glutes"
+  },
+  {
+    "name": "Child's pose stretch",
+    "description": "Kneel reach arms forward and lower chest. Hold to feel stretch in lower back.",
+    "targets": "Lower Back, Hips, Spine"
+  },
+  {
+    "name": "AROM hip abduction in side lying",
+    "description": "Lie on side lift top leg upward keeping it straight then lower back down.",
+    "targets": "Hip Abductors, Glutes, Hips"
+  },
+  {
+    "name": "Thoracic rotation in four point kneeling (reaching)",
+    "description": "On hands and knees reach one arm under body then open up to the sky rotating through upper back.",
+    "targets": "Thoracic Spine, Upper Back, Shoulders"
+  },
+  {
+    "name": "Pelvic tilt in crook lying",
+    "description": "Lie on back. Alternate between arching and flattening lower back by tilting pelvis.",
+    "targets": "Lower Back, Core, Pelvis"
+  },
+  {
+    "name": "Pallof press in standing",
+    "description": "Stand holding band fixed at chest height. Extend arms forward resisting the pull then return.",
+    "targets": "Core, Anti-Rotation, Stability"
+  },
+  {
+    "name": "Single leg calf raise",
+    "description": "Balance on one leg. Rise onto toes then lower heel.",
+    "targets": "Calves, Ankles, Balance"
+  },
+  {
+    "name": "Wall Sit",
+    "description": "Back against wall slide down to squat position. Hold for prescribed time.",
+    "targets": "Quadriceps, Knee, Hips"
+  },
+  {
+    "name": "Knee rocks",
+    "description": "Lie on back knees bent. Rock both knees side to side keeping upper body flat.",
+    "targets": "Lower Back, Spine, Hips"
+  },
+  {
+    "name": "Shoulder external rotation in standing (exercise band)",
+    "description": "Elbow at side rotate arm outward against band resistance then return.",
+    "targets": "Shoulder, Rotator Cuff"
+  },
+  {
+    "name": "Side Plank",
+    "description": "Lie on side prop up on elbow. Lift hips forming straight line from head to ankles.",
+    "targets": "Core, Hips, Lateral Stability"
+  },
+  {
+    "name": "Calf raise with support",
+    "description": "Stand behind chair holding for support. Rise onto toes then lower heels.",
+    "targets": "Calves, Ankles"
+  },
+  {
+    "name": "Knee extension (cable machine)",
+    "description": "Sit at machine pad on shins. Raise legs until straight then lower slowly.",
+    "targets": "Knee, Quadriceps"
+  },
+  {
+    "name": "Dead bugs",
+    "description": "Lie on back arms and legs raised. Lower opposite arm and leg toward floor then return.",
+    "targets": "Core, Lower Back, Stability"
+  },
+  {
+    "name": "Inner range knee extension in standing (exercise band)",
+    "description": "Stand with band around knee. Straighten leg against band resistance without locking knee.",
+    "targets": "Knee, Quadriceps"
+  },
+  {
+    "name": "Clams (basic)",
+    "description": "Lie on side knees bent 45 degrees. Lift top knee keeping feet together then lower.",
+    "targets": "Hip Abductors, Glutes"
+  },
+  {
+    "name": "Shoulder internal rotation in standing (exercise band)",
+    "description": "Elbow at side rotate arm inward toward stomach against band resistance then return.",
+    "targets": "Shoulder, Rotator Cuff"
+  },
+  {
+    "name": "Bridge (exercise band above knees)",
+    "description": "Bridge with band above knees. Lift hips keeping knees apart against band.",
+    "targets": "Glutes, Hips, Core, Hip Abductors"
+  },
+  {
+    "name": "Single leg calf raise with support",
+    "description": "Hold chair for support. Balance on one leg rise onto toes then lower.",
+    "targets": "Calves, Ankles, Balance"
+  },
+  {
+    "name": "Crab walks (exercise band around feet)",
+    "description": "Band around feet half squat position. Walk sideways maintaining squat.",
+    "targets": "Hip Abductors, Glutes, Lateral Stability"
+  },
+  {
+    "name": "Bulgarian split squat (dumbbells)",
+    "description": "One foot on bench behind. Lower into lunge then push through front heel to stand.",
+    "targets": "Quadriceps, Glutes, Hips, Balance"
+  },
+  {
+    "name": "Straight leg raise in supine",
+    "description": "Lie on back lift one straight leg toward body then lower slowly.",
+    "targets": "Hip Flexors, Core, Quadriceps"
+  },
+  {
+    "name": "Plank",
+    "description": "Rest on elbows and toes forming straight line from head to feet. Hold for prescribed time.",
+    "targets": "Core, Shoulder Stability, Lower Back"
+  },
+  {
+    "name": "Single leg bridge (on heel)",
+    "description": "Single leg bridge with only heel on floor. Lift hips forming straight line.",
+    "targets": "Glutes, Hips, Core, Balance"
+  },
+  {
+    "name": "Hamstring curl in prone (cable machine)",
+    "description": "Lie on stomach at machine pad on heels. Pull heels toward hips then lower.",
+    "targets": "Hamstrings, Knee"
+  },
+  {
+    "name": "Single leg stance",
+    "description": "Stand on one leg hands on hips. Balance for prescribed time then switch.",
+    "targets": "Balance, Ankle, Hip Stability"
+  },
+  {
+    "name": "Single leg knee extension (cable machine)",
+    "description": "Sit at machine on one leg pad on shin. Raise leg until straight then lower.",
+    "targets": "Knee, Quadriceps"
+  },
+  {
+    "name": "90 Degree leg press",
+    "description": "Sit in leg press. Push through heels to extend legs then slowly return.",
+    "targets": "Quadriceps, Glutes, Knee"
+  },
+  {
+    "name": "Back row in sitting (cable narrow neutral grip)",
+    "description": "Sit at cable feet on rest. Pull handles to sides squeezing shoulder blades.",
+    "targets": "Upper Back, Shoulder Blades, Shoulders"
+  },
+  {
+    "name": "Squat",
+    "description": "Feet shoulder width chest tall. Bend into full squat then push through heels to stand.",
+    "targets": "Quadriceps, Glutes, Hips, Knee"
+  },
+  {
+    "name": "Bicep curl in standing (dumbbells)",
+    "description": "Stand palms facing forward. Curl hands to shoulders then lower.",
+    "targets": "Biceps, Elbow"
+  },
+  {
+    "name": "Hip abduction in kneeling side plank",
+    "description": "Side plank on knee. Lift top straight leg up then lower keeping toes pointing down.",
+    "targets": "Hip Abductors, Core, Lateral Stability"
+  },
+  {
+    "name": "Sit to stand (arms across chest)",
+    "description": "Sit on chair arms crossed. Lean forward and push through heels to stand then sit.",
+    "targets": "Quadriceps, Glutes, Knee, Functional"
+  },
+  {
+    "name": "Goblet squat (kettlebell)",
+    "description": "Hold kettlebell at chest feet wide. Squat keeping chest tall then stand.",
+    "targets": "Quadriceps, Glutes, Core, Hips"
+  },
+  {
+    "name": "Crab walks (exercise band around knees)",
+    "description": "Band above knees half squat. Walk sideways maintaining squat and tension.",
+    "targets": "Hip Abductors, Glutes, Lateral Stability"
+  },
+  {
+    "name": "Romanian deadlift (loaded barbell)",
+    "description": "Stand behind barbell. Hinge at hips keeping back straight lower bar then stand.",
+    "targets": "Hamstrings, Glutes, Lower Back"
+  },
+  {
+    "name": "Split Squat",
+    "description": "Feet staggered step forward. Lower into lunge then push through front heel to stand.",
+    "targets": "Quadriceps, Glutes, Hips, Balance"
+  }
+]
