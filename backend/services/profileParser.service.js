@@ -120,7 +120,41 @@ const parseName = (text) => {
   return cleanName(name)
 }
 
+const parseHeaderLine = (text = '') => {
+  // Vision extractor emits: "HEADER: Name=..; Sport=..; Date=..; Age=..; Academy=..; TestedBy=.."
+  const line = (text.split(/\n/).find(l => l.trim().startsWith('HEADER:')) || '')
+  if (!line) return null
+  const get = (k) => {
+    const m = line.match(new RegExp(k + '=([^;]*)', 'i'))
+    const v = m ? m[1].trim() : ''
+    return (!v || v === 'N/A') ? '' : v
+  }
+  return {
+    name: get('Name'),
+    sport: get('Sport'),
+    age: get('Age'),
+    testDate: get('Date'),
+    academy: get('Academy'),
+    practitioner: get('TestedBy'),
+  }
+}
+
 const parseProfileFromText = (text = '') => {
+  // Manual intake sheets (vision-transcribed) carry a clean HEADER line — use it.
+  const header = parseHeaderLine(text)
+  if (header && header.name) {
+    return {
+      name: titleCase(header.name),
+      dob: '',
+      age: header.age,
+      weight: '',
+      sport: header.sport ? titleCase(header.sport) : '',
+      testDate: header.testDate,
+      practitioner: header.practitioner,
+      academy: header.academy,
+    }
+  }
+
   const t = text.replace(/\r/g, ' ')
 
   const name = parseName(text) // pass original (with newlines) so line logic works

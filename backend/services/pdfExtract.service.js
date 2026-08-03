@@ -1,4 +1,5 @@
 const pdfParse = require('pdf-parse');
+const visionExtract = require('./visionExtract.service');
 const fs = require('fs');
 const path = require('path');
 
@@ -11,6 +12,21 @@ const extractPdfText = async (filePath) => {
     const data = await pdfParse(dataBuffer);
     const text = data.text;
 
+    // A scanned / handwritten sheet has no text layer — pdf-parse returns ~nothing.
+    // Route those to vision extraction instead of the text/regex path.
+    const hasTextLayer = text.replace(/\s/g, '').length > 20;
+
+    if (!hasTextLayer) {
+      const vision = await visionExtract.transcribeScannedPdf(filePath);
+      return {
+        text: vision.text,
+        type: 'ManualIntake',
+        pages: data.numpages,
+        scanned: true,
+        header: vision.header
+      };
+    }
+
     // Detect PDF type based on content
     let pdfType = 'unknown';
     if (text.toLowerCase().includes('humantrak') || text.toLowerCase().includes('human trak')) {
@@ -22,7 +38,8 @@ const extractPdfText = async (filePath) => {
     return {
       text: text.trim(),
       type: pdfType,
-      pages: data.numpages
+      pages: data.numpages,
+      scanned: false
     };
   } catch (error) {
     throw new Error(`PDF extraction failed: ${error.message}`);
@@ -43,6 +60,8 @@ const processPdfs = async (files) => {
         type: extracted.type,
         text: extracted.text,
         pages: extracted.pages,
+        scanned: extracted.scanned || false,
+        header: extracted.header || null,
         path: file.path
       });
     }

@@ -253,7 +253,7 @@ const buildUserPrompt = (athleteProfile, pdfData, exercises) => {
     });
   }
 
-  prompt += `\nVALD ASSESSMENT DATA:\n`;
+  prompt += `\nASSESSMENT DATA:\n`;
 
   const humanTrakPdfs = pdfData.filter(p => p.type === 'HumanTrak');
   const dynamoPdfs = pdfData.filter(p => p.type === 'Dynamo');
@@ -270,8 +270,22 @@ const buildUserPrompt = (athleteProfile, pdfData, exercises) => {
     prompt += `--- END DYNAMO DATA ---\n\n`;
   }
 
-  // Any PDFs that weren't tagged HumanTrak/Dynamo — still pass them through
-  const otherPdfs = pdfData.filter(p => p.type !== 'HumanTrak' && p.type !== 'Dynamo');
+  const manualPdfs = pdfData.filter(p => p.type === 'ManualIntake');
+  if (manualPdfs.length > 0) {
+    prompt += `--- MANUAL INTAKE SCREEN (clinician-administered) ---\n`;
+    prompt += `This is a manual physical screen recorded by hand, not a VALD device export. Interpret it accordingly:\n`;
+    prompt += `- Joint ranges (Hip IR/ER, Shoulder Flexion/Abduction/Rotation, Trunk Rotation) are in degrees; compare Left vs Right for asymmetry and against normal ROM for the sport.\n`;
+    prompt += `- Ankle Dorsiflexion (Knee-to-Wall) is in cm; lower = more restricted; side-to-side difference matters.\n`;
+    prompt += `- Overhead Squat and Single-Leg Squat are 0-2 visual screens (0 = clean, 2 = marked fault); treat higher scores as movement-quality flags, not measurements.\n`;
+    prompt += `- Single-Leg Balance (Eyes Closed) is seconds to first correction; large L/R gaps indicate a proprioceptive/stability deficit.\n`;
+    prompt += `- Push-Up Test is max reps to failure (capacity, not asymmetry).\n`;
+    prompt += `- Apply the same clinical-voice, named-structure, sport-specific-moment standards used for VALD findings. Do not invent tests that are blank/illegible.\n`;
+    manualPdfs.forEach(pdf => { prompt += trim(pdf.text) + '\n'; });
+    prompt += `--- END MANUAL INTAKE SCREEN ---\n\n`;
+  }
+
+  // Any PDFs that weren't tagged HumanTrak/Dynamo/ManualIntake — still pass them through
+  const otherPdfs = pdfData.filter(p => !['HumanTrak', 'Dynamo', 'ManualIntake'].includes(p.type));
   if (otherPdfs.length > 0) {
     prompt += `--- ADDITIONAL DATA ---\n`;
     otherPdfs.forEach(pdf => { prompt += trim(pdf.text) + '\n'; });

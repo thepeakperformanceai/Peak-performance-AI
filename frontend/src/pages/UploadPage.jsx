@@ -59,7 +59,7 @@ export default function UploadPage({ onReportGenerated }) {
       f.type === 'application/pdf' || f.name.endsWith('.csv')
     )
     if (valid.length !== accepted.length) {
-      toast.error('Please upload VALD PDF or CSV files only.')
+      toast.error('Please upload PDF or CSV files only.')
     }
     if (valid.length > 3) {
       toast.error('Maximum 3 files allowed.')
@@ -83,7 +83,7 @@ export default function UploadPage({ onReportGenerated }) {
     setForm(prev => ({ ...prev, [e.target.name]: e.target.value }))
 
   const validate = () => {
-    if (files.length === 0) { toast.error('Please upload at least one VALD file.'); return false }
+    if (files.length === 0) { toast.error('Please upload at least one file.'); return false }
     if (!form.name.trim())  { toast.error('Athlete name is required.'); return false }
     if (!form.age)          { toast.error('Age is required.'); return false }
     if (!form.sport)        { toast.error('Sport is required.'); return false }
