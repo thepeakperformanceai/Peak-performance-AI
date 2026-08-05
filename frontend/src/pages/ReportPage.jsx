@@ -5,10 +5,10 @@ import { downloadReportPDF } from '../services/api'
 import logo from "../assets/pplogo.png"
 
 const STATUS_CONFIG = {
-  priority:   { label: '❌ Priority',    badge: 'badge-red',    numBg: 'bg-red-50 text-red-700' },
-  needs_work: { label: '⚠️ Needs work',  badge: 'badge-orange', numBg: 'bg-amber-50 text-amber-800' },
-  good:       { label: '✅ Good',         badge: 'badge-green',  numBg: 'bg-green-50 text-green-800' },
-  excellent:  { label: '✅ Excellent',    badge: 'badge-blue',   numBg: 'bg-blue-50 text-blue-800' },
+  priority: { label: '❌ Priority', badge: 'badge-red', numBg: 'bg-red-50 text-red-700' },
+  needs_work: { label: '⚠️ Needs work', badge: 'badge-orange', numBg: 'bg-amber-50 text-amber-800' },
+  good: { label: '✅ Good', badge: 'badge-green', numBg: 'bg-green-50 text-green-800' },
+  excellent: { label: '✅ Excellent', badge: 'badge-blue', numBg: 'bg-blue-50 text-blue-800' },
 }
 
 export default function ReportPage() {
@@ -63,15 +63,15 @@ function ReportHeader({ report }) {
           </div>
         </div>
         <div className="flex gap-2">
-          <button 
-  onClick={() => {
-    useReportStore.setState({ report: null })
-    window.location.href = '/'
-  }}
-  className="btn text-xs"
->
-  🔄 Re-generate
-</button>
+          <button
+            onClick={() => {
+              useReportStore.setState({ report: null })
+              window.location.href = '/'
+            }}
+            className="btn text-xs"
+          >
+            🔄 Re-generate
+          </button>
           <button
             onClick={handleDownload}
             disabled={downloading}
@@ -94,8 +94,8 @@ function ReportHeader({ report }) {
 function SummaryCards({ report }) {
   const cards = [
     { label: 'Areas to address', val: report.reportContent?.areasToAddress ?? '—', color: 'text-amber-700' },
-    { label: 'Tests completed',  val: report.reportContent?.testsCompleted  ?? '—', color: 'text-pp-orange'  },
-    { label: 'Jump height',      val: report.reportContent?.jumpHeight      ?? '—', color: 'text-pp-orange'  },
+    { label: 'Tests completed', val: report.reportContent?.testsCompleted ?? '—', color: 'text-pp-orange' },
+    { label: 'Jump height', val: report.reportContent?.jumpHeight ?? '—', color: 'text-pp-orange' },
   ]
   return (
     <div className="grid grid-cols-3 gap-3">
@@ -251,7 +251,7 @@ function TrainingPlan({ plan }) {
   const weeklySchedule = plan.weeklySchedule || []
   const legacyPhases = [
     { key: 'phase1', title: 'Phase 1 — Weeks 1–3: Build the foundation', color: 'bg-blue-50 text-blue-800' },
-    { key: 'phase2', title: 'Phase 2 — Weeks 4–6: Load and progress',    color: 'bg-pp-orangeLite text-pp-orange' },
+    { key: 'phase2', title: 'Phase 2 — Weeks 4–6: Load and progress', color: 'bg-pp-orangeLite text-pp-orange' },
   ]
   const hasLegacy = priorities.length === 0 && legacyPhases.some(p => (plan[p.key] || []).length > 0)
 
@@ -384,8 +384,8 @@ function ReassessmentTargets({ targets = [] }) {
 
   const priorityColor = {
     Critical: 'badge-red',
-    High:     'badge-orange',
-    Monitor:  'badge-green',
+    High: 'badge-orange',
+    Monitor: 'badge-green',
   }
 
   return (
