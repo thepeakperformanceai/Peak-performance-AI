@@ -1,0 +1,102 @@
+/* PeakPerformance Exact Color & Style System */
+
+:root {
+  --bg-page: #06090e;
+  --bg-card: #0e1823;
+  --bg-card-header: #0e1823;
+  --border-card: #172333;
+  --teal-accent: #54d9c4;
+  --row-selected-bg: #0d272b;
+  --text-white: #ffffff;
+  --text-slate: #8fa3bb;
+  --text-sub: #566e85;
+  --text-header: #455870;
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  background-color: var(--bg-page);
+  color: var(--text-white);
+  font-family: 'Space Grotesk', -apple-system, BlinkMacSystemFont, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+h1, h2, h3, h4, h5, h6, .font-space {
+  font-family: 'Space Grotesk', sans-serif !important;
+}
+
+.font-inter {
+  font-family: 'Inter', sans-serif !important;
+}
+
+.font-monospace, .font-ibm-mono {
+  font-family: 'IBM Plex Mono', 'JetBrains Mono', monospace !important;
+}
+
+/* Card Container */
+.dashboard-card {
+  background-color: var(--bg-card);
+  border: 1px solid var(--border-card);
+  border-radius: 12px;
+}
+
+/* Table Dark Overrides */
+.table-dark {
+  --bs-table-bg: transparent;
+  --bs-table-color: var(--text-slate);
+  --bs-table-hover-bg: rgba(255, 255, 255, 0.015);
+  --bs-table-hover-color: var(--text-white);
+}
+
+/* Sport Pill Badges */
+.sport-pill {
+  background-color: #121e2c;
+  border: 1px solid #1b2b3e;
+  color: #6e85a0;
+  padding: 3px 12px;
+  border-radius: 16px;
+  font-size: 0.8rem;
+  display: inline-block;
+}
+
+/* Generate PDF Button */
+.btn-generate-pdf {
+  background-color: #54d9c4 !important;
+  color: #0A0E13 !important;
+  font-family: 'IBM Plex Mono', monospace !important;
+  font-weight: 700 !important;
+  font-size: 12.5px !important;
+  letter-spacing: 0.2px !important;
+  border: none !important;
+  -webkit-text-stroke: 0.5px #0A0E13;
+  text-shadow: 0.3px 0 0 #0A0E13, -0.3px 0 0 #0A0E13;
+}
+
+/* Selected Member Row & Hover */
+.roster-row:hover td {
+  background-color: rgba(255, 255, 255, 0.03) !important;
+}
+
+.row-selected {
+  background-color: var(--row-selected-bg) !important;
+}
+
+.row-selected td:first-child {
+  color: var(--teal-accent) !important;
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--bg-page);
+}
+
+::-webkit-scrollbar-thumb {
+  background: #1b2b3e;
+  border-radius: 3px;
+}
