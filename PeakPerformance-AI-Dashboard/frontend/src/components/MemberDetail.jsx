@@ -78,7 +78,7 @@ export default function MemberDetail({ member, loading }) {
           <Download size={14} strokeWidth={3} />
           <span style={{ fontFamily: "'IBM Plex Mono', monospace", fontWeight: "700", fontSize: "12.5px", WebkitTextStroke: "0.1px #0A0E13" }}>Generate PDF</span>
         </button>
-      </div>
+      </div> 
 
       {/* Outer Card Container matching Squad Comparison */}
       <div 

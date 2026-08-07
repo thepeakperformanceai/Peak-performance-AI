@@ -6,7 +6,59 @@ const aiEngine = require('../services/aiEngine.service');
 const reportParser = require('../services/reportParser.service');
 const profileParser = require('../services/profileParser.service');
 const { ownerFilter } = require('../middleware/auth.middleware');
+const { extractDashboardMetrics } = require('../services/metricExtract.service');
 
+
+/**
+ * POST /api/report/generate-content   (service-to-service, no user session)
+ * Runs the SAME pipeline as generateReport but RETURNS the report content and
+ * saves nothing. The gym-dashboard backend calls this, then stores the result
+ * in its own database. Auth: x-service-key (serviceAuth middleware).
+ */
+const generateReportContent = async (req, res, next) => {
+  let uploadedFiles = [];
+  try {
+    if (!req.files || req.files.length === 0) {
+      const err = new Error('No PDF files uploaded'); err.statusCode = 400; throw err;
+    }
+    if (!req.body.profile) {
+      const err = new Error('Athlete profile JSON is required'); err.statusCode = 400; throw err;
+    }
+    uploadedFiles = req.files;
+
+    let athleteProfile;
+    try { athleteProfile = JSON.parse(req.body.profile); }
+    catch (e) { const err = new Error('Invalid athlete profile JSON'); err.statusCode = 400; throw err; }
+
+    const pdfData = await pdfExtractService.processPdfs(uploadedFiles);
+
+    const exercises = await Exercise.find().select('name targets');
+    if (exercises.length === 0) {
+      const err = new Error('No exercises found in database. Please seed exercises first.');
+      err.statusCode = 500; throw err;
+    }
+
+    const systemPrompt = promptBuilder.getSystemPrompt();
+    const userPrompt = promptBuilder.buildUserPrompt(athleteProfile, pdfData, exercises);
+    const aiResponse = await aiEngine.generateReport(systemPrompt, userPrompt);
+
+    const reportContent = reportParser.parseReportJson(aiResponse, exercises);
+    const validatedReport = reportParser.validateAsymmetry(reportContent);
+    const dashboardMetrics = extractDashboardMetrics(validatedReport);
+
+    pdfExtractService.cleanupTempFiles(uploadedFiles);
+
+    res.json({
+      reportContent: validatedReport,
+      dashboardMetrics,
+      athleteProfile,
+      sourcePdfData: pdfData.map(p => ({ type: p.type, text: p.text }))
+    });
+  } catch (error) {
+    try { pdfExtractService.cleanupTempFiles(uploadedFiles); } catch (_) {}
+    next(error);
+  }
+};
 
 const generateReport = async (req, res, next) => {
   let uploadedFiles = [];
@@ -312,6 +364,7 @@ const extractProfile = async (req, res, next) => {
 
 module.exports = {
   generateReport,
+  generateReportContent,
   getReport,
   exportReportPdf,
   regenerateReport,

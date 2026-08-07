@@ -11,6 +11,9 @@ const exerciseRoutes = require('./routes/exercise.routes');
 const Exercise = require('./models/Exercise.model');
 const exercises = require('./seed/exercises.json');
 const seedAdminUser = require('./seed/seedAdmin');
+const serviceAuth = require('./middleware/serviceAuth');
+const upload = require('./middleware/multer');
+const reportController = require('./controllers/report.controller');
 
 const app = express();
 const cors = require('cors');
@@ -75,6 +78,14 @@ app.get('/api/health', (req, res) => {
 
 // Routes
 app.use('/api/auth', authRoutes);
+
+// Service-to-service report generation (no user session) — MUST be above the
+// global `protect` guard so it authenticates via x-service-key instead of a JWT.
+app.post('/api/report/generate-content',
+  serviceAuth,
+  upload.array('files', 10),
+  reportController.generateReportContent);
+
 app.use('/api', protect);
 app.use('/api/report', reportRoutes);
 app.use('/api/exercises', exerciseRoutes);
