@@ -16,6 +16,13 @@ export function AuthProvider({ children }) {
       .finally(() => setLoading(false))
   }, [])
 
+  const signup = useCallback(async (payload) => {
+    const res = await authApi.signup(payload)
+    localStorage.setItem('auth_token', res.data.token)
+    setUser(res.data.user)
+    return res.data
+  }, [])
+
   const login = useCallback(async (email, password) => {
     const res = await authApi.login({ email, password })
     localStorage.setItem('auth_token', res.data.token)
@@ -30,7 +37,7 @@ export function AuthProvider({ children }) {
   }, [])
 
   return (
-    <AuthContext.Provider value={{ user, loading, mustChangePassword, login, logout, clearMustChange }}>
+    <AuthContext.Provider value={{ user, loading, mustChangePassword, login, signup, logout, clearMustChange }}>
       {children}
     </AuthContext.Provider>
   )

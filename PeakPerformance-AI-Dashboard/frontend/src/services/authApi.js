@@ -20,6 +20,7 @@ client.interceptors.response.use(
 
 export const authApi = {
   login: (data) => client.post('/auth/login', data),
+  signup: (data) => client.post('/auth/signup', data),
   me: () => client.get('/auth/me'),
   changePassword: (data) => client.patch('/auth/password', data),
   // member report flow

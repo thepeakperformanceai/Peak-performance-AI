@@ -40,7 +40,7 @@ export default function MemberRoster({ members, selectedMemberId, onSelectMember
           className="font-ibm-mono" 
           style={{ fontFamily: "'IBM Plex Mono', monospace", color: "#5a6875", fontSize: "12px" }}
         >
-          {members.length} members &nbsp;&middot;&nbsp; last synced Jul 30
+          {members.length} member{members.length === 1 ? '' : 's'}
         </div>
       </div>
 
@@ -63,6 +63,12 @@ export default function MemberRoster({ members, selectedMemberId, onSelectMember
                 <tr>
                   <td colSpan="6" className="text-center py-5 font-monospace" style={{ color: "#8fa3bb" }}>
                     Loading roster data...
+                  </td>
+                </tr>
+              ) : members.length === 0 ? (
+                <tr>
+                  <td colSpan="6" className="text-center py-5 font-monospace" style={{ color: "#8fa3bb" }}>
+                    No members yet — click “+ Add member” to create your first one.
                   </td>
                 </tr>
               ) : (

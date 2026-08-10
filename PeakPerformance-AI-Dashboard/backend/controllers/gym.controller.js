@@ -8,21 +8,23 @@ const fail = (m, c) => { const e = new Error(m); e.statusCode = c; return e; };
 /* ---- provisioning ---- */
 const createMember = async (req, res, next) => {
   try {
-    const { name, email, sex = '', age = null, sport = '' } = req.body;
-    if (!name || !email) throw fail('Member name and email are required.', 400);
+    const { name, email, password, sex = '', age = null, sport = '' } = req.body;
+    if (!name || !email || !password) throw fail('Member name, email and password are required.', 400);
+    if (password.length < 8 || !/[A-Z]/.test(password) || !/[^A-Za-z0-9]/.test(password)) {
+      throw fail('Password must be at least 8 characters and include a capital letter and a special character.', 400);
+    }
 
     const cleanEmail = email.toLowerCase().trim();
     if (await User.findOne({ email: cleanEmail })) throw fail('An account with this email already exists.', 409);
 
-    const tempPassword = 'Peak-' + crypto.randomBytes(4).toString('hex');
     const member = new User({
-      name: name.trim(), email: cleanEmail, password: tempPassword,
-      role: 'member', gym: req.user.gym, mustChangePassword: true,
+      name: name.trim(), email: cleanEmail, password,      // owner-chosen; hashed by pre-save hook
+      role: 'member', gym: req.user.gym, mustChangePassword: false,
       memberProfile: { sex: ['M','F'].includes(sex) ? sex : '', age: age ? Number(age) : null, sport }
     });
     await member.save();
 
-    res.status(201).json({ message: 'Member created.', member: member.toPublic(), tempPassword });
+    res.status(201).json({ message: 'Member created.', member: member.toPublic() });
   } catch (e) { next(e); }
 };
 

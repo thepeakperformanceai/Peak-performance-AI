@@ -11,17 +11,8 @@ export default function SquadComparison({
   const sports = ["All", "Football", "Padel", "S&C"];
   const sexes = ["All", "M", "F"];
 
-  const cmjBars = squadData?.groupAverages?.CMJ || [
-    { shortName: "Football", value: 31.7 },
-    { shortName: "Padel", value: 24.8 },
-    { shortName: "S&C", value: 32.5 }
-  ];
-
-  const asymBars = squadData?.groupAverages?.Asymmetry || [
-    { shortName: "Football", value: 5.5 },
-    { shortName: "Padel", value: 14.0 },
-    { shortName: "S&C", value: 6.0 }
-  ];
+  const cmjBars = squadData?.groupAverages?.CMJ || [];
+  const asymBars = squadData?.groupAverages?.Asymmetry || [];
 
   return (
     <section className="mb-5">
