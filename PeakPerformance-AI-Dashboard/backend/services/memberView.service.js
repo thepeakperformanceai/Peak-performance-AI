@@ -33,7 +33,17 @@ const buildMemberObject = (member, sessions) => {
     workoutSplit: (latest?.reportContent?.trainingPlan?.weeklySchedule || []).map(w => ({
       day: (w.day || '').slice(0, 3).toUpperCase(), title: w.focus || '', details: w.exercises || ''
     })),
-    latestReportContent: latest?.reportContent || null
+    latestReportContent: latest?.reportContent || null,
+    // full report object shaped for the on-screen renderer + PDF download
+    latestReport: latest ? {
+      _id: latest._id,
+      athleteName: latest.athleteName || member.name,
+      testDate: fullDate(latest.createdAt),
+      age: latest.age ?? member.memberProfile?.age ?? null,
+      sport: latest.sport || member.memberProfile?.sport || '',
+      practitioner: latest.practitioner || '',
+      reportContent: latest.reportContent || {}
+    } : null
   };
 };
 
