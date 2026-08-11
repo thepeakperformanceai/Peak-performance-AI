@@ -1,5 +1,5 @@
 import React, { useState } from 'react'
-import { downloadReportPDF } from '../services/reportPdf'
+import { downloadReportPDF } from '../services/reportpdf'
 
 /**
  * Renders the FULL Peak Performance report on-screen (white/orange document —
