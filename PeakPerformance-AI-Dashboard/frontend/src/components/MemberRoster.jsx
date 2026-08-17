@@ -89,7 +89,7 @@ export default function MemberRoster({ members, selectedMemberId, onSelectMember
                       <td 
                         className="ps-4 py-3 fw-bold font-space" 
                         style={{ 
-                          color: isSelected ? "#54d9c4" : "#E9EEF2", 
+                          color: isSelected ? "#ff4b12" : "#E9EEF2", 
                           fontSize: "13.5px",
                           fontFamily: "'Space Grotesk', sans-serif",
                           backgroundColor: rowBg

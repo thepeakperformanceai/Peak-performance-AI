@@ -72,7 +72,7 @@ export default function AddMemberModal({ onClose, onCreated }) {
             Cancel
           </button>
           <button onClick={submit} disabled={busy} className="font-ibm-mono"
-            style={{ flex: 2, padding: 11, borderRadius: 10, border: 'none', backgroundColor: '#54d9c4', color: '#0A0E13', fontWeight: 700, fontSize: 13, cursor: busy ? 'default' : 'pointer', opacity: busy ? 0.6 : 1 }}>
+            style={{ flex: 2, padding: 11, borderRadius: 10, border: 'none', backgroundColor: '#ff4b12', color: '#0A0E13', fontWeight: 700, fontSize: 13, cursor: busy ? 'default' : 'pointer', opacity: busy ? 0.6 : 1 }}>
             {busy ? 'Creating…' : 'Create member'}
           </button>
         </div>

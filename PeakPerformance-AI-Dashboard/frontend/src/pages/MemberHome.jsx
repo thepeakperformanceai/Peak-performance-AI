@@ -21,7 +21,7 @@ export default function MemberHome({ onNewReport }) {
 
   const tabBtn = (active) => ({
     padding: '8px 16px', border: 'none', cursor: 'pointer', borderRadius: 8,
-    background: active ? '#54d9c4' : 'transparent', color: active ? '#0A0E13' : '#8b99a6',
+    background: active ? '#ff4b12' : 'transparent', color: active ? '#0A0E13' : '#8b99a6',
     fontFamily: "'IBM Plex Mono', monospace", fontSize: 12, fontWeight: 700
   })
 
@@ -32,7 +32,7 @@ export default function MemberHome({ onNewReport }) {
           <Logo width={180} height={56} />
           <div className="d-flex align-items-center gap-2">
             <button onClick={onNewReport} className="font-ibm-mono"
-              style={{ backgroundColor: '#54d9c4', color: '#0A0E13', border: 'none', borderRadius: 8, padding: '8px 14px', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>
+              style={{ backgroundColor: '#ff4b12', color: '#0A0E13', border: 'none', borderRadius: 8, padding: '8px 14px', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>
               + New assessment
             </button>
             <button onClick={logout} className="font-ibm-mono"

@@ -6,7 +6,7 @@ import { authApi, apiError } from '../services/authApi'
 
 const page = { minHeight: '100vh', backgroundColor: '#06090e', padding: '40px 16px' }
 const card = { maxWidth: '640px', margin: '0 auto', backgroundColor: '#0e1823', border: '1px solid #172333', borderRadius: '16px', padding: '32px' }
-const btn = (d) => ({ width: '100%', padding: '13px', borderRadius: '10px', border: 'none', backgroundColor: '#54d9c4', color: '#0A0E13', fontWeight: 700, fontSize: '13px', fontFamily: "'IBM Plex Mono', monospace", cursor: d ? 'default' : 'pointer', opacity: d ? 0.6 : 1, marginTop: 18 })
+const btn = (d) => ({ width: '100%', padding: '13px', borderRadius: '10px', border: 'none', backgroundColor: '#ff4b12', color: '#0A0E13', fontWeight: 700, fontSize: '13px', fontFamily: "'IBM Plex Mono', monospace", cursor: d ? 'default' : 'pointer', opacity: d ? 0.6 : 1, marginTop: 18 })
 const SPORTS = ['Football', 'Padel', 'Strength & Conditioning', 'Other']
 
 export default function GenerateReportPage({ onGenerated, firstTime }) {
@@ -48,7 +48,7 @@ export default function GenerateReportPage({ onGenerated, firstTime }) {
       </div>
 
       <div style={card}>
-        <div className="font-ibm-mono text-uppercase" style={{ color: '#54d9c4', fontSize: 12, letterSpacing: 1, marginBottom: 10 }}>
+        <div className="font-ibm-mono text-uppercase" style={{ color: '#ff4b12', fontSize: 12, letterSpacing: 1, marginBottom: 10 }}>
           —— {firstTime ? 'Step 1 · Generate your first report' : 'New assessment'}
         </div>
         <h1 className="font-space" style={{ fontSize: '1.4rem', fontWeight: 700, color: '#e9eef2', marginBottom: 6 }}>
@@ -67,7 +67,7 @@ export default function GenerateReportPage({ onGenerated, firstTime }) {
           onDrop={e => { e.preventDefault(); addFiles(e.dataTransfer.files) }}
           style={{ border: '1.5px dashed #24384f', borderRadius: 12, padding: '30px', textAlign: 'center', cursor: 'pointer', backgroundColor: '#0b141f' }}
         >
-          <Upload size={22} color="#54d9c4" />
+          <Upload size={22} color="#ff4b12" />
           <div className="font-inter" style={{ color: '#c3d0dd', fontSize: 13.5, marginTop: 8 }}>Click or drop your VALD PDF / scanned sheet</div>
           <div className="font-ibm-mono" style={{ color: '#566e85', fontSize: 11, marginTop: 4 }}>PDF or CSV</div>
           <input ref={inputRef} type="file" accept="application/pdf,.csv" multiple hidden
@@ -78,7 +78,7 @@ export default function GenerateReportPage({ onGenerated, firstTime }) {
         {files.map((f, i) => (
           <div key={i} className="d-flex align-items-center justify-content-between" style={{ marginTop: 10, padding: '9px 12px', backgroundColor: '#0b141f', border: '1px solid #1c2e42', borderRadius: 8 }}>
             <span className="font-ibm-mono d-flex align-items-center gap-2" style={{ color: '#8b99a6', fontSize: 12 }}>
-              <FileText size={14} color="#54d9c4" /> {f.name}
+              <FileText size={14} color="#ff4b12" /> {f.name}
             </span>
             <X size={14} color="#8b99a6" style={{ cursor: 'pointer' }} onClick={() => removeFile(i)} />
           </div>
@@ -94,7 +94,7 @@ export default function GenerateReportPage({ onGenerated, firstTime }) {
         </div>
 
         {error && <div style={{ color: '#ff6b6b', fontSize: 12, marginTop: 12 }}>{error}</div>}
-        {busy && stage && <div className="font-ibm-mono" style={{ color: '#54d9c4', fontSize: 12, marginTop: 12 }}>{stage}</div>}
+        {busy && stage && <div className="font-ibm-mono" style={{ color: '#ff4b12', fontSize: 12, marginTop: 12 }}>{stage}</div>}
 
         <button style={btn(busy)} disabled={busy} onClick={submit}>
           {busy ? 'Generating…' : 'Generate report'}

@@ -5,7 +5,7 @@
   --bg-card: #0e1823;
   --bg-card-header: #0e1823;
   --border-card: #172333;
-  --teal-accent: #54d9c4;
+  --teal-accent: #ff4b12;
   --row-selected-bg: #0d272b;
   --text-white: #ffffff;
   --text-slate: #8fa3bb;
@@ -62,7 +62,7 @@ h1, h2, h3, h4, h5, h6, .font-space {
 
 /* Generate PDF Button */
 .btn-generate-pdf {
-  background-color: #54d9c4 !important;
+  background-color: #ff4b12 !important;
   color: #0A0E13 !important;
   font-family: 'IBM Plex Mono', monospace !important;
   font-weight: 700 !important;

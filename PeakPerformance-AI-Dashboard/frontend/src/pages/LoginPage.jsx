@@ -6,13 +6,13 @@ import { apiError } from '../services/authApi'
 const wrap = { minHeight: '100vh', backgroundColor: '#06090e', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '24px' }
 const card = { width: '100%', maxWidth: '400px', backgroundColor: '#0e1823', border: '1px solid #172333', borderRadius: '16px', padding: '30px' }
 const input = { width: '100%', padding: '11px 12px', borderRadius: '10px', backgroundColor: '#0b141f', border: '1px solid #1c2e42', color: '#e9eef2', fontSize: '14px', fontFamily: "'Inter', sans-serif", outline: 'none', marginBottom: '12px' }
-const btn = (d) => ({ width: '100%', padding: '12px', borderRadius: '10px', border: 'none', backgroundColor: '#54d9c4', color: '#0A0E13', fontWeight: 700, fontSize: '13px', fontFamily: "'IBM Plex Mono', monospace", cursor: d ? 'default' : 'pointer', opacity: d ? 0.6 : 1, marginTop: '6px' })
+const btn = (d) => ({ width: '100%', padding: '12px', borderRadius: '10px', border: 'none', backgroundColor: '#ff4b12', color: '#0A0E13', fontWeight: 700, fontSize: '13px', fontFamily: "'IBM Plex Mono', monospace", cursor: d ? 'default' : 'pointer', opacity: d ? 0.6 : 1, marginTop: '6px' })
 
 const tabBtn = (active) => ({
   flex: 1, padding: '10px', border: 'none', cursor: 'pointer',
   backgroundColor: active ? '#0e1823' : 'transparent',
-  color: active ? '#54d9c4' : '#8b99a6',
-  borderBottom: active ? '2px solid #54d9c4' : '2px solid #172333',
+  color: active ? '#ff4b12' : '#8b99a6',
+  borderBottom: active ? '2px solid #ff4b12' : '2px solid #172333',
   fontFamily: "'IBM Plex Mono', monospace", fontSize: '12px', fontWeight: 600, letterSpacing: '0.5px'
 })
 
@@ -97,7 +97,7 @@ export default function LoginPage() {
             </button>
             <p className="font-inter text-center" style={{ color: '#8b99a6', fontSize: 12, marginTop: 14 }}>
               New here?{' '}
-              <span style={{ color: '#54d9c4', cursor: 'pointer', fontWeight: 600 }}
+              <span style={{ color: '#ff4b12', cursor: 'pointer', fontWeight: 600 }}
                     onClick={() => { setOwnerMode('signup'); reset() }}>Create a gym account</span>
             </p>
           </>
@@ -108,7 +108,7 @@ export default function LoginPage() {
             </button>
             <p className="font-inter text-center" style={{ color: '#8b99a6', fontSize: 12, marginTop: 14 }}>
               Already have an account?{' '}
-              <span style={{ color: '#54d9c4', cursor: 'pointer', fontWeight: 600 }}
+              <span style={{ color: '#ff4b12', cursor: 'pointer', fontWeight: 600 }}
                     onClick={() => { setOwnerMode('login'); reset() }}>Log in</span>
             </p>
           </>

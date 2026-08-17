@@ -44,7 +44,7 @@ export default function MemberDetail({ member, loading }) {
       {/* Section Tag */}
       <div 
         className="text-uppercase font-ibm-mono fw-semibold mb-2 d-flex align-items-center gap-2" 
-        style={{ color: "#54d9c4", fontSize: "12px", fontFamily: "'IBM Plex Mono', monospace", letterSpacing: "1px" }}
+        style={{ color: "#ff4b12", fontSize: "12px", fontFamily: "'IBM Plex Mono', monospace", letterSpacing: "1px" }}
       >
         <span>&mdash;&mdash;</span>
         <span>MEMBER DETAIL</span>
@@ -70,7 +70,7 @@ export default function MemberDetail({ member, loading }) {
             fontWeight: "700",
             fontSize: "12.5px",
             color: "#0A0E13",
-            backgroundColor: "#54d9c4",
+            backgroundColor: "#ff4b12",
             whiteSpace: "nowrap",
             WebkitTextStroke: "0.5px #0A0E13"
           }}
@@ -96,7 +96,7 @@ export default function MemberDetail({ member, loading }) {
               <h4 className="fw-bold mb-1 font-space" style={{ fontSize: "1.1rem", color: "#E9EEF2", fontFamily: "'Space Grotesk', sans-serif" }}>
                 {member.name}
               </h4>
-              <div className="fw-semibold mb-4 font-space" style={{ color: "#54d9c4", fontSize: "0.9rem", fontFamily: "'Space Grotesk', sans-serif" }}>
+              <div className="fw-semibold mb-4 font-space" style={{ color: "#ff4b12", fontSize: "0.9rem", fontFamily: "'Space Grotesk', sans-serif" }}>
                 {member.sport}
               </div>
 
@@ -151,7 +151,7 @@ export default function MemberDetail({ member, loading }) {
                       return (
                         <div key={i} className="d-flex flex-column align-items-center flex-fill h-100 justify-content-end">
                           <div className="font-ibm-mono mb-1" style={{ color: "#8b99a6", fontSize: "11px", fontFamily: "'IBM Plex Mono', monospace" }}>{h.cmj}</div>
-                          <div className="w-100 rounded-top-1" style={{ height: `${heightPct}%`, backgroundColor: isLatest ? "#54d9c4" : "#1c2e42", transition: "all 0.3s ease" }} />
+                          <div className="w-100 rounded-top-1" style={{ height: `${heightPct}%`, backgroundColor: isLatest ? "#ff4b12" : "#1c2e42", transition: "all 0.3s ease" }} />
                         </div>
                       );
                     })}
@@ -171,7 +171,7 @@ export default function MemberDetail({ member, loading }) {
                       return (
                         <div key={i} className="d-flex flex-column align-items-center flex-fill h-100 justify-content-end">
                           <div className="font-ibm-mono mb-1" style={{ color: "#8b99a6", fontSize: "11px", fontFamily: "'IBM Plex Mono', monospace" }}>{h.hipFlexion}</div>
-                          <div className="w-100 rounded-top-1" style={{ height: `${heightPct}%`, backgroundColor: isLatest ? "#54d9c4" : "#1c2e42", transition: "all 0.3s ease" }} />
+                          <div className="w-100 rounded-top-1" style={{ height: `${heightPct}%`, backgroundColor: isLatest ? "#ff4b12" : "#1c2e42", transition: "all 0.3s ease" }} />
                         </div>
                       );
                     })}
@@ -191,7 +191,7 @@ export default function MemberDetail({ member, loading }) {
                       return (
                         <div key={i} className="d-flex flex-column align-items-center flex-fill h-100 justify-content-end">
                           <div className="font-ibm-mono mb-1" style={{ color: "#8b99a6", fontSize: "11px", fontFamily: "'IBM Plex Mono', monospace" }}>{h.grip}</div>
-                          <div className="w-100 rounded-top-1" style={{ height: `${heightPct}%`, backgroundColor: isLatest ? "#54d9c4" : "#1c2e42", transition: "all 0.3s ease" }} />
+                          <div className="w-100 rounded-top-1" style={{ height: `${heightPct}%`, backgroundColor: isLatest ? "#ff4b12" : "#1c2e42", transition: "all 0.3s ease" }} />
                         </div>
                       );
                     })}
@@ -211,7 +211,7 @@ export default function MemberDetail({ member, loading }) {
                       return (
                         <div key={i} className="d-flex flex-column align-items-center flex-fill h-100 justify-content-end">
                           <div className="font-ibm-mono mb-1" style={{ color: "#8b99a6", fontSize: "11px", fontFamily: "'IBM Plex Mono', monospace" }}>{h.asym}</div>
-                          <div className="w-100 rounded-top-1" style={{ height: `${heightPct}%`, backgroundColor: isLatest ? "#54d9c4" : "#1c2e42", transition: "all 0.3s ease" }} />
+                          <div className="w-100 rounded-top-1" style={{ height: `${heightPct}%`, backgroundColor: isLatest ? "#ff4b12" : "#1c2e42", transition: "all 0.3s ease" }} />
                         </div>
                       );
                     })}
@@ -279,7 +279,7 @@ export default function MemberDetail({ member, loading }) {
                     <span
                       className="font-ibm-mono fw-bold flex-shrink-0"
                       style={{
-                        color: "#54d9c4",
+                        color: "#ff4b12",
                         fontSize: "11.5px",
                         minWidth: "44px",
                         fontFamily: "'IBM Plex Mono', monospace",

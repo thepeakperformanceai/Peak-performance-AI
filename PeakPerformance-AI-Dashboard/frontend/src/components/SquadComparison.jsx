@@ -19,7 +19,7 @@ export default function SquadComparison({
       {/* Section Tag */}
       <div 
         className="text-uppercase font-ibm-mono fw-semibold mb-1 d-flex align-items-center gap-2" 
-        style={{ color: "#54d9c4", fontSize: "12px", fontFamily: "'IBM Plex Mono', monospace", letterSpacing: "1px" }}
+        style={{ color: "#ff4b12", fontSize: "12px", fontFamily: "'IBM Plex Mono', monospace", letterSpacing: "1px" }}
       >
         <span>&mdash;&mdash;</span>
         <span>SQUAD COMPARISON</span>
@@ -59,8 +59,8 @@ export default function SquadComparison({
                   className="btn btn-sm rounded-pill font-ibm-mono transition-all"
                   style={{
                     backgroundColor: active ? "rgba(84, 217, 196, 0.08)" : "#0f1a28",
-                    color: active ? "#54d9c4" : "#8b99a6",
-                    border: active ? "1px solid #54d9c4" : "1px solid #1b2d42",
+                    color: active ? "#ff4b12" : "#8b99a6",
+                    border: active ? "1px solid #ff4b12" : "1px solid #1b2d42",
                     padding: "4px 18px",
                     fontWeight: "500",
                     fontSize: "12.5px",
@@ -90,8 +90,8 @@ export default function SquadComparison({
                   className="btn btn-sm rounded-pill font-ibm-mono transition-all"
                   style={{
                     backgroundColor: active ? "rgba(84, 217, 196, 0.08)" : "#0f1a28",
-                    color: active ? "#54d9c4" : "#8b99a6",
-                    border: active ? "1px solid #54d9c4" : "1px solid #1b2d42",
+                    color: active ? "#ff4b12" : "#8b99a6",
+                    border: active ? "1px solid #ff4b12" : "1px solid #1b2d42",
                     padding: "4px 16px",
                     fontWeight: "500",
                     fontSize: "12.5px",
@@ -207,7 +207,7 @@ export default function SquadComparison({
                         className="w-100 rounded-top-2" 
                         style={{ 
                           height: `${heightPercent}%`, 
-                          backgroundColor: "#54d9c4",
+                          backgroundColor: "#ff4b12",
                           transition: "height 0.4s ease"
                         }}
                       />
@@ -240,7 +240,7 @@ export default function SquadComparison({
                         className="w-100 rounded-top-2" 
                         style={{ 
                           height: `${heightPercent}%`, 
-                          backgroundColor: "#54d9c4",
+                          backgroundColor: "#ff4b12",
                           transition: "height 0.4s ease"
                         }}
                       />
