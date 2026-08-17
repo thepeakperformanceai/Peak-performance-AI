@@ -24,7 +24,7 @@ const NAV_BOTTOM = [
   { id: 'account', label: 'ACCOUNT', icon: '⛁' },
 ]
 
-function Sidebar({ active, onNav, onLogout }) {
+function Sidebar({ active, onNav, onLogout, onNewAssessment }) {
   const item = (n) => {
     const on = active === n.id
     return (
@@ -55,6 +55,15 @@ function Sidebar({ active, onNav, onLogout }) {
           Test. Train. Perform.<br />Elite Performance Lab
         </div>
       </div>
+
+      <button onClick={onNewAssessment} className="font-ibm-mono"
+        style={{
+          display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, width: '100%',
+          padding: '10px 14px', marginBottom: 20, borderRadius: 8, cursor: 'pointer',
+          background: ORANGE, color: '#0A0E13', border: 'none', fontSize: 12, fontWeight: 700, letterSpacing: 0.5
+        }}>
+        + NEW ASSESSMENT
+      </button>
 
       <nav style={{ flex: 1 }}>{NAV.map(item)}</nav>
       <div style={{ borderTop: `1px solid ${BORDER}`, paddingTop: 12 }}>{NAV_BOTTOM.map(item)}</div>
@@ -144,7 +153,6 @@ export default function OwnerDashboard() {
     <>
       <MemberRoster members={rosterMembers} selectedMemberId={selectedMemberId}
         onSelectMember={setSelectedMemberId} loading={loadingRoster} />
-      <MemberDetail member={selectedMemberDetail} loading={loadingDetail} />
     </>
   )
   const squad = (
@@ -154,7 +162,7 @@ export default function OwnerDashboard() {
 
   return (
     <div style={{ display: 'flex', minHeight: '100vh', background: BG }}>
-      <Sidebar active={active} onNav={setActive} onLogout={logout} />
+      <Sidebar active={active} onNav={setActive} onLogout={logout} onNewAssessment={() => setShowAdd(true)} />
 
       <main style={{ flex: 1, padding: '28px 28px 48px', overflowX: 'hidden' }}>
         <ContentHeader onAdd={() => setShowAdd(true)} onLogout={logout} />
