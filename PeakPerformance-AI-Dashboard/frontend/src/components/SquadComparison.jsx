@@ -38,7 +38,7 @@ export default function SquadComparison({
       {/* Outer Card Container */}
       <div 
         className="dashboard-card p-4 overflow-hidden shadow-lg"
-        style={{ backgroundColor: "#0b141f", border: "1px solid #162436", borderRadius: "16px" }}
+        style={{ backgroundColor: "#0e0f11", border: "1px solid #26282c", borderRadius: "16px" }}
       >
         {/* Filter Pills Bar */}
         <div className="d-flex flex-wrap align-items-center gap-4 mb-4 pb-1">
@@ -46,7 +46,7 @@ export default function SquadComparison({
           <div className="d-flex align-items-center gap-2">
             <span 
               className="font-ibm-mono text-uppercase me-2" 
-              style={{ color: "#5a6875", fontSize: "10.5px", fontFamily: "'IBM Plex Mono', monospace", letterSpacing: "1px" }}
+              style={{ color: "#6a6a6a", fontSize: "10.5px", fontFamily: "'IBM Plex Mono', monospace", letterSpacing: "1px" }}
             >
               SPORT
             </span>
@@ -58,9 +58,9 @@ export default function SquadComparison({
                   onClick={() => onSportFilterChange(sp)}
                   className="btn btn-sm rounded-pill font-ibm-mono transition-all"
                   style={{
-                    backgroundColor: active ? "rgba(84, 217, 196, 0.08)" : "#0f1a28",
+                    backgroundColor: active ? "rgba(255, 75, 18, 0.10)" : "#141517",
                     color: active ? "#ff4b12" : "#8b99a6",
-                    border: active ? "1px solid #ff4b12" : "1px solid #1b2d42",
+                    border: active ? "1px solid #ff4b12" : "1px solid #2a2c31",
                     padding: "4px 18px",
                     fontWeight: "500",
                     fontSize: "12.5px",
@@ -77,7 +77,7 @@ export default function SquadComparison({
           <div className="d-flex align-items-center gap-2 ms-md-2">
             <span 
               className="font-ibm-mono text-uppercase me-2" 
-              style={{ color: "#5a6875", fontSize: "10.5px", fontFamily: "'IBM Plex Mono', monospace", letterSpacing: "1px" }}
+              style={{ color: "#6a6a6a", fontSize: "10.5px", fontFamily: "'IBM Plex Mono', monospace", letterSpacing: "1px" }}
             >
               SEX
             </span>
@@ -89,9 +89,9 @@ export default function SquadComparison({
                   onClick={() => onSexFilterChange(sx)}
                   className="btn btn-sm rounded-pill font-ibm-mono transition-all"
                   style={{
-                    backgroundColor: active ? "rgba(84, 217, 196, 0.08)" : "#0f1a28",
+                    backgroundColor: active ? "rgba(255, 75, 18, 0.10)" : "#141517",
                     color: active ? "#ff4b12" : "#8b99a6",
-                    border: active ? "1px solid #ff4b12" : "1px solid #1b2d42",
+                    border: active ? "1px solid #ff4b12" : "1px solid #2a2c31",
                     padding: "4px 16px",
                     fontWeight: "500",
                     fontSize: "12.5px",
@@ -108,10 +108,10 @@ export default function SquadComparison({
         {/* 4 KPI Summary Stat Cards */}
         <div className="row g-3 mb-4">
           <div className="col-6 col-md-3">
-            <div className="p-3 rounded-3" style={{ backgroundColor: "#0e1a27", border: "1px solid #192a3e" }}>
+            <div className="p-3 rounded-3" style={{ backgroundColor: "#141517", border: "1px solid #24262b" }}>
               <div 
                 className="font-ibm-mono text-uppercase mb-2" 
-                style={{ color: "#5a6875", fontSize: "10px", fontFamily: "'IBM Plex Mono', monospace", letterSpacing: "0.5px" }}
+                style={{ color: "#6a6a6a", fontSize: "10px", fontFamily: "'IBM Plex Mono', monospace", letterSpacing: "0.5px" }}
               >
                 MEMBERS
               </div>
@@ -125,10 +125,10 @@ export default function SquadComparison({
           </div>
 
           <div className="col-6 col-md-3">
-            <div className="p-3 rounded-3" style={{ backgroundColor: "#0e1a27", border: "1px solid #192a3e" }}>
+            <div className="p-3 rounded-3" style={{ backgroundColor: "#141517", border: "1px solid #24262b" }}>
               <div 
                 className="font-ibm-mono text-uppercase mb-2" 
-                style={{ color: "#5a6875", fontSize: "10px", fontFamily: "'IBM Plex Mono', monospace", letterSpacing: "0.5px" }}
+                style={{ color: "#6a6a6a", fontSize: "10px", fontFamily: "'IBM Plex Mono', monospace", letterSpacing: "0.5px" }}
               >
                 AVG CMJ HEIGHT
               </div>
@@ -143,10 +143,10 @@ export default function SquadComparison({
           </div>
 
           <div className="col-6 col-md-3">
-            <div className="p-3 rounded-3" style={{ backgroundColor: "#0e1a27", border: "1px solid #192a3e" }}>
+            <div className="p-3 rounded-3" style={{ backgroundColor: "#141517", border: "1px solid #24262b" }}>
               <div 
                 className="font-ibm-mono text-uppercase mb-2" 
-                style={{ color: "#5a6875", fontSize: "10px", fontFamily: "'IBM Plex Mono', monospace", letterSpacing: "0.5px" }}
+                style={{ color: "#6a6a6a", fontSize: "10px", fontFamily: "'IBM Plex Mono', monospace", letterSpacing: "0.5px" }}
               >
                 AVG GRIP STRENGTH
               </div>
@@ -161,10 +161,10 @@ export default function SquadComparison({
           </div>
 
           <div className="col-6 col-md-3">
-            <div className="p-3 rounded-3" style={{ backgroundColor: "#0e1a27", border: "1px solid #192a3e" }}>
+            <div className="p-3 rounded-3" style={{ backgroundColor: "#141517", border: "1px solid #24262b" }}>
               <div 
                 className="font-ibm-mono text-uppercase mb-2" 
-                style={{ color: "#5a6875", fontSize: "10px", fontFamily: "'IBM Plex Mono', monospace", letterSpacing: "0.5px" }}
+                style={{ color: "#6a6a6a", fontSize: "10px", fontFamily: "'IBM Plex Mono', monospace", letterSpacing: "0.5px" }}
               >
                 AVG LANDING ASYM.
               </div>
@@ -180,10 +180,10 @@ export default function SquadComparison({
         </div>
 
         {/* Group Averages by Sport Chart Block */}
-        <div className="p-4 rounded-3 mb-4" style={{ backgroundColor: "#0e1925", border: "1px solid #18283a" }}>
+        <div className="p-4 rounded-3 mb-4" style={{ backgroundColor: "#141517", border: "1px solid #24262b" }}>
           <div 
             className="font-ibm-mono text-uppercase mb-3" 
-            style={{ color: "#5a6875", fontSize: "11.5px", fontFamily: "'IBM Plex Mono', monospace", letterSpacing: "1px" }}
+            style={{ color: "#6a6a6a", fontSize: "11.5px", fontFamily: "'IBM Plex Mono', monospace", letterSpacing: "1px" }}
           >
             GROUP AVERAGES BY SPORT (LATEST SESSION, ALL MEMBERS)
           </div>
@@ -215,7 +215,7 @@ export default function SquadComparison({
                   );
                 })}
               </div>
-              <div className="d-flex justify-content-between font-ibm-mono mt-2 px-2" style={{ color: "#5a6875", fontSize: "10.5px", fontFamily: "'IBM Plex Mono', monospace" }}>
+              <div className="d-flex justify-content-between font-ibm-mono mt-2 px-2" style={{ color: "#6a6a6a", fontSize: "10.5px", fontFamily: "'IBM Plex Mono', monospace" }}>
                 {cmjBars.map((b, idx) => (
                   <div key={idx} className="flex-fill text-center">{b.shortName}</div>
                 ))}
@@ -248,7 +248,7 @@ export default function SquadComparison({
                   );
                 })}
               </div>
-              <div className="d-flex justify-content-between font-ibm-mono mt-2 px-2" style={{ color: "#5a6875", fontSize: "10.5px", fontFamily: "'IBM Plex Mono', monospace" }}>
+              <div className="d-flex justify-content-between font-ibm-mono mt-2 px-2" style={{ color: "#6a6a6a", fontSize: "10.5px", fontFamily: "'IBM Plex Mono', monospace" }}>
                 {asymBars.map((b, idx) => (
                   <div key={idx} className="flex-fill text-center">{b.shortName}</div>
                 ))}
@@ -258,17 +258,17 @@ export default function SquadComparison({
         </div>
 
         {/* Squad Members Breakdown Table */}
-        <div className="table-responsive rounded-3 overflow-hidden" style={{ border: "1px solid #162436" }}>
+        <div className="table-responsive rounded-3 overflow-hidden" style={{ border: "1px solid #26282c" }}>
           <table className="table table-dark table-hover mb-0 align-middle">
             <thead>
-              <tr style={{ color: "#5a6875", borderBottom: "1px solid #162436", fontSize: "10.5px", letterSpacing: "1px" }}>
-                <th className="ps-4 py-3 text-uppercase font-ibm-mono fw-semibold" style={{ color: "#5a6875", fontSize: "10.5px" }}>Member</th>
-                <th className="py-3 text-uppercase font-ibm-mono fw-semibold" style={{ color: "#5a6875", fontSize: "11.5px" }}>Sex</th>
-                <th className="py-3 text-uppercase font-ibm-mono fw-semibold" style={{ color: "#5a6875", fontSize: "11.5px" }}>Age</th>
-                <th className="py-3 text-uppercase font-ibm-mono fw-semibold" style={{ color: "#5a6875", fontSize: "11.5px" }}>Sport</th>
-                <th className="py-3 text-uppercase font-ibm-mono fw-semibold" style={{ color: "#5a6875", fontSize: "11.5px" }}>Latest CMJ</th>
-                <th className="py-3 text-uppercase font-ibm-mono fw-semibold" style={{ color: "#5a6875", fontSize: "11.5px" }}>Latest Grip</th>
-                <th className="pe-4 py-3 text-uppercase font-ibm-mono fw-semibold" style={{ color: "#5a6875", fontSize: "10.5px" }}>Latest Asym.</th>
+              <tr style={{ color: "#6a6a6a", borderBottom: "1px solid #26282c", fontSize: "10.5px", letterSpacing: "1px" }}>
+                <th className="ps-4 py-3 text-uppercase font-ibm-mono fw-semibold" style={{ color: "#6a6a6a", fontSize: "10.5px" }}>Member</th>
+                <th className="py-3 text-uppercase font-ibm-mono fw-semibold" style={{ color: "#6a6a6a", fontSize: "11.5px" }}>Sex</th>
+                <th className="py-3 text-uppercase font-ibm-mono fw-semibold" style={{ color: "#6a6a6a", fontSize: "11.5px" }}>Age</th>
+                <th className="py-3 text-uppercase font-ibm-mono fw-semibold" style={{ color: "#6a6a6a", fontSize: "11.5px" }}>Sport</th>
+                <th className="py-3 text-uppercase font-ibm-mono fw-semibold" style={{ color: "#6a6a6a", fontSize: "11.5px" }}>Latest CMJ</th>
+                <th className="py-3 text-uppercase font-ibm-mono fw-semibold" style={{ color: "#6a6a6a", fontSize: "11.5px" }}>Latest Grip</th>
+                <th className="pe-4 py-3 text-uppercase font-ibm-mono fw-semibold" style={{ color: "#6a6a6a", fontSize: "10.5px" }}>Latest Asym.</th>
               </tr>
             </thead>
             <tbody>
@@ -286,7 +286,7 @@ export default function SquadComparison({
                 </tr>
               ) : (
                 squadData?.members?.map((m) => (
-                  <tr key={m.id} style={{ borderBottom: "1px solid #132030" }}>
+                  <tr key={m.id} style={{ borderBottom: "1px solid #1c1e22" }}>
                     <td 
                       className="ps-4 py-3 fw-bold font-space" 
                       style={{ color: "#E9EEF2", fontSize: "13.5px", fontFamily: "'Space Grotesk', sans-serif" }}
@@ -300,7 +300,7 @@ export default function SquadComparison({
                         className="sport-pill font-ibm-mono"
                         style={{ 
                           backgroundColor: "#111d2c", 
-                          border: "1px solid #1b2d42", 
+                          border: "1px solid #2a2c31", 
                           color: "#8b99a6", 
                           padding: "3px 12px", 
                           borderRadius: "16px",

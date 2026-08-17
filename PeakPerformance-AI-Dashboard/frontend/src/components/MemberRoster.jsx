@@ -6,8 +6,8 @@ export default function MemberRoster({ members, selectedMemberId, onSelectMember
     <div 
       className="dashboard-card overflow-hidden mb-5 shadow-lg"
       style={{ 
-        backgroundColor: "#0d1722", 
-        border: "1px solid #1c2b3a", 
+        backgroundColor: "#0e0f11", 
+        border: "1px solid #26282c", 
         borderRadius: "12px" 
       }}
     >
@@ -15,8 +15,8 @@ export default function MemberRoster({ members, selectedMemberId, onSelectMember
       <div 
         className="card-header px-4 py-3 d-flex justify-content-between align-items-center"
         style={{ 
-          backgroundColor: "#161f29", 
-          borderBottom: "1px solid #1f2d3d" 
+          backgroundColor: "#151619", 
+          borderBottom: "1px solid #23252a" 
         }}
       >
         <div className="d-flex align-items-center gap-3">
@@ -30,7 +30,7 @@ export default function MemberRoster({ members, selectedMemberId, onSelectMember
             </div>
             <div 
               className="font-ibm-mono" 
-              style={{ fontFamily: "'IBM Plex Mono', monospace", color: "#5a6875", fontSize: "13px", lineHeight: "1.2" }}
+              style={{ fontFamily: "'IBM Plex Mono', monospace", color: "#6a6a6a", fontSize: "13px", lineHeight: "1.2" }}
             >
               Continuum workspace
             </div>
@@ -38,7 +38,7 @@ export default function MemberRoster({ members, selectedMemberId, onSelectMember
         </div>
         <div 
           className="font-ibm-mono" 
-          style={{ fontFamily: "'IBM Plex Mono', monospace", color: "#5a6875", fontSize: "12px" }}
+          style={{ fontFamily: "'IBM Plex Mono', monospace", color: "#6a6a6a", fontSize: "12px" }}
         >
           {members.length} member{members.length === 1 ? '' : 's'}
         </div>
@@ -49,13 +49,13 @@ export default function MemberRoster({ members, selectedMemberId, onSelectMember
         <div className="table-responsive">
           <table className="table mb-0 align-middle" style={{ backgroundColor: "transparent" }}>
             <thead>
-              <tr style={{ borderBottom: "1px solid #172333" }}>
-                <th className="ps-4 py-3 text-uppercase font-ibm-mono fw-semibold" style={{ color: "#5a6875", fontSize: "10.5px", letterSpacing: "0.5px", backgroundColor: "transparent" }}>Member</th>
-                <th className="py-3 text-uppercase font-ibm-mono fw-semibold" style={{ color: "#5a6875", fontSize: "10.5px", letterSpacing: "0.5px", backgroundColor: "transparent" }}>Sex</th>
-                <th className="py-3 text-uppercase font-ibm-mono fw-semibold" style={{ color: "#5a6875", fontSize: "10.5px", letterSpacing: "0.5px", backgroundColor: "transparent" }}>Age</th>
-                <th className="py-3 text-uppercase font-ibm-mono fw-semibold" style={{ color: "#5a6875", fontSize: "10.5px", letterSpacing: "0.5px", backgroundColor: "transparent" }}>Sport</th>
-                <th className="py-3 text-uppercase font-ibm-mono fw-semibold text-center" style={{ color: "#5a6875", fontSize: "10.5px", letterSpacing: "0.5px", backgroundColor: "transparent" }}>Sessions</th>
-                <th className="pe-4 py-3 text-uppercase font-ibm-mono fw-semibold" style={{ color: "#5a6875", fontSize: "10.5px", letterSpacing: "0.5px", backgroundColor: "transparent" }}>Last Tested</th>
+              <tr style={{ borderBottom: "1px solid #1f2124" }}>
+                <th className="ps-4 py-3 text-uppercase font-ibm-mono fw-semibold" style={{ color: "#6a6a6a", fontSize: "10.5px", letterSpacing: "0.5px", backgroundColor: "transparent" }}>Member</th>
+                <th className="py-3 text-uppercase font-ibm-mono fw-semibold" style={{ color: "#6a6a6a", fontSize: "10.5px", letterSpacing: "0.5px", backgroundColor: "transparent" }}>Sex</th>
+                <th className="py-3 text-uppercase font-ibm-mono fw-semibold" style={{ color: "#6a6a6a", fontSize: "10.5px", letterSpacing: "0.5px", backgroundColor: "transparent" }}>Age</th>
+                <th className="py-3 text-uppercase font-ibm-mono fw-semibold" style={{ color: "#6a6a6a", fontSize: "10.5px", letterSpacing: "0.5px", backgroundColor: "transparent" }}>Sport</th>
+                <th className="py-3 text-uppercase font-ibm-mono fw-semibold text-center" style={{ color: "#6a6a6a", fontSize: "10.5px", letterSpacing: "0.5px", backgroundColor: "transparent" }}>Sessions</th>
+                <th className="pe-4 py-3 text-uppercase font-ibm-mono fw-semibold" style={{ color: "#6a6a6a", fontSize: "10.5px", letterSpacing: "0.5px", backgroundColor: "transparent" }}>Last Tested</th>
               </tr>
             </thead>
             <tbody>
@@ -74,7 +74,7 @@ export default function MemberRoster({ members, selectedMemberId, onSelectMember
               ) : (
                 members.map((m) => {
                   const isSelected = m.id === selectedMemberId;
-                  const rowBg = isSelected ? "#142e33" : "transparent";
+                  const rowBg = isSelected ? "#241109" : "transparent";
                   return (
                     <tr
                       key={m.id}
@@ -82,7 +82,7 @@ export default function MemberRoster({ members, selectedMemberId, onSelectMember
                       className="roster-row"
                       style={{
                         cursor: "pointer",
-                        borderBottom: "1px solid #14202e",
+                        borderBottom: "1px solid #1c1e22",
                         transition: "background-color 0.15s ease"
                       }}
                     >
@@ -103,7 +103,7 @@ export default function MemberRoster({ members, selectedMemberId, onSelectMember
                         <span 
                           className="sport-pill font-ibm-mono"
                           style={{
-                            backgroundColor: "#111c27",
+                            backgroundColor: "#1a1c1f",
                             border: "1px solid rgba(139, 153, 166, 0.2)",
                             color: "#8b99a6",
                             padding: "3px 12px",
@@ -127,7 +127,7 @@ export default function MemberRoster({ members, selectedMemberId, onSelectMember
       </div>
 
       {/* Card Footer Note */}
-      <div className="card-footer bg-transparent border-0 px-4 py-3 font-monospace" style={{ fontSize: "0.8rem", color: "#455870" }}>
+      <div className="card-footer bg-transparent border-0 px-4 py-3 font-monospace" style={{ fontSize: "0.8rem", color: "#565656" }}>
         &crarr; click any member to view their profile below
       </div>
     </div>
