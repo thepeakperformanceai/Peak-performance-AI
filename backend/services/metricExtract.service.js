@@ -1,50 +1,20 @@
-/**
- * Derives dashboard metrics (CMJ, grip, asymmetry, hip flexion) from a generated
- * report's content. Returned by the service generate endpoint so the gym-dashboard
- * backend can store clean numbers without re-parsing the report.
- */
-const num = (v) => {
-    if (v == null) return null;
-    const m = String(v).match(/-?\d+(\.\d+)?/);
-    return m ? parseFloat(m[0]) : null;
-  };
-  const fromFindings = (findings, keywords) => {
-    for (const f of findings || []) {
-      const hay = (f.title || '').toLowerCase();
-      const hit = keywords.some(k => hay.includes(k));
-      for (const row of f.metrics || []) {
-        const label = String(row[0] || '').toLowerCase();
-        const rowHit = keywords.some(k => label.includes(k));
-        if (hit || rowHit) {
-          for (let i = 1; i < row.length; i++) { const n = num(row[i]); if (n != null) return n; }
-        }
-      }
-    }
-    return null;
-  };
-  const worstAsymmetry = (findings) => {
-    let worst = null;
-    const scan = (text) => {
-      const re = /(\d+(?:\.\d+)?)\s*%/g; let m;
-      while ((m = re.exec(text || '')) !== null) {
-        const v = parseFloat(m[1]); if (worst == null || v > worst) worst = v;
-      }
-    };
-    for (const f of findings || []) {
-      if (/asymmet/i.test(f.title) || /asymmet/i.test(f.description)) {
-        scan(f.description);
-        for (const row of f.metrics || []) row.forEach(c => scan(String(c)));
-      }
-    }
-    return worst;
+// Derives dashboard summary metrics from the new battery-report shape.
+const scoreOf = (ovr, name) => {
+    const hit = (ovr || []).find(o => (o.name || '').toLowerCase() === name.toLowerCase());
+    return hit ? hit.score : null;
   };
   const extractDashboardMetrics = (reportContent = {}) => {
-    const findings = reportContent.findings || [];
+    const ovr = reportContent.ovrScores || [];
+    const ds = reportContent.dynamoStrength || [];
+    // worst (lowest) LSI as the asymmetry proxy: asym% = 100 - lsi
+    let worstAsym = null;
+    ds.forEach(d => { if (d.lsi != null) { const a = Math.round((100 - d.lsi) * 10) / 10; if (worstAsym == null || a > worstAsym) worstAsym = a; } });
     return {
-      cmj: num(reportContent.jumpHeight),
-      grip: fromFindings(findings, ['grip', 'hand strength']),
-      asym: worstAsymmetry(findings),
-      hipFlexion: fromFindings(findings, ['hip flexion', 'hip flex'])
+      cmj: scoreOf(ovr, 'Power'),        // Power stat as the jump/power proxy
+      grip: scoreOf(ovr, 'Balance'),     // no grip in battery; use Balance as a stand-in
+      asym: worstAsym,
+      hipFlexion: scoreOf(ovr, 'Speed'), // Speed as the mobility/speed proxy
+      overallOVR: reportContent.overallOVR ?? null
     };
   };
   module.exports = { extractDashboardMetrics };
