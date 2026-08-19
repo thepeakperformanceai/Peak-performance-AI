@@ -1,7 +1,6 @@
 // services/promptBuilder.service.js
-// Produces JSON that the PeakPerformance PDF renderer expects, matching the
-// reference report layout exactly (cover • summary • findings • what-this-means •
-// training plan • reassessment targets).
+// Produces JSON for the ATHLETE TEST BATTERY report:
+// OVR card • manual test battery • DynaMo strength & symmetry • what-this-means-on-field.
 
 const MAX_PDF_CHARS = 5000  // ~1500 tokens per PDF; tune as needed
 
@@ -139,7 +138,7 @@ const buildUserPrompt = (athleteProfile, pdfData, exercises) => {
     prompt += `- Overhead Squat and Single-Leg Squat are 0-2 visual screens (0 = clean, 2 = marked fault); treat higher scores as movement-quality flags, not measurements.\n`;
     prompt += `- Single-Leg Balance (Eyes Closed) is seconds to first correction; large L/R gaps indicate a proprioceptive/stability deficit.\n`;
     prompt += `- Push-Up Test is max reps to failure (capacity, not asymmetry).\n`;
-    prompt += `- Apply the same clinical-voice, named-structure, sport-specific-moment standards used for VALD findings. Do not invent tests that are blank/illegible.\n`;
+    prompt += `- Use these values to inform the six OVR stats, the manual battery, and the DynaMo symmetry in the required battery shape. Do not invent tests that are blank/illegible.\n`;
     manualPdfs.forEach(pdf => { prompt += trim(pdf.text) + '\n'; });
     prompt += `--- END MANUAL INTAKE SCREEN ---\n\n`;
   }
@@ -152,12 +151,7 @@ const buildUserPrompt = (athleteProfile, pdfData, exercises) => {
     prompt += `--- END ADDITIONAL DATA ---\n\n`;
   }
 
-  prompt += `EXERCISE LIST (only recommend from this list):\n`;
-  exercises.forEach(exercise => {
-    prompt += `- ${exercise.name} (targets: ${exercise.targets})\n`;
-  });
-
-  prompt += `\nGenerate the report now as a single JSON object following the required shape exactly.`;
+  prompt += `\nUsing the profile and any assessment data above, produce the ATHLETE TEST BATTERY report now as a single JSON object following the required shape EXACTLY (overallOVR, ovrScores[6], manualBattery, dynamoStrength, symmetrySummary, fieldMeaning). Where a raw value is missing, ESTIMATE a realistic score from the athlete's profile. Every score is 0-100. Do NOT output findings, onCourt, or trainingPlan.`;
 
   return prompt;
 };

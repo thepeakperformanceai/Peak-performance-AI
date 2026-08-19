@@ -3,7 +3,14 @@
 
 const stripMarkdown = (text) => {
   if (!text) return text;
-  return text.replace(/```json\s*/gi, '').replace(/```\s*/g, '').trim();
+  let t = text.replace(/```json\s*/gi, '').replace(/```\s*/g, '').trim();
+  // If the model wrapped JSON in prose, extract the outermost {...} object.
+  if (t[0] !== '{') {
+    const first = t.indexOf('{');
+    const last = t.lastIndexOf('}');
+    if (first !== -1 && last !== -1 && last > first) t = t.slice(first, last + 1);
+  }
+  return t;
 };
 
 const clampScore = (n, fallback = 0) => {
