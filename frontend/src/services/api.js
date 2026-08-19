@@ -64,21 +64,21 @@ export const downloadReportPDF = async reportId => {
       </div>`
 
     const hexSvg = (ovr, overall) => {
-      const cx=150,cy=150,R=105, order=['Speed','Agility','Power','Endurance','Reaction','Balance']
+      const cx=180,cy=150,R=100, order=['Speed','Agility','Power','Endurance','Reaction','Balance']
       const ang=[0,-60,-120,180,120,60].map(d=>d*Math.PI/180)
       const pt=(i,r)=>[cx+Math.cos(ang[i])*R*r, cy+Math.sin(ang[i])*R*r]
       const val=(n)=>(ovr.find(s=>s.name===n)?.score??0)/100
       const ring=(r)=>order.map((_,i)=>pt(i,r).join(',')).join(' ')
       const poly=order.map((n,i)=>pt(i,val(n)).join(',')).join(' ')
-      const lab={Speed:[cx+R+22,cy],Agility:pt(1,1.32),Power:pt(2,1.32),Endurance:[cx-R-34,cy],Reaction:pt(4,1.32),Balance:pt(5,1.32)}
-      return `<svg viewBox="0 0 300 300" width="300" height="300">
+      const lab={Speed:[cx+R+30,cy+4],Agility:pt(1,1.34),Power:pt(2,1.34),Endurance:[cx-R-34,cy+4],Reaction:pt(4,1.34),Balance:pt(5,1.34)}
+      return `<svg viewBox="0 0 360 300" width="360" height="300">
         ${[0.25,0.5,0.75,1].map(r=>`<polygon points="${ring(r)}" fill="none" stroke="#2a2d33"/>`).join('')}
         ${order.map((_,i)=>{const[x,y]=pt(i,1);return `<line x1="${cx}" y1="${cy}" x2="${x}" y2="${y}" stroke="#2a2d33"/>`}).join('')}
         <polygon points="${poly}" fill="${ORANGE}33" stroke="${ORANGE}" stroke-width="2.5"/>
         ${order.map(n=>{const[x,y]=pt(order.indexOf(n),val(n));return `<circle cx="${x}" cy="${y}" r="4" fill="${ORANGE}"/>`}).join('')}
         <text x="${cx}" y="${cy-4}" text-anchor="middle" font-family="Space Grotesk" font-weight="700" font-size="44" fill="${ORANGE}">${overall}</text>
         <text x="${cx}" y="${cy+16}" text-anchor="middle" font-family="monospace" font-size="10" fill="${FAINT}">OVERALL OVR</text>
-        ${order.map(n=>{const[x,y]=lab[n];return `<text x="${x}" y="${y}" text-anchor="middle" font-size="12" fill="${MUTED}">${n}</text>`}).join('')}</svg>`
+        ${order.map(n=>{const[x,y]=lab[n];const anc=n==='Endurance'?'start':n==='Speed'?'end':'middle';return `<text x="${x}" y="${y}" text-anchor="${anc}" font-size="12" fill="${MUTED}">${n}</text>`}).join('')}</svg>`
     }
     const ringSvg = (lsi) => { const c=2*Math.PI*52, dash=(lsi/100)*c
       return `<svg viewBox="0 0 130 130" width="120" height="120">
@@ -97,15 +97,15 @@ export const downloadReportPDF = async reportId => {
           <div style="color:${MUTED};font-size:14px;margin:6px 0 14px">${esc([rc.sport,rc.position].filter(Boolean).join(' — '))} · ${esc(rc.batteryLabel||'')}</div>
           <div style="font-family:monospace;font-size:12px;color:${FAINT};margin-bottom:16px">
             ${rc.age!=null?`AGE <b style="color:${INK}">${esc(rc.age)}</b>&nbsp;&nbsp;&nbsp;`:''}${rc.sport?`SPORT <b style="color:${INK}">${esc(rc.sport)}</b>&nbsp;&nbsp;&nbsp;`:''}${rc.testDate?`SESSION <b style="color:${INK}">${esc(rc.testDate)}</b>`:''}</div>
-          ${ovr.map(s=>`<div style="display:flex;align-items:center;gap:12px;margin-bottom:11px"><span style="width:90px;font-size:14px;color:${INK}">${esc(s.name)}</span>${bar(s.score)}<span style="width:26px;text-align:right;font-family:'Space Grotesk',Arial;font-weight:700;color:${INK}">${s.score}</span></div>`).join('')}
+          ${ovr.map(s=>`<div style="display:flex;align-items:center;margin-bottom:11px"><span style="flex:0 0 96px;font-size:14px;color:${INK}">${esc(s.name)}</span><span style="flex:1;display:flex;align-items:center">${bar(s.score)}</span><span style="flex:0 0 34px;text-align:right;font-family:'Space Grotesk',Arial;font-weight:700;font-size:15px;color:${INK}">${s.score}</span></div>`).join('')}
         </div></div>`)
     const p2 = battery.length ? pageWrap('PAGE 2 / 4 — MANUAL TEST BATTERY', `
       <div style="font-family:'Space Grotesk',Arial;font-weight:700;font-size:24px;margin-bottom:18px">Manual Test Battery</div>
-      ${battery.map((t,i)=>`<div style="display:flex;align-items:center;gap:16px;padding:10px 0;${i?`border-top:1px solid ${BORDER}`:''}"><span style="flex:0 0 200px;font-size:13px;color:${INK}">${esc(t.test)}</span>${bar(t.score)}<span style="width:26px;text-align:right;font-family:'Space Grotesk',Arial;font-weight:700;color:${INK}">${t.score}</span><span style="flex:0 0 150px;text-align:right;font-family:monospace"><span style="color:${ORANGE};font-weight:700;font-size:13px">${esc(t.raw)}</span><span style="color:${FAINT};font-size:10px;display:block">${esc(t.avg)}</span></span></div>`).join('')}`) : ''
+      ${battery.map((t,i)=>`<div style="display:flex;align-items:center;padding:11px 0;${i?`border-top:1px solid ${BORDER}`:''}"><span style="flex:0 0 210px;font-size:13px;color:${INK}">${esc(t.test)}</span><span style="flex:1;display:flex;align-items:center;padding-right:16px">${bar(t.score)}</span><span style="flex:0 0 34px;text-align:right;font-family:'Space Grotesk',Arial;font-weight:700;font-size:15px;color:${INK}">${t.score}</span><span style="flex:0 0 130px;text-align:right;font-family:monospace;padding-left:16px"><span style="color:${ORANGE};font-weight:700;font-size:13px">${esc(t.raw)}</span><span style="color:${FAINT};font-size:10px;display:block">${esc(t.avg)}</span></span></div>`).join('')}`) : ''
     const p3 = dynamo.length ? pageWrap('PAGE 3 / 4 — DYNAMO STRENGTH & SYMMETRY', `
       <div style="font-family:'Space Grotesk',Arial;font-weight:700;font-size:24px">Strength & Limb Symmetry</div>
       <div style="color:${MUTED};font-size:13px;margin:4px 0 20px">DynaMo bilateral force testing — Left vs Right, expressed as Limb Symmetry Index (LSI)</div>
-      <div style="display:flex;gap:16px;justify-content:center">${dynamo.map(d=>`<div style="flex:1;text-align:center"><div style="font-family:'Space Grotesk',Arial;font-weight:700;color:${INK};margin-bottom:10px">${esc(d.joint)}</div>${ringSvg(d.lsi??0)}<div style="display:flex;justify-content:space-between;font-family:monospace;font-size:11px;color:${FAINT};margin:8px 10px 0"><span>LEFT<br><b style="color:${MUTED}">${esc(d.left)}</b></span><span>RIGHT<br><b style="color:${MUTED}">${esc(d.right)}</b></span></div><span style="display:inline-block;margin-top:10px;font-family:monospace;font-size:10px;color:${TEAL};border:1px solid ${TEAL};border-radius:4px;padding:2px 8px">${esc(d.status)}</span></div>`).join('')}</div>
+      <div style="display:flex;gap:24px;justify-content:center">${dynamo.map(d=>`<div style="flex:1 1 0;max-width:280px;text-align:center;display:flex;flex-direction:column;align-items:center"><div style="font-family:'Space Grotesk',Arial;font-weight:700;font-size:15px;color:${INK};margin-bottom:12px">${esc(d.joint)}</div>${ringSvg(d.lsi??0)}<div style="display:flex;justify-content:space-between;width:100%;max-width:200px;font-family:monospace;font-size:11px;color:${FAINT};margin:12px 0 0"><span style="text-align:left">LEFT<br><b style="color:${MUTED};font-size:12px">${esc(d.left)}</b></span><span style="text-align:right">RIGHT<br><b style="color:${MUTED};font-size:12px">${esc(d.right)}</b></span></div><span style="display:inline-block;margin-top:12px;font-family:monospace;font-size:10px;color:${TEAL};border:1px solid ${TEAL};border-radius:4px;padding:3px 10px">${esc(d.status)}</span></div>`).join('')}</div>
       <div style="border-left:3px solid ${ORANGE};padding-left:16px;margin-top:26px;display:flex;gap:24px">
         <div style="flex:1"><div style="font-family:monospace;font-size:10px;color:${FAINT};letter-spacing:1px">LOWEST SYMMETRY SCORE</div><div style="color:${INK};font-size:13px;margin-top:6px">${esc(ss.lowest||'')}</div></div>
         <div style="flex:1"><div style="font-family:monospace;font-size:10px;color:${FAINT};letter-spacing:1px">FLAG</div><div style="color:${INK};font-size:13px;margin-top:6px">${esc(ss.flag||'')}</div></div>
@@ -114,7 +114,7 @@ export const downloadReportPDF = async reportId => {
       <div style="font-family:'Space Grotesk',Arial;font-weight:700;font-size:24px">What This Means On The Field</div>
       <div style="color:${MUTED};font-size:13px;margin:4px 0 18px">${esc(rc.sport||'')}-specific translation of the six OVR stats — how this profile shows up in a match</div>
       <div style="display:flex;gap:16px;margin-bottom:20px"><div style="flex:1;border-left:3px solid ${ORANGE};padding-left:14px"><div style="font-family:monospace;font-size:10px;color:${FAINT};letter-spacing:1px">PLAYER PROFILE</div><div style="color:${INK};font-size:15px;font-weight:600;margin-top:6px">${esc(fm.playerProfile||'')}</div></div><div style="flex:1"><div style="font-family:monospace;font-size:10px;color:${FAINT};letter-spacing:1px">DEVELOPMENT PRIORITY</div><div style="color:${ORANGE};font-size:18px;font-weight:700;font-family:'Space Grotesk',Arial;margin-top:6px">${esc(fm.developmentPriority||'')}</div></div></div>
-      <div style="display:flex;flex-wrap:wrap;gap:20px">${fm.stats.map(s=>`<div style="flex:0 0 46%"><div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px"><span style="display:flex;align-items:center;gap:8px"><span style="width:14px;height:8px;border-radius:4px;background:${tagColor(s.tag)};display:inline-block"></span><b style="color:${INK};font-family:'Space Grotesk',Arial">${esc(s.name)}</b></span><span style="font-family:monospace;font-size:10px;color:${tagColor(s.tag)};border:1px solid ${tagColor(s.tag)};border-radius:4px;padding:2px 7px">${esc(s.tag)}</span></div><div style="font-family:monospace;font-size:11px;color:${FAINT};margin:0 0 6px 22px">Score: ${s.score}/100</div><p style="color:${MUTED};font-size:13px;line-height:1.5;margin:0 0 0 22px">${esc(s.body)}</p></div>`).join('')}</div>`) : ''
+      <div style="display:flex;flex-wrap:wrap;gap:20px 40px">${fm.stats.map(s=>`<div style="flex:0 0 calc(50% - 20px);box-sizing:border-box"><div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px"><span style="display:flex;align-items:center;gap:8px"><span style="width:14px;height:8px;border-radius:4px;background:${tagColor(s.tag)};display:inline-block"></span><b style="color:${INK};font-family:'Space Grotesk',Arial">${esc(s.name)}</b></span><span style="font-family:monospace;font-size:10px;color:${tagColor(s.tag)};border:1px solid ${tagColor(s.tag)};border-radius:4px;padding:2px 7px">${esc(s.tag)}</span></div><div style="font-family:monospace;font-size:11px;color:${FAINT};margin:0 0 6px 22px">Score: ${s.score}/100</div><p style="color:${MUTED};font-size:13px;line-height:1.5;margin:0 0 0 22px">${esc(s.body)}</p></div>`).join('')}</div>`) : ''
 
     const element = document.createElement('div')
     element.innerHTML = p1 + p2 + p3 + p4

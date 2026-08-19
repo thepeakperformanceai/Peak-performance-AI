@@ -12,23 +12,23 @@ const pageTag = { fontFamily: "'IBM Plex Mono', monospace", fontSize: 10.5, colo
 const h1 = { fontFamily: "'Space Grotesk', sans-serif", fontWeight: 700, color: INK, margin: 0 }
 
 function Hexagon({ scores, overall }) {
-  const size = 300, cx = 150, cy = 150, R = 110
+  const size = 360, cx = 180, cy = 150, R = 105
   const order = ['Speed', 'Agility', 'Power', 'Endurance', 'Reaction', 'Balance']
   const val = (n) => (scores.find(s => s.name === n)?.score ?? 0) / 100
   const angles = [0, -60, -120, 180, 120, 60].map(d => (d * Math.PI) / 180)
   const pt = (i, r) => [cx + Math.cos(angles[i]) * R * r, cy + Math.sin(angles[i]) * R * r]
   const ring = (r) => order.map((_, i) => pt(i, r).join(',')).join(' ')
   const poly = order.map((n, i) => pt(i, val(n)).join(',')).join(' ')
-  const lab = { Speed: [cx + R + 24, cy], Agility: pt(1, 1.35), Power: pt(2, 1.35), Endurance: [cx - R - 40, cy], Reaction: pt(4, 1.35), Balance: pt(5, 1.35) }
+  const lab = { Speed: [cx + R + 30, cy + 4], Agility: pt(1, 1.34), Power: pt(2, 1.34), Endurance: [cx - R - 34, cy + 4], Reaction: pt(4, 1.34), Balance: pt(5, 1.34) }
   return (
-    <svg viewBox={`0 0 ${size} ${size}`} style={{ width: '100%', maxWidth: 340 }}>
+    <svg viewBox={`0 0 ${size} 300`} style={{ width: '100%', maxWidth: 380 }}>
       {[0.25, 0.5, 0.75, 1].map(r => <polygon key={r} points={ring(r)} fill="none" stroke="#2a2d33" strokeWidth="1" />)}
       {order.map((_, i) => { const [x, y] = pt(i, 1); return <line key={i} x1={cx} y1={cy} x2={x} y2={y} stroke="#2a2d33" /> })}
       <polygon points={poly} fill={`${ORANGE}33`} stroke={ORANGE} strokeWidth="2.5" />
       {order.map((n) => { const [x, y] = pt(order.indexOf(n), val(n)); return <circle key={n} cx={x} cy={y} r="4" fill={ORANGE} /> })}
       <text x={cx} y={cy - 6} textAnchor="middle" fontFamily="Space Grotesk" fontWeight="700" fontSize="46" fill={ORANGE}>{overall}</text>
       <text x={cx} y={cy + 16} textAnchor="middle" fontFamily="IBM Plex Mono" fontSize="10" fill={FAINT} letterSpacing="1">OVERALL OVR</text>
-      {order.map(n => { const [x, y] = lab[n]; return <text key={n} x={x} y={y} textAnchor="middle" fontFamily="Inter" fontSize="12" fill={MUTED}>{n}</text> })}
+      {order.map(n => { const [x, y] = lab[n]; const anc = n === 'Endurance' ? 'start' : n === 'Speed' ? 'end' : 'middle'; return <text key={n} x={x} y={y} textAnchor={anc} fontFamily="Inter" fontSize="12" fill={MUTED}>{n}</text> })}
     </svg>
   )
 }
@@ -66,10 +66,6 @@ export default function ReportPage() {
   if (!report) return <EmptyState />
 
   const rc = report.reportContent || {}
-  // DEBUG: what did the page actually receive?
-  console.log('[ReportPage] report keys:', Object.keys(report || {}))
-  console.log('[ReportPage] reportContent keys:', Object.keys(rc))
-  console.log('[ReportPage] overallOVR:', rc.overallOVR, '| ovrScores:', rc.ovrScores)
   const ovr = rc.ovrScores || [], battery = rc.manualBattery || [], dynamo = rc.dynamoStrength || []
   const ss = rc.symmetrySummary || {}, fm = rc.fieldMeaning || {}
 
@@ -103,9 +99,10 @@ export default function ReportPage() {
               {rc.testDate && <span>SESSION <b style={{ color: INK }}>{rc.testDate}</b></span>}
             </div>
             {ovr.map(s => (
-              <div key={s.name} style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 12 }}>
-                <span style={{ width: 92, fontSize: 14, color: INK }}>{s.name}</span><ScoreBar score={s.score} />
-                <span style={{ width: 28, textAlign: 'right', fontFamily: "'Space Grotesk', sans-serif", fontWeight: 700, color: INK }}>{s.score}</span>
+              <div key={s.name} style={{ display: 'flex', alignItems: 'center', marginBottom: 12 }}>
+                <span style={{ flex: '0 0 96px', fontSize: 14, color: INK }}>{s.name}</span>
+                <span style={{ flex: 1, display: 'flex', alignItems: 'center' }}><ScoreBar score={s.score} /></span>
+                <span style={{ flex: '0 0 34px', textAlign: 'right', fontFamily: "'Space Grotesk', sans-serif", fontWeight: 700, fontSize: 15, color: INK }}>{s.score}</span>
               </div>
             ))}
           </div>
@@ -118,10 +115,11 @@ export default function ReportPage() {
           <div style={pageTag}>Page 2 / 4 — Manual Test Battery</div>
           <h1 style={{ ...h1, fontSize: 24, margin: '8px 0 18px' }}>Manual Test Battery</h1>
           {battery.map((t, i) => (
-            <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 16, padding: '10px 0', borderTop: i ? `1px solid ${BORDER}` : 'none' }}>
-              <span style={{ flex: '0 0 200px', fontSize: 13, color: INK }}>{t.test}</span><ScoreBar score={t.score} />
-              <span style={{ width: 28, textAlign: 'right', fontFamily: "'Space Grotesk', sans-serif", fontWeight: 700, color: INK }}>{t.score}</span>
-              <span style={{ flex: '0 0 150px', textAlign: 'right', fontFamily: "'IBM Plex Mono', monospace" }}>
+            <div key={i} style={{ display: 'flex', alignItems: 'center', padding: '11px 0', borderTop: i ? `1px solid ${BORDER}` : 'none' }}>
+              <span style={{ flex: '0 0 210px', fontSize: 13, color: INK }}>{t.test}</span>
+              <span style={{ flex: 1, display: 'flex', alignItems: 'center', paddingRight: 16 }}><ScoreBar score={t.score} /></span>
+              <span style={{ flex: '0 0 34px', textAlign: 'right', fontFamily: "'Space Grotesk', sans-serif", fontWeight: 700, fontSize: 15, color: INK }}>{t.score}</span>
+              <span style={{ flex: '0 0 130px', textAlign: 'right', fontFamily: "'IBM Plex Mono', monospace", paddingLeft: 16 }}>
                 <span style={{ color: ORANGE, fontWeight: 700, fontSize: 13 }}>{t.raw}</span>
                 <span style={{ color: FAINT, fontSize: 10.5, display: 'block' }}>{t.avg}</span>
               </span>

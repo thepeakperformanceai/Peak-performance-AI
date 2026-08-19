@@ -100,24 +100,9 @@ const generateReport = async (req, res, next) => {
     const systemPrompt = promptBuilder.getSystemPrompt();
     const userPrompt = promptBuilder.buildUserPrompt(athleteProfile, pdfData, exercises);
 
-    const isBattery = systemPrompt.includes('ovrScores') || systemPrompt.includes('TEST BATTERY');
-    console.log(`===== PROMPT LOADED: ${isBattery ? 'BATTERY (new) ✓' : 'OLD FORMAT ✗ — restart backend / update promptBuilder'} =====`);
-    console.log(`AI provider: ${process.env.AI_PROVIDER || 'groq'}`);
-
     const aiResponse = await aiEngine.generateReport(systemPrompt, userPrompt);
-    console.log('===== AI RAW RESPONSE (first 600 chars) =====');
-    console.log((aiResponse || '').slice(0, 600));
-    console.log('===== END AI RAW =====');
-
     const reportContent = reportParser.parseReportJson(aiResponse, exercises);
     const validatedReport = reportParser.validateAsymmetry(reportContent);
-
-    console.log('===== PARSED REPORT SHAPE =====');
-    console.log('keys:', Object.keys(validatedReport).join(', '));
-    console.log('overallOVR:', validatedReport.overallOVR);
-    console.log('ovrScores:', JSON.stringify(validatedReport.ovrScores));
-    console.log('has old-shape findings?:', Array.isArray(validatedReport.findings));
-    console.log('===== END PARSED =====');
 
     const report = new Report({
       user: req.user._id,
