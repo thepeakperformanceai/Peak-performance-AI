@@ -66,6 +66,10 @@ export default function ReportPage() {
   if (!report) return <EmptyState />
 
   const rc = report.reportContent || {}
+  // DEBUG: what did the page actually receive?
+  console.log('[ReportPage] report keys:', Object.keys(report || {}))
+  console.log('[ReportPage] reportContent keys:', Object.keys(rc))
+  console.log('[ReportPage] overallOVR:', rc.overallOVR, '| ovrScores:', rc.ovrScores)
   const ovr = rc.ovrScores || [], battery = rc.manualBattery || [], dynamo = rc.dynamoStrength || []
   const ss = rc.symmetrySummary || {}, fm = rc.fieldMeaning || {}
 

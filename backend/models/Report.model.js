@@ -57,89 +57,11 @@ const reportSchema = new mongoose.Schema({
     type: String,
     default: 'Not specified'
   },
+  // Flexible: stores whatever shape the report engine produces (battery card,
+  // or any future format). Mixed prevents Mongoose from stripping unknown fields.
   reportContent: {
-    overallSummary: String,
-    areaSummary: [[mongoose.Schema.Types.Mixed]],
-    areasToAddress: Number,
-    testsCompleted: Number,
-    jumpHeight: String,
-
-    findings: [
-      {
-        title: String,
-        status: {
-          type: String,
-          enum: ['priority', 'needs_work', 'good', 'excellent']
-        },
-        description: String,
-        metrics: [[mongoose.Schema.Types.Mixed]],
-        exercises: [String]
-      }
-    ],
-
-    // ── Section 3: What This Means on Court ──
-    onCourt: {
-      intro: String,
-      sections: [
-        {
-          title: String,
-          body: String,
-          example: String
-        }
-      ]
-    },
-
-    // ── Section 4: Training Plan (priority-based) ──
-    trainingPlan: {
-      intro: String,
-      priorities: [
-        {
-          title: String,
-          color: String,
-          note: String,
-          bullets: [String],
-          exercises: [
-            {
-              name: String,
-              sets: String,
-              reps: String,
-              rest: String,
-              cues: String
-            }
-          ]
-        }
-      ],
-      weeklySchedule: [
-        {
-          day: String,
-          focus: String,
-          exercises: String
-        }
-      ],
-      progression: String,
-
-      // Legacy fallback (kept so old reports still render)
-      phase1: [
-        { name: String, setsReps: String, load: String, instructions: String }
-      ],
-      phase2: [
-        { name: String, setsReps: String, load: String, instructions: String }
-      ]
-    },
-
-    // ── Section 5: Reassessment Targets ──
-    retestNote: String,
-    reassessmentTargets: [
-      {
-        area: String,
-        current: String,
-        target: String,
-        priority: {
-          type: String,
-          enum: ['Critical', 'High', 'Moderate', 'Monitor']
-        }
-      }
-    ]
+    type: mongoose.Schema.Types.Mixed,
+    default: {}
   },
   rawAiResponse: {
     type: String,
