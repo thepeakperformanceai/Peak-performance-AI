@@ -26,8 +26,11 @@ function Shell() {
   }, [user, mustChangePassword, refreshHasReports])
 
   if (loading) {
-    return <div style={{ minHeight: '100vh', backgroundColor: '#06090e', color: '#8b99a6',
-      display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: "'IBM Plex Mono', monospace" }}>Loading…</div>
+    return (
+      <div className="min-h-screen bg-void text-chalk-dim flex items-center justify-center font-label-caps">
+        Loading…
+      </div>
+    )
   }
 
   // Not logged in
@@ -41,8 +44,11 @@ function Shell() {
 
   // Member flow
   if (checking || hasReports === null) {
-    return <div style={{ minHeight: '100vh', backgroundColor: '#06090e', color: '#8b99a6',
-      display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: "'IBM Plex Mono', monospace" }}>Loading your dashboard…</div>
+    return (
+      <div className="min-h-screen bg-void text-chalk-dim flex items-center justify-center font-label-caps">
+        Loading your dashboard…
+      </div>
+    )
   }
 
   // Mandatory first action: generate a report. Also reachable via "New assessment".

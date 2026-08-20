@@ -94,46 +94,84 @@ const callClaude = async (systemPrompt, userPrompt) => {
 /**
  * Calls Gemini API (2.5 Pro)
  */
-const callGemini = async (systemPrompt, userPrompt) => {
-  const GEMINI_MAX_OUTPUT_TOKENS = 16000;
-  try {
-    const model = process.env.GEMINI_MODEL || 'gemini-2.5-pro';
+const GEMINI_MAX_OUTPUT_TOKENS = 16000;
 
-    const response = await withRetry(
-      () => axios.post(
-        `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`,
-        {
-          systemInstruction: { parts: [{ text: systemPrompt }] },
-          contents: [{ role: 'user', parts: [{ text: userPrompt }] }],
-          generationConfig: {
-            temperature: 0.2,
-            responseMimeType: 'application/json',
-            maxOutputTokens: GEMINI_MAX_OUTPUT_TOKENS
-          }
-        },
-        {
-          headers: {
-            'x-goog-api-key': process.env.GEMINI_API_KEY,
-            'Content-Type': 'application/json'
-          },
-          timeout: 60000
+// Is this a quota / rate-limit error we should fail over on?
+const isQuotaError = (error) => {
+  const status = error.response?.status;
+  const msg = (error.response?.data?.error?.message || error.message || '').toLowerCase();
+  return status === 429 || status === 403 ||
+    msg.includes('quota') || msg.includes('rate limit') ||
+    msg.includes('exceeded') || msg.includes('resource has been exhausted');
+};
+
+// One attempt against a specific key/model.
+const callGeminiOnce = async (systemPrompt, userPrompt, apiKey, model) => {
+  const response = await withRetry(
+    () => axios.post(
+      `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`,
+      {
+        systemInstruction: { parts: [{ text: systemPrompt }] },
+        contents: [{ role: 'user', parts: [{ text: userPrompt }] }],
+        generationConfig: {
+          temperature: 0.2,
+          responseMimeType: 'application/json',
+          maxOutputTokens: GEMINI_MAX_OUTPUT_TOKENS
         }
-      ),
-      { label: 'Gemini' }
+      },
+      {
+        headers: { 'x-goog-api-key': apiKey, 'Content-Type': 'application/json' },
+        timeout: 60000
+      }
+    ),
+    { label: 'Gemini' }
+  );
+
+  const candidate = response.data.candidates[0];
+  if (candidate.finishReason === 'MAX_TOKENS') {
+    throw new Error(
+      `Gemini response was cut off (hit the ${GEMINI_MAX_OUTPUT_TOKENS}-token output limit) before the JSON was complete. ` +
+      `Try again, or shorten the report scope — this is not a parsing bug, the response itself is incomplete.`
     );
-
-    const candidate = response.data.candidates[0];
-    if (candidate.finishReason === 'MAX_TOKENS') {
-      throw new Error(
-        `Gemini response was cut off (hit the ${GEMINI_MAX_OUTPUT_TOKENS}-token output limit) before the JSON was complete. ` +
-        `Try again, or shorten the report scope — this is not a parsing bug, the response itself is incomplete.`
-      );
-    }
-
-    return candidate.content.parts[0].text;
-  } catch (error) {
-    throw new Error(`Gemini API error: ${error.response?.data?.error?.message || error.message}`);
   }
+  return candidate.content.parts[0].text;
+};
+
+const callGemini = async (systemPrompt, userPrompt) => {
+  // Primary key/model, then optional fallback key/model.
+  const keys = [
+    { key: process.env.GEMINI_API_KEY,  model: process.env.GEMINI_MODEL  || 'gemini-2.5-pro' },
+    { key: process.env.GEMINI_API_KEY2, model: process.env.GEMINI_MODEL2 || process.env.GEMINI_MODEL || 'gemini-2.5-flash' }
+  ].filter(k => k.key);   // only keep configured keys
+
+  let lastQuotaHit = false;
+
+  for (let i = 0; i < keys.length; i++) {
+    try {
+      if (i > 0) console.warn(`[gemini] primary key exhausted — failing over to key #${i + 1}`);
+      return await callGeminiOnce(systemPrompt, userPrompt, keys[i].key, keys[i].model);
+    } catch (error) {
+      if (isQuotaError(error)) {
+        lastQuotaHit = true;
+        // try the next key if there is one
+        if (i < keys.length - 1) continue;
+        // no more keys — clean user-facing limit message (NOT the raw Gemini error)
+        const limitErr = new Error('You have reached your usage limit. Please try again later.');
+        limitErr.statusCode = 429;
+        throw limitErr;
+      }
+      // Non-quota error (bad request, timeout, cut-off, etc.) — surface as before.
+      throw new Error(`Gemini API error: ${error.response?.data?.error?.message || error.message}`);
+    }
+  }
+
+  // No keys configured at all, or all were quota-limited
+  if (lastQuotaHit) {
+    const limitErr = new Error('You have reached your usage limit. Please try again later.');
+    limitErr.statusCode = 429;
+    throw limitErr;
+  }
+  throw new Error('Gemini is not configured (no GEMINI_API_KEY set).');
 };
 
 /**

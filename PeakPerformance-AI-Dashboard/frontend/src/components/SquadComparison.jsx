@@ -1,326 +1,194 @@
-import React from "react";
+import React from 'react'
 
-export default function SquadComparison({ 
-  squadData, 
-  sportFilter, 
-  sexFilter, 
-  onSportFilterChange, 
-  onSexFilterChange, 
-  loading 
-}) {
-  const sports = ["All", "Football", "Padel", "S&C"];
-  const sexes = ["All", "M", "F"];
+function FilterPill({ label, active, onClick }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`px-4 py-1.5 rounded-full font-label-caps text-xl uppercase transition-colors ${
+        active
+          ? 'border border-ignite-orange text-ignite-orange bg-transparent'
+          : 'border border-surface-variant text-chalk-dim hover:border-chalk-dim'
+      }`}
+    >
+      {label}
+    </button>
+  )
+}
 
-  const cmjBars = squadData?.groupAverages?.CMJ || [];
-  const asymBars = squadData?.groupAverages?.Asymmetry || [];
+function MetricCard({ label, value, unit }) {
+  return (
+    <div className="bg-surface-container-lowest border border-surface-variant rounded-lg p-6">
+      <h4 className="font-label-caps text-xl text-chalk-dim uppercase mb-4">{label}</h4>
+      <div className="flex items-baseline gap-2">
+        <span className="text-4xl font-bold font-mono text-chalk">{value}</span>
+        {unit && <span className="font-mono text-chalk-dim">{unit}</span>}
+      </div>
+    </div>
+  )
+}
+
+function ChartPlaceholder({ title, bars }) {
+  const hasData = bars && bars.length > 0
 
   return (
-    <section className="mb-5">
-      {/* Section Tag */}
-      <div 
-        className="text-uppercase font-ibm-mono fw-semibold mb-1 d-flex align-items-center gap-2" 
-        style={{ color: "#ff4b12", fontSize: "12px", fontFamily: "'IBM Plex Mono', monospace", letterSpacing: "1px" }}
-      >
-        <span>&mdash;&mdash;</span>
-        <span>SQUAD COMPARISON</span>
-      </div>
-      
-      <h2 className="fw-bold text-white mb-2 font-space" style={{ fontSize: "1.5rem" }}>
-        Compare Members
-      </h2>
-      <p 
-        className="mb-4 font-inter" 
-        style={{ color: "#8b99a6", maxWidth: "560px", fontSize: "13.5px", lineHeight: "1.5", fontFamily: "'Inter', sans-serif" }}
-      >
-        Filter by sport or sex to see how sub-groups are trending &mdash; same data, sliced the way a coach actually thinks about a squad.
-      </p>
-
-      {/* Outer Card Container */}
-      <div 
-        className="dashboard-card p-4 overflow-hidden shadow-lg"
-        style={{ backgroundColor: "#0e0f11", border: "1px solid #26282c", borderRadius: "16px" }}
-      >
-        {/* Filter Pills Bar */}
-        <div className="d-flex flex-wrap align-items-center gap-4 mb-4 pb-1">
-          {/* Sport Filters */}
-          <div className="d-flex align-items-center gap-2">
-            <span 
-              className="font-ibm-mono text-uppercase me-2" 
-              style={{ color: "#6a6a6a", fontSize: "10.5px", fontFamily: "'IBM Plex Mono', monospace", letterSpacing: "1px" }}
-            >
-              SPORT
-            </span>
-            {sports.map((sp) => {
-              const active = sportFilter === sp;
+    <div>
+      <p className="font-body-sm text-chalk-dim mb-2">{title}</p>
+      {hasData ? (
+        <>
+          <div className="flex items-end justify-between gap-3 px-2 h-40 border-b border-l border-surface-variant border-dashed opacity-80">
+            {bars.map((b, idx) => {
+              const heightPercent = Math.min((b.value / 40) * 100, 100)
               return (
-                <button
+                <div key={idx} className="flex flex-col items-center flex-1 h-full justify-end">
+                  <div className="font-mono text-chalk-dim text-sm mb-2">{b.value}</div>
+                  <div
+                    className="w-full bg-ignite-orange rounded-t"
+                    style={{ height: `${heightPercent}%`, minHeight: b.value > 0 ? '4px' : 0 }}
+                  />
+                </div>
+              )
+            })}
+          </div>
+          <div className="flex justify-between font-mono mt-2 px-2 text-chalk-dim text-xl">
+            {bars.map((b, idx) => (
+              <div key={idx} className="flex-1 text-center">
+                {b.shortName}
+              </div>
+            ))}
+          </div>
+        </>
+      ) : (
+        <div className="h-40 border-b border-l border-surface-variant border-dashed opacity-50 flex items-end justify-center pb-4">
+          <span className="font-label-caps text-chalk-dim uppercase">No data</span>
+        </div>
+      )}
+    </div>
+  )
+}
+
+export default function SquadComparison({
+  squadData,
+  sportFilter,
+  sexFilter,
+  onSportFilterChange,
+  onSexFilterChange,
+  loading,
+}) {
+  const sports = ['All', 'Football', 'Padel', 'S&C']
+  const sexes = ['All', 'M', 'F']
+
+  const cmjBars = squadData?.groupAverages?.CMJ || []
+  const asymBars = squadData?.groupAverages?.Asymmetry || []
+
+  return (
+    <div className="mb-section-margin">
+      <div className="mb-8">
+        <p className="font-label-caps text-xl text-chalk-dim uppercase mb-2">-- SQUAD COMPARISON</p>
+        <h3 className="font-headline-lg-mobile md:font-headline-lg text-headline-lg-mobile md:text-headline-lg text-chalk mb-2">
+          Compare Members
+        </h3>
+        <p className="font-body-md text-body-md text-chalk-dim max-w-2xl">
+          Filter by sport or sex to see how sub-groups are trending — same data, sliced the way a coach actually thinks
+          about a squad.
+        </p>
+      </div>
+
+      <div className="bg-surface border border-surface-variant rounded-lg p-6 md:p-8">
+        {/* Filters */}
+        <div className="flex flex-wrap items-center gap-6 mb-8 border-b border-surface-variant pb-6">
+          <div className="flex items-center gap-4">
+            <span className="font-label-caps text-xl text-chalk-dim uppercase">Sport</span>
+            <div className="flex gap-2 flex-wrap">
+              {sports.map((sp) => (
+                <FilterPill
                   key={sp}
+                  label={sp}
+                  active={sportFilter === sp}
                   onClick={() => onSportFilterChange(sp)}
-                  className="btn btn-sm rounded-pill font-ibm-mono transition-all"
-                  style={{
-                    backgroundColor: active ? "rgba(255, 75, 18, 0.10)" : "#141517",
-                    color: active ? "#ff4b12" : "#8b99a6",
-                    border: active ? "1px solid #ff4b12" : "1px solid #2a2c31",
-                    padding: "4px 18px",
-                    fontWeight: "500",
-                    fontSize: "12.5px",
-                    fontFamily: "'IBM Plex Mono', monospace"
-                  }}
-                >
-                  {sp}
-                </button>
-              );
-            })}
+                />
+              ))}
+            </div>
           </div>
-
-          {/* Sex Filters */}
-          <div className="d-flex align-items-center gap-2 ms-md-2">
-            <span 
-              className="font-ibm-mono text-uppercase me-2" 
-              style={{ color: "#6a6a6a", fontSize: "10.5px", fontFamily: "'IBM Plex Mono', monospace", letterSpacing: "1px" }}
-            >
-              SEX
-            </span>
-            {sexes.map((sx) => {
-              const active = sexFilter === sx;
-              return (
-                <button
+          <div className="flex items-center gap-4">
+            <span className="font-label-caps text-xl text-chalk-dim uppercase">Sex</span>
+            <div className="flex gap-2">
+              {sexes.map((sx) => (
+                <FilterPill
                   key={sx}
+                  label={sx}
+                  active={sexFilter === sx}
                   onClick={() => onSexFilterChange(sx)}
-                  className="btn btn-sm rounded-pill font-ibm-mono transition-all"
-                  style={{
-                    backgroundColor: active ? "rgba(255, 75, 18, 0.10)" : "#141517",
-                    color: active ? "#ff4b12" : "#8b99a6",
-                    border: active ? "1px solid #ff4b12" : "1px solid #2a2c31",
-                    padding: "4px 16px",
-                    fontWeight: "500",
-                    fontSize: "12.5px",
-                    fontFamily: "'IBM Plex Mono', monospace"
-                  }}
-                >
-                  {sx}
-                </button>
-              );
-            })}
-          </div>
-        </div>
-
-        {/* 4 KPI Summary Stat Cards */}
-        <div className="row g-3 mb-4">
-          <div className="col-6 col-md-3">
-            <div className="p-3 rounded-3" style={{ backgroundColor: "#141517", border: "1px solid #24262b" }}>
-              <div 
-                className="font-ibm-mono text-uppercase mb-2" 
-                style={{ color: "#6a6a6a", fontSize: "10px", fontFamily: "'IBM Plex Mono', monospace", letterSpacing: "0.5px" }}
-              >
-                MEMBERS
-              </div>
-              <div 
-                className="font-ibm-mono" 
-                style={{ color: "#e9eef2", fontSize: "21px", fontWeight: "600", fontFamily: "'IBM Plex Mono', monospace" }}
-              >
-                {loading ? "..." : squadData?.totalMembers ?? 0}
-              </div>
-            </div>
-          </div>
-
-          <div className="col-6 col-md-3">
-            <div className="p-3 rounded-3" style={{ backgroundColor: "#141517", border: "1px solid #24262b" }}>
-              <div 
-                className="font-ibm-mono text-uppercase mb-2" 
-                style={{ color: "#6a6a6a", fontSize: "10px", fontFamily: "'IBM Plex Mono', monospace", letterSpacing: "0.5px" }}
-              >
-                AVG CMJ HEIGHT
-              </div>
-              <div 
-                className="font-ibm-mono d-flex align-items-baseline gap-2" 
-                style={{ color: "#e9eef2", fontSize: "21px", fontWeight: "600", fontFamily: "'IBM Plex Mono', monospace" }}
-              >
-                <span>{loading ? "..." : squadData?.avgCMJ ?? "0.0"}</span>
-                <span className="font-ibm-mono text-lowercase fw-normal" style={{ color: "#8b99a6", fontSize: "12.5px" }}>cm</span>
-              </div>
-            </div>
-          </div>
-
-          <div className="col-6 col-md-3">
-            <div className="p-3 rounded-3" style={{ backgroundColor: "#141517", border: "1px solid #24262b" }}>
-              <div 
-                className="font-ibm-mono text-uppercase mb-2" 
-                style={{ color: "#6a6a6a", fontSize: "10px", fontFamily: "'IBM Plex Mono', monospace", letterSpacing: "0.5px" }}
-              >
-                AVG GRIP STRENGTH
-              </div>
-              <div 
-                className="font-ibm-mono d-flex align-items-baseline gap-2" 
-                style={{ color: "#e9eef2", fontSize: "21px", fontWeight: "600", fontFamily: "'IBM Plex Mono', monospace" }}
-              >
-                <span>{loading ? "..." : squadData?.avgGrip ?? "0.0"}</span>
-                <span className="font-ibm-mono text-lowercase fw-normal" style={{ color: "#8b99a6", fontSize: "12.5px" }}>kg</span>
-              </div>
-            </div>
-          </div>
-
-          <div className="col-6 col-md-3">
-            <div className="p-3 rounded-3" style={{ backgroundColor: "#141517", border: "1px solid #24262b" }}>
-              <div 
-                className="font-ibm-mono text-uppercase mb-2" 
-                style={{ color: "#6a6a6a", fontSize: "10px", fontFamily: "'IBM Plex Mono', monospace", letterSpacing: "0.5px" }}
-              >
-                AVG LANDING ASYM.
-              </div>
-              <div 
-                className="font-ibm-mono d-flex align-items-baseline gap-2" 
-                style={{ color: "#e9eef2", fontSize: "21px", fontWeight: "600", fontFamily: "'IBM Plex Mono', monospace" }}
-              >
-                <span>{loading ? "..." : squadData?.avgAsym ?? "0.0"}</span>
-                <span className="font-ibm-mono fw-normal" style={{ color: "#8b99a6", fontSize: "12.5px" }}>%</span>
-              </div>
+                />
+              ))}
             </div>
           </div>
         </div>
 
-        {/* Group Averages by Sport Chart Block */}
-        <div className="p-4 rounded-3 mb-4" style={{ backgroundColor: "#141517", border: "1px solid #24262b" }}>
-          <div 
-            className="font-ibm-mono text-uppercase mb-3" 
-            style={{ color: "#6a6a6a", fontSize: "11.5px", fontFamily: "'IBM Plex Mono', monospace", letterSpacing: "1px" }}
-          >
-            GROUP AVERAGES BY SPORT (LATEST SESSION, ALL MEMBERS)
-          </div>
-
-          <div className="row g-4">
-            {/* CMJ Height Bars */}
-            <div className="col-12 col-md-6">
-              <div 
-                className="font-ibm-mono mb-3" 
-                style={{ color: "#8b99a6", fontSize: "12px", fontFamily: "'IBM Plex Mono', monospace" }}
-              >
-                Avg. CMJ Height (cm)
-              </div>
-              <div className="d-flex align-items-end justify-content-between gap-3 px-2" style={{ height: "110px", paddingBottom: "4px" }}>
-                {cmjBars.map((b, idx) => {
-                  const heightPercent = Math.min((b.value / 40) * 100, 100);
-                  return (
-                    <div key={idx} className="d-flex flex-column align-items-center flex-fill h-100 justify-content-end">
-                      <div className="font-ibm-mono small mb-2" style={{ color: "#8b99a6", fontSize: "12.5px", fontFamily: "'IBM Plex Mono', monospace" }}>{b.value}</div>
-                      <div 
-                        className="w-100 rounded-top-2" 
-                        style={{ 
-                          height: `${heightPercent}%`, 
-                          backgroundColor: "#ff4b12",
-                          transition: "height 0.4s ease"
-                        }}
-                      />
-                    </div>
-                  );
-                })}
-              </div>
-              <div className="d-flex justify-content-between font-ibm-mono mt-2 px-2" style={{ color: "#6a6a6a", fontSize: "10.5px", fontFamily: "'IBM Plex Mono', monospace" }}>
-                {cmjBars.map((b, idx) => (
-                  <div key={idx} className="flex-fill text-center">{b.shortName}</div>
-                ))}
-              </div>
-            </div>
-
-            {/* Landing Asymmetry Bars */}
-            <div className="col-12 col-md-6">
-              <div 
-                className="font-ibm-mono mb-3" 
-                style={{ color: "#8b99a6", fontSize: "12px", fontFamily: "'IBM Plex Mono', monospace" }}
-              >
-                Avg. Landing Asymmetry (%)
-              </div>
-              <div className="d-flex align-items-end justify-content-between gap-3 px-2" style={{ height: "110px", paddingBottom: "4px" }}>
-                {asymBars.map((b, idx) => {
-                  const heightPercent = Math.min((b.value / 22) * 100, 100);
-                  return (
-                    <div key={idx} className="d-flex flex-column align-items-center flex-fill h-100 justify-content-end">
-                      <div className="font-ibm-mono small mb-2" style={{ color: "#8b99a6", fontSize: "12.5px", fontFamily: "'IBM Plex Mono', monospace" }}>{b.value}</div>
-                      <div 
-                        className="w-100 rounded-top-2" 
-                        style={{ 
-                          height: `${heightPercent}%`, 
-                          backgroundColor: "#ff4b12",
-                          transition: "height 0.4s ease"
-                        }}
-                      />
-                    </div>
-                  );
-                })}
-              </div>
-              <div className="d-flex justify-content-between font-ibm-mono mt-2 px-2" style={{ color: "#6a6a6a", fontSize: "10.5px", fontFamily: "'IBM Plex Mono', monospace" }}>
-                {asymBars.map((b, idx) => (
-                  <div key={idx} className="flex-fill text-center">{b.shortName}</div>
-                ))}
-              </div>
-            </div>
-          </div>
+        {/* Metric cards */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+          <MetricCard label="Members" value={loading ? '…' : (squadData?.totalMembers ?? 0)} />
+          <MetricCard label="Avg CMJ Height" value={loading ? '…' : (squadData?.avgCMJ ?? 0)} unit="cm" />
+          <MetricCard label="Avg Grip Strength" value={loading ? '…' : (squadData?.avgGrip ?? 0)} unit="kg" />
+          <MetricCard label="Avg Landing Asym." value={loading ? '…' : (squadData?.avgAsym ?? 0)} unit="%" />
         </div>
 
-        {/* Squad Members Breakdown Table */}
-        <div className="table-responsive rounded-3 overflow-hidden" style={{ border: "1px solid #26282c" }}>
-          <table className="table table-dark table-hover mb-0 align-middle">
-            <thead>
-              <tr style={{ color: "#6a6a6a", borderBottom: "1px solid #26282c", fontSize: "10.5px", letterSpacing: "1px" }}>
-                <th className="ps-4 py-3 text-uppercase font-ibm-mono fw-semibold" style={{ color: "#6a6a6a", fontSize: "10.5px" }}>Member</th>
-                <th className="py-3 text-uppercase font-ibm-mono fw-semibold" style={{ color: "#6a6a6a", fontSize: "11.5px" }}>Sex</th>
-                <th className="py-3 text-uppercase font-ibm-mono fw-semibold" style={{ color: "#6a6a6a", fontSize: "11.5px" }}>Age</th>
-                <th className="py-3 text-uppercase font-ibm-mono fw-semibold" style={{ color: "#6a6a6a", fontSize: "11.5px" }}>Sport</th>
-                <th className="py-3 text-uppercase font-ibm-mono fw-semibold" style={{ color: "#6a6a6a", fontSize: "11.5px" }}>Latest CMJ</th>
-                <th className="py-3 text-uppercase font-ibm-mono fw-semibold" style={{ color: "#6a6a6a", fontSize: "11.5px" }}>Latest Grip</th>
-                <th className="pe-4 py-3 text-uppercase font-ibm-mono fw-semibold" style={{ color: "#6a6a6a", fontSize: "10.5px" }}>Latest Asym.</th>
-              </tr>
-            </thead>
-            <tbody>
-              {loading ? (
-                <tr>
-                  <td colSpan="7" className="text-center py-4 font-ibm-mono" style={{ color: "#8b99a6", fontSize: "12.5px" }}>
-                    Filtering squad members...
-                  </td>
-                </tr>
-              ) : squadData?.members?.length === 0 ? (
-                <tr>
-                  <td colSpan="7" className="text-center py-4 font-ibm-mono" style={{ color: "#8b99a6", fontSize: "12.5px" }}>
-                    No members found matching selected filters.
-                  </td>
-                </tr>
-              ) : (
-                squadData?.members?.map((m) => (
-                  <tr key={m.id} style={{ borderBottom: "1px solid #1c1e22" }}>
-                    <td 
-                      className="ps-4 py-3 fw-bold font-space" 
-                      style={{ color: "#E9EEF2", fontSize: "13.5px", fontFamily: "'Space Grotesk', sans-serif" }}
-                    >
-                      {m.name}
-                    </td>
-                    <td className="py-3 font-ibm-mono" style={{ color: "#8b99a6", fontSize: "12.5px", fontFamily: "'IBM Plex Mono', monospace" }}>{m.sex}</td>
-                    <td className="py-3 font-ibm-mono" style={{ color: "#8b99a6", fontSize: "12.5px", fontFamily: "'IBM Plex Mono', monospace" }}>{m.age}</td>
-                    <td className="py-3 font-ibm-mono">
-                      <span 
-                        className="sport-pill font-ibm-mono"
-                        style={{ 
-                          backgroundColor: "#111d2c", 
-                          border: "1px solid #2a2c31", 
-                          color: "#8b99a6", 
-                          padding: "3px 12px", 
-                          borderRadius: "16px",
-                          fontSize: "12.5px",
-                          fontFamily: "'IBM Plex Mono', monospace" 
-                        }}
-                      >
-                        {m.sport}
-                      </span>
-                    </td>
-                    <td className="py-3 font-ibm-mono" style={{ color: "#8b99a6", fontSize: "12.5px", fontFamily: "'IBM Plex Mono', monospace" }}>{m.latestCMJ} cm</td>
-                    <td className="py-3 font-ibm-mono" style={{ color: "#8b99a6", fontSize: "12.5px", fontFamily: "'IBM Plex Mono', monospace" }}>{m.latestGrip} kg</td>
-                    <td className="pe-4 py-3 font-ibm-mono" style={{ color: "#8b99a6", fontSize: "12.5px", fontFamily: "'IBM Plex Mono', monospace" }}>{m.latestAsym}%</td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
+        {/* Charts */}
+        <div className="border border-surface-variant rounded-lg p-6 mb-8 min-h-64 flex flex-col relative overflow-hidden bg-surface-container-lowest">
+          <h4 className="font-label-caps text-xl text-chalk-dim uppercase mb-6 z-10 relative">
+            Group Averages by Sport (Latest Session, All Members)
+          </h4>
+          <div className="flex-1 grid grid-cols-1 md:grid-cols-2 gap-8 z-10 relative">
+            <ChartPlaceholder title="Avg. CMJ Height (cm)" bars={cmjBars} />
+            <ChartPlaceholder title="Avg. Landing Asymmetry (%)" bars={asymBars} />
+          </div>
+          <div className="absolute inset-0 bg-gradient-to-tr from-surface-container-lowest to-surface opacity-30 pointer-events-none" />
+        </div>
+
+        {/* Comparison table */}
+        <div className="border border-surface-variant rounded-lg overflow-hidden">
+          <div className="grid grid-cols-7 gap-4 p-4 border-b border-surface-variant bg-surface-container-lowest font-label-caps text-xl text-chalk-dim uppercase overflow-x-auto whitespace-nowrap">
+            <div className="col-span-2">Member</div>
+            <div>Sex</div>
+            <div>Age</div>
+            <div>Sport</div>
+            <div className="font-mono">Latest CMJ</div>
+            <div className="font-mono">Latest Grip</div>
+            <div className="font-mono">Latest Asym.</div>
+          </div>
+
+          {loading ? (
+            <div className="p-8 text-center bg-surface">
+              <p className="font-body-sm text-chalk-dim font-label-caps uppercase">Filtering squad members…</p>
+            </div>
+          ) : squadData?.members?.length === 0 ? (
+            <div className="p-8 text-center bg-surface">
+              <p className="font-body-sm text-chalk-dim font-label-caps uppercase">
+                No members found matching selected filters.
+              </p>
+            </div>
+          ) : (
+            squadData?.members?.map((m) => (
+              <div
+                key={m.id}
+                className="grid grid-cols-7 gap-4 p-4 border-b border-surface-variant last:border-b-0 bg-surface items-center"
+              >
+                <div className="col-span-2 font-headline-md text-body-sm font-bold text-chalk">{m.name}</div>
+                <div className="font-mono text-body-sm text-chalk-dim">{m.sex}</div>
+                <div className="font-mono text-body-sm text-chalk-dim">{m.age}</div>
+                <div>
+                  <span className="px-4 py-1.5 rounded-full border border-surface-variant text-chalk-dim font-label-caps text-xl inline-block">
+                    {m.sport}
+                  </span>
+                </div>
+                <div className="font-mono text-body-sm text-chalk-dim">{m.latestCMJ} cm</div>
+                <div className="font-mono text-body-sm text-chalk-dim">{m.latestGrip} kg</div>
+                <div className="font-mono text-body-sm text-chalk-dim">{m.latestAsym}%</div>
+              </div>
+            ))
+          )}
         </div>
       </div>
-    </section>
-  );
+    </div>
+  )
 }

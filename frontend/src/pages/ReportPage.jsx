@@ -134,15 +134,16 @@ export default function ReportPage() {
           <div style={pageTag}>Page 3 / 4 — DynaMo Strength & Symmetry</div>
           <h1 style={{ ...h1, fontSize: 24, margin: '8px 0 4px' }}>Strength & Limb Symmetry</h1>
           <p style={{ color: MUTED, fontSize: 13, marginBottom: 20 }}>DynaMo bilateral force testing — Left vs Right, expressed as Limb Symmetry Index (LSI)</p>
-          <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', justifyContent: 'center' }}>
+          <div style={{ display: 'flex', gap: 24, flexWrap: 'wrap', justifyContent: 'center', alignItems: 'flex-start' }}>
             {dynamo.map((d, i) => (
-              <div key={i} style={{ flex: '1 1 200px', textAlign: 'center', minWidth: 200 }}>
-                <div style={{ fontFamily: "'Space Grotesk', sans-serif", fontWeight: 700, color: INK, marginBottom: 10 }}>{d.joint}</div>
+              <div key={i} style={{ flex: '1 1 0', maxWidth: 280, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                <div style={{ fontFamily: "'Space Grotesk', sans-serif", fontWeight: 700, fontSize: 15, color: INK, marginBottom: 12 }}>{d.joint}</div>
                 <Ring lsi={d.lsi ?? 0} />
-                <div style={{ display: 'flex', justifyContent: 'space-between', fontFamily: "'IBM Plex Mono', monospace", fontSize: 11, color: FAINT, margin: '8px 12px 0' }}>
-                  <span>LEFT<br /><b style={{ color: MUTED }}>{d.left}</b></span><span>RIGHT<br /><b style={{ color: MUTED }}>{d.right}</b></span>
+                <div style={{ display: 'flex', justifyContent: 'space-between', width: '100%', maxWidth: 200, fontFamily: "'IBM Plex Mono', monospace", fontSize: 11, color: FAINT, margin: '12px 0 0' }}>
+                  <span style={{ textAlign: 'left' }}>LEFT<br /><b style={{ color: MUTED, fontSize: 12 }}>{d.left}</b></span>
+                  <span style={{ textAlign: 'right' }}>RIGHT<br /><b style={{ color: MUTED, fontSize: 12 }}>{d.right}</b></span>
                 </div>
-                <span style={{ display: 'inline-block', marginTop: 10, fontFamily: "'IBM Plex Mono', monospace", fontSize: 10, color: TEAL, border: `1px solid ${TEAL}`, borderRadius: 4, padding: '2px 8px' }}>{d.status}</span>
+                <span style={{ display: 'inline-block', marginTop: 12, fontFamily: "'IBM Plex Mono', monospace", fontSize: 10, color: TEAL, border: `1px solid ${TEAL}`, borderRadius: 4, padding: '3px 10px' }}>{d.status}</span>
               </div>
             ))}
           </div>

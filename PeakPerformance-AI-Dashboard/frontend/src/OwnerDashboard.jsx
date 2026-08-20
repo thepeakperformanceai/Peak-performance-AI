@@ -6,110 +6,54 @@ import AddMemberModal from './components/AddMemberModal'
 import { apiService } from './services/api'
 import { useAuth } from './context/AuthContext'
 
-const ORANGE = '#ff4b12'
-const BG = '#0b0f17'
-const PANEL = '#0e1520'
-const BORDER = '#1b2634'
-const MUTED = '#8b99a6'
-
-/* ---- sidebar nav ---- */
 const NAV = [
-  { id: 'dashboard', label: 'DASHBOARD', icon: '▦' },
-  { id: 'testing',   label: 'MEMBER TESTING', icon: '☰' },
-  { id: 'squad',     label: 'SQUAD COMPARISON', icon: '◎' },
-  { id: 'settings',  label: 'SETTINGS', icon: '⚙' },
+  { id: 'dashboard', label: 'Dashboard', icon: 'dashboard' },
+  { id: 'testing', label: 'Member Testing', icon: 'analytics' },
+  { id: 'squad', label: 'Squad Comparison', icon: 'group_work' },
+  { id: 'settings', label: 'Settings', icon: 'settings' },
 ]
+
 const NAV_BOTTOM = [
-  { id: 'support', label: 'SUPPORT', icon: '◍' },
-  { id: 'account', label: 'ACCOUNT', icon: '⛁' },
+  { id: 'support', label: 'Support', icon: 'help' },
+  { id: 'account', label: 'Account', icon: 'person' },
 ]
 
-function Sidebar({ active, onNav, onLogout, onNewAssessment }) {
-  const item = (n) => {
-    const on = active === n.id
-    return (
-      <button key={n.id} onClick={() => onNav(n.id)} className="font-ibm-mono"
-        style={{
-          display: 'flex', alignItems: 'center', gap: 10, width: '100%', textAlign: 'left',
-          padding: '10px 14px', marginBottom: 4, borderRadius: 8, cursor: 'pointer',
-          fontSize: 12, letterSpacing: 0.5,
-          background: on ? `${ORANGE}1a` : 'transparent',
-          color: on ? ORANGE : MUTED,
-          border: on ? `1px solid ${ORANGE}55` : '1px solid transparent',
-        }}>
-        <span style={{ width: 16, textAlign: 'center' }}>{n.icon}</span>{n.label}
-      </button>
-    )
-  }
+function Icon({ name, className = '' }) {
+  return <span className={`material-symbols-outlined ${className}`}>{name}</span>
+}
+
+function NavLink({ item, active, onNav }) {
+  const on = active === item.id
   return (
-    <aside style={{
-      width: 232, minWidth: 232, background: '#080b11', borderRight: `1px solid ${BORDER}`,
-      height: '100vh', position: 'sticky', top: 0, display: 'flex', flexDirection: 'column',
-      padding: '22px 16px'
-    }}>
-      <div style={{ marginBottom: 26 }}>
-        <div className="font-space" style={{ fontSize: 18, fontWeight: 700, color: '#fff' }}>
-          Peak<span style={{ color: ORANGE }}>Performance</span>
-        </div>
-        <div className="font-ibm-mono" style={{ fontSize: 9.5, color: '#5b6b7c', marginTop: 4, letterSpacing: 0.5 }}>
-          Test. Train. Perform.<br />Elite Performance Lab
-        </div>
-      </div>
-
-      <button onClick={onNewAssessment} className="font-ibm-mono"
-        style={{
-          display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, width: '100%',
-          padding: '10px 14px', marginBottom: 20, borderRadius: 8, cursor: 'pointer',
-          background: ORANGE, color: '#0A0E13', border: 'none', fontSize: 12, fontWeight: 700, letterSpacing: 0.5
-        }}>
-        + NEW ASSESSMENT
+    <li>
+      <button
+        type="button"
+        onClick={() => onNav(item.id)}
+        className={`flex w-full items-center gap-3 rounded-lg px-4 py-3 font-label-caps text-xl uppercase transition-all ${
+          on
+            ? 'border-l-4 border-ignite-orange bg-surface-container text-ignite-orange'
+            : 'border-l-4 border-transparent text-chalk-dim hover:bg-surface-container hover:text-chalk'
+        }`}
+      >
+        <Icon name={item.icon} className={on ? 'text-ignite-orange' : ''} />
+        {item.label}
       </button>
-
-      <nav style={{ flex: 1 }}>{NAV.map(item)}</nav>
-      <div style={{ borderTop: `1px solid ${BORDER}`, paddingTop: 12 }}>{NAV_BOTTOM.map(item)}</div>
-    </aside>
+    </li>
   )
 }
 
-function ContentHeader({ onAdd, onLogout }) {
+function Placeholder({ title, text }) {
   return (
-    <div className="d-flex justify-content-between align-items-start mb-4" style={{ flexWrap: 'wrap', gap: 12 }}>
-      <div>
-        <div className="font-space" style={{ fontSize: 22, fontWeight: 700, color: '#fff' }}>
-          Peak<span style={{ color: ORANGE }}>Performance</span>
-        </div>
-        <h1 className="fw-bold mt-2 mb-2 text-white font-space" style={{ fontSize: '1.5rem', letterSpacing: '-0.5px' }}>
-          Member Testing Dashboard
-        </h1>
-        <p className="mb-0 font-inter" style={{ color: MUTED, maxWidth: 640, fontSize: '0.92rem', lineHeight: 1.5 }}>
-          Every Continuum member tested on HumanTrak and Dynamo — football, padel and strength training
-          members side by side, tracked against their own history session over session.
-        </p>
-      </div>
-      <div className="d-flex gap-2">
-        <button onClick={onAdd} className="font-ibm-mono"
-          style={{ background: 'transparent', color: ORANGE, border: `1px solid ${ORANGE}`, borderRadius: 8, padding: '7px 14px', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>
-          + ADD MEMBER
-        </button>
-        <button onClick={onLogout} className="font-ibm-mono"
-          style={{ background: 'none', border: `1px solid ${BORDER}`, color: MUTED, borderRadius: 8, padding: '7px 12px', fontSize: 12, cursor: 'pointer' }}>
-          LOG OUT
-        </button>
-      </div>
+    <div className="rounded-lg border border-surface-variant bg-surface p-10 text-center">
+      <h2 className="font-headline-md text-headline-md text-chalk mb-2">{title}</h2>
+      <p className="font-body-sm text-body-sm text-chalk-dim m-0">{text}</p>
     </div>
   )
 }
 
-const Placeholder = ({ title, text }) => (
-  <div style={{ background: PANEL, border: `1px solid ${BORDER}`, borderRadius: 14, padding: 40, textAlign: 'center' }}>
-    <h2 className="font-space" style={{ color: '#fff', fontSize: '1.1rem', marginBottom: 8 }}>{title}</h2>
-    <p className="font-inter" style={{ color: MUTED, fontSize: 13, margin: 0 }}>{text}</p>
-  </div>
-)
-
 export default function OwnerDashboard() {
   const { logout } = useAuth()
-  const [active, setActive] = useState('dashboard')
+  const [active, setActive] = useState('testing')
   const [showAdd, setShowAdd] = useState(false)
 
   const [rosterMembers, setRosterMembers] = useState([])
@@ -128,58 +72,187 @@ export default function OwnerDashboard() {
       const data = await apiService.getMembers()
       setRosterMembers(data)
       if (data.length && !selectedMemberId) setSelectedMemberId(data[0].id)
-    } catch (e) { console.error(e) } finally { setLoadingRoster(false) }
+    } catch (e) {
+      console.error(e)
+    } finally {
+      setLoadingRoster(false)
+    }
   }
-  useEffect(() => { loadRoster() }, [])
 
   useEffect(() => {
-    (async () => {
+    loadRoster()
+  }, [])
+
+  useEffect(() => {
+    ;(async () => {
       setLoadingSquad(true)
-      try { setSquadData(await apiService.getSquadComparison(sportFilter, sexFilter)) }
-      catch (e) { console.error(e) } finally { setLoadingSquad(false) }
+      try {
+        setSquadData(await apiService.getSquadComparison(sportFilter, sexFilter))
+      } catch (e) {
+        console.error(e)
+      } finally {
+        setLoadingSquad(false)
+      }
     })()
   }, [sportFilter, sexFilter])
 
   useEffect(() => {
     if (!selectedMemberId) return
-    (async () => {
+    ;(async () => {
       setLoadingDetail(true)
-      try { setSelectedMemberDetail(await apiService.getMemberDetail(selectedMemberId)) }
-      catch (e) { console.error(e) } finally { setLoadingDetail(false) }
+      try {
+        setSelectedMemberDetail(await apiService.getMemberDetail(selectedMemberId))
+      } catch (e) {
+        console.error(e)
+      } finally {
+        setLoadingDetail(false)
+      }
     })()
   }, [selectedMemberId])
 
-  const roster = (
+  const showMainDashboard = active === 'dashboard' || active === 'testing'
+  const navActive =
+    active === 'squad' ? 'squad' : active === 'dashboard' ? 'dashboard' : active === 'testing' ? 'testing' : active
+
+  const headerActions = (
     <>
-      <MemberRoster members={rosterMembers} selectedMemberId={selectedMemberId}
-        onSelectMember={setSelectedMemberId} loading={loadingRoster} />
+      <button
+        type="button"
+        onClick={() => setShowAdd(true)}
+        className="border border-ignite-orange bg-transparent font-button-text text-button-text uppercase text-ignite-orange px-4 md:px-6 py-2 rounded hover:bg-ignite-orange/10 transition-colors"
+      >
+        + Add member
+      </button>
+      <button
+        type="button"
+        onClick={logout}
+        className="border border-surface-variant text-chalk font-button-text text-button-text uppercase px-4 md:px-6 py-2 rounded hover:bg-surface-container transition-colors"
+      >
+        Log out
+      </button>
     </>
-  )
-  const squad = (
-    <SquadComparison squadData={squadData} sportFilter={sportFilter} sexFilter={sexFilter}
-      onSportFilterChange={setSportFilter} onSexFilterChange={setSexFilter} loading={loadingSquad} />
   )
 
   return (
-    <div style={{ display: 'flex', minHeight: '100vh', background: BG }}>
-      <Sidebar active={active} onNav={setActive} onLogout={logout} onNewAssessment={() => setShowAdd(true)} />
+    <div className="bg-void text-chalk font-body-md min-h-screen flex flex-col md:flex-row">
+      {/* Mobile header */}
+      <header className="bg-void border-b border-surface-variant w-full md:hidden flex justify-between items-center px-6 py-4 z-50">
+        <div className="font-headline-md text-headline-md font-bold text-chalk">PeakPerformance</div>
+        <div className="flex items-center gap-4">{headerActions}</div>
+      </header>
 
-      <main style={{ flex: 1, padding: '28px 28px 48px', overflowX: 'hidden' }}>
-        <ContentHeader onAdd={() => setShowAdd(true)} onLogout={logout} />
+      {/* Sidebar */}
+      <nav className="bg-surface-container-lowest hidden md:flex flex-col border-r border-surface-variant fixed left-0 top-0 h-screen w-64 z-40 pt-8 pb-4 justify-between">
+        <div className="px-6">
+          <div className="mb-12">
+            <h1 className="font-headline-md text-headline-md font-bold text-chalk tracking-tight">PeakPerformance</h1>
+            <p className="font-label-caps text-xl text-chalk-dim mt-2">Test. Train. Perform.</p>
+            <p className="font-body-sm text-body-sm text-chalk-dim mt-1">Elite Performance Lab</p>
+          </div>
 
-        {showAdd && (
-          <AddMemberModal onClose={() => setShowAdd(false)}
-            onCreated={() => { setShowAdd(false); loadRoster() }} />
+          <button
+            type="button"
+            onClick={() => setShowAdd(true)}
+            className="w-full bg-ignite-orange text-void font-button-text text-button-text uppercase px-4 py-3 rounded-lg mb-8 hover:opacity-90 transition-opacity flex justify-center items-center gap-2"
+          >
+            <Icon name="add" />
+            New Assessment
+          </button>
+
+          <ul className="flex flex-col gap-2">
+            {NAV.map((item) => (
+              <NavLink key={item.id} item={item} active={navActive} onNav={setActive} />
+            ))}
+          </ul>
+        </div>
+
+        <div className="px-6">
+          <ul className="flex flex-col gap-2">
+            {NAV_BOTTOM.map((item) => (
+              <NavLink key={item.id} item={item} active={navActive} onNav={setActive} />
+            ))}
+          </ul>
+        </div>
+      </nav>
+
+      {/* Main content */}
+      <main className="flex-1 md:ml-64 p-6 md:p-12">
+        <div className="hidden md:flex justify-end items-center gap-4 mb-12">{headerActions}</div>
+
+        {showMainDashboard && (
+          <>
+            <div className="mb-12 max-w-3xl">
+              <h1 className="font-headline-lg-mobile md:font-headline-lg text-headline-lg-mobile md:text-headline-lg text-chalk mb-6 font-bold">
+                PeakPerformance
+              </h1>
+              <h2 className="font-headline-lg-mobile md:font-headline-lg text-headline-lg-mobile md:text-headline-lg text-chalk mb-4">
+                Member Testing Dashboard
+              </h2>
+              <p className="font-body-md text-body-md text-chalk-dim">
+                Every Continuum member tested on HumanTrak and Dynamo — football, padel and strength training members
+                side by side, tracked against their own history session over session.
+              </p>
+            </div>
+
+            <MemberRoster
+              members={rosterMembers}
+              selectedMemberId={selectedMemberId}
+              onSelectMember={setSelectedMemberId}
+              loading={loadingRoster}
+            />
+
+            {/* {selectedMemberId && (
+              <div className="mb-section-margin">
+                <MemberDetail member={selectedMemberDetail} loading={loadingDetail} />
+              </div>
+            )} */}
+
+            <SquadComparison
+              squadData={squadData}
+              sportFilter={sportFilter}
+              sexFilter={sexFilter}
+              onSportFilterChange={setSportFilter}
+              onSexFilterChange={setSexFilter}
+              loading={loadingSquad}
+            />
+          </>
         )}
 
-        {(active === 'dashboard' || active === 'testing') && roster}
-        {active === 'squad' && squad}
+        {active === 'squad' && (
+          <>
+            <div className="mb-12 max-w-3xl">
+              <h1 className="font-headline-lg-mobile md:font-headline-lg text-headline-lg-mobile md:text-headline-lg text-chalk mb-4 font-bold">
+                Squad Comparison
+              </h1>
+              <p className="font-body-md text-body-md text-chalk-dim">
+                Filter by sport or sex to see how sub-groups are trending — same data, sliced the way a coach actually
+                thinks about a squad.
+              </p>
+            </div>
+            <SquadComparison
+              squadData={squadData}
+              sportFilter={sportFilter}
+              sexFilter={sexFilter}
+              onSportFilterChange={setSportFilter}
+              onSexFilterChange={setSexFilter}
+              loading={loadingSquad}
+            />
+          </>
+        )}
+
         {active === 'settings' && <Placeholder title="Settings" text="Workspace settings will appear here." />}
         {active === 'support' && <Placeholder title="Support" text="Reach the Peak Performance team for help." />}
         {active === 'account' && <Placeholder title="Account" text="Your account details and sign-out." />}
 
-        {/* On the main dashboard, show squad comparison below the roster too (matches the reference) */}
-        {active === 'dashboard' && <div style={{ marginTop: 24 }}>{squad}</div>}
+        {showAdd && (
+          <AddMemberModal
+            onClose={() => setShowAdd(false)}
+            onCreated={() => {
+              setShowAdd(false)
+              loadRoster()
+            }}
+          />
+        )}
       </main>
     </div>
   )
