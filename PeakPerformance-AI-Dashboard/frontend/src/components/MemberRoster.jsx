@@ -13,8 +13,7 @@ export default function MemberRoster({ members = [], selectedMemberId, onSelectM
             <Icon name="group" className="text-chalk" />
           </div>
           <div>
-            <h3 className="text-[20px] font-semibold text-chalk" style={{ fontFamily: "'Space Grotesk', sans-serif" }}>PeakPerformance</h3>
-            <p className="text-[14px] text-chalk-dim" style={{ fontFamily: "'Inter', sans-serif" }}>Continuum workspace</p>
+            <h3 className="text-[20px] font-semibold text-chalk" style={{ fontFamily: "'Space Grotesk', sans-serif" }}>Members List</h3>
           </div>
         </div>
         <div className="font-small tracking-[0.1em] text-chalk-dim uppercase" style={{ fontFamily: "'IBM Plex Mono', monospace" }}>
@@ -43,7 +42,7 @@ export default function MemberRoster({ members = [], selectedMemberId, onSelectM
           const on = m.id === selectedMemberId
           return (
             <button key={m.id} onClick={() => onSelectMember?.(m.id)}
-              className={`grid grid-cols-6 gap-4 p-4 w-full text-left items-center border-b border-surface-variant transition-colors ${on ? 'bg-surface-container' : 'bg-surface hover:bg-surface-container-low'}`}>
+              className={`grid grid-cols-6 gap-4 p-4 w-full text-left items-center border-b border-surface-variant transition-colors button-nav ${on ? 'bg-surface-container' : 'bg-surface hover:bg-surface-container-low'}`}>
               <div className={`col-span-2 text-[14px] ${on ? 'text-ignite-orange' : 'text-chalk'}`} style={{ fontFamily: "'Inter', sans-serif" }}>{m.name}</div>
               <div className="text-[14px] text-chalk-dim" style={{ fontFamily: "'JetBrains Mono', monospace" }}>{m.sex || '—'}</div>
               <div className="text-[14px] text-chalk-dim" style={{ fontFamily: "'JetBrains Mono', monospace" }}>{m.age ?? '—'}</div>

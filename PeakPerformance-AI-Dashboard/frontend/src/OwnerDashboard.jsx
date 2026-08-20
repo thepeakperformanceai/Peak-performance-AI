@@ -29,12 +29,11 @@ function NavLink({ item, active, onNav }) {
       <button
         type="button"
         onClick={() => onNav(item.id)}
-        className={`flex w-full items-center gap-3 rounded-lg py-2 px-1 font-label-caps uppercase transition-all ${
+        className={`flex w-full items-center gap-3 rounded-lg py-2 px-1 font-label-caps uppercase transition-all button-nav ${
           on
             ? 'border-l-4 border-ignite-orange bg-surface-container text-ignite-orange'
             : 'border-l-4 border-transparent text-chalk-dim hover:bg-surface-container hover:text-chalk'
         }`}
-        style={{ fontSize: '12px !important' }}
       >
         <Icon name={item.icon} className={on ? 'text-ignite-orange' : ''} />
         {item.label}
