@@ -17,12 +17,12 @@ export default function MemberRoster({ members = [], selectedMemberId, onSelectM
             <p className="text-[14px] text-chalk-dim" style={{ fontFamily: "'Inter', sans-serif" }}>Continuum workspace</p>
           </div>
         </div>
-        <div className="text-[12px] tracking-[0.1em] text-chalk-dim uppercase" style={{ fontFamily: "'IBM Plex Mono', monospace" }}>
+        <div className="font-small tracking-[0.1em] text-chalk-dim uppercase" style={{ fontFamily: "'IBM Plex Mono', monospace" }}>
           {members.length} member{members.length === 1 ? '' : 's'}
         </div>
       </div>
 
-      <div className="grid grid-cols-6 gap-4 p-4 border-b border-surface-variant bg-surface-container-lowest text-[12px] tracking-[0.1em] text-chalk-dim uppercase" style={{ fontFamily: "'IBM Plex Mono', monospace" }}>
+      <div className="grid grid-cols-6 gap-4 p-4 border-b border-surface-variant bg-surface-container-lowest font-small tracking-[0.1em] text-chalk-dim uppercase" style={{ fontFamily: "'IBM Plex Mono', monospace" }}>
         <div className="col-span-2">Member</div>
         <div>Sex</div>
         <div>Age</div>
@@ -54,7 +54,7 @@ export default function MemberRoster({ members = [], selectedMemberId, onSelectM
         })
       )}
 
-      <div className="p-4 bg-surface text-[12px] tracking-[0.1em] text-chalk-dim flex items-center gap-2 uppercase" style={{ fontFamily: "'IBM Plex Mono', monospace" }}>
+      <div className="p-4 bg-surface font-small tracking-[0.1em] text-chalk-dim flex items-center gap-2 uppercase" style={{ fontFamily: "'IBM Plex Mono', monospace" }}>
         <Icon name="subdirectory_arrow_right" className="!text-[16px]" />
         click any member to view their profile below
       </div>

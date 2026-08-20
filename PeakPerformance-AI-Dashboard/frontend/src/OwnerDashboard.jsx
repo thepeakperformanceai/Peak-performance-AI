@@ -29,11 +29,12 @@ function NavLink({ item, active, onNav }) {
       <button
         type="button"
         onClick={() => onNav(item.id)}
-        className={`flex w-full items-center gap-3 rounded-lg px-4 py-3 font-label-caps text-xl uppercase transition-all ${
+        className={`flex w-full items-center gap-3 rounded-lg py-2 px-1 font-label-caps uppercase transition-all ${
           on
             ? 'border-l-4 border-ignite-orange bg-surface-container text-ignite-orange'
             : 'border-l-4 border-transparent text-chalk-dim hover:bg-surface-container hover:text-chalk'
         }`}
+        style={{ fontSize: '12px !important' }}
       >
         <Icon name={item.icon} className={on ? 'text-ignite-orange' : ''} />
         {item.label}
@@ -144,8 +145,8 @@ export default function OwnerDashboard() {
       {/* Sidebar */}
       <nav className="bg-surface-container-lowest hidden md:flex flex-col border-r border-surface-variant fixed left-0 top-0 h-screen w-64 z-40 pt-8 pb-4 justify-between">
         <div className="px-6">
-          <div className="mb-12">
-            <h1 className="text-[20px] font-bold text-chalk tracking-tight" style={{ fontFamily: "'Space Grotesk', sans-serif" }}>PeakPerformance</h1>
+          <div className="mb-8">
+            <p className="font-bold text-chalk tracking-tight text-[18px]" style={{ fontFamily: "'Space Grotesk', sans-serif" ,  }}>PeakPerformance</p>
             <p className="font-label-caps text-xl text-chalk-dim mt-2">Test. Train. Perform.</p>
             <p className="text-[14px] text-chalk-dim mt-1">Elite Performance Lab</p>
           </div>
@@ -153,13 +154,13 @@ export default function OwnerDashboard() {
           <button
             type="button"
             onClick={() => setShowAdd(true)}
-            className="w-full bg-ignite-orange text-void text-[13px] font-bold uppercase uppercase px-4 py-3 rounded-lg mb-8 hover:opacity-90 transition-opacity flex justify-center items-center gap-2"
+            className="w-full bg-ignite-orange text-void text-[13px] font-bold uppercase uppercase px-1 py-2 rounded-xl mb-8 hover:opacity-90 transition-opacity flex justify-center items-center gap-2"
           >
             <Icon name="add" />
             New Assessment
           </button>
 
-          <ul className="flex flex-col gap-2">
+          <ul className="flex flex-col gap-2 p-0 mt-2">
             {NAV.map((item) => (
               <NavLink key={item.id} item={item} active={navActive} onNav={setActive} />
             ))}
@@ -167,7 +168,7 @@ export default function OwnerDashboard() {
         </div>
 
         <div className="px-6">
-          <ul className="flex flex-col gap-2">
+          <ul className="flex flex-col gap-2 p-0">
             {NAV_BOTTOM.map((item) => (
               <NavLink key={item.id} item={item} active={navActive} onNav={setActive} />
             ))}

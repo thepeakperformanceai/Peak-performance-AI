@@ -71,6 +71,7 @@ body {
 .material-symbols-outlined {
   font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
   vertical-align: middle;
+  font-size: 26px !important;
 }
 
 /* Bootstrap coexistence — keep table overrides for member detail */
@@ -109,4 +110,10 @@ body {
 ::-webkit-scrollbar-thumb {
   background: var(--color-surface-variant);
   border-radius: 3px;
+}
+
+.font-small {
+  font-size: 12px !important;
+  font-weight: 400 !important;
+  letter-spacing: 0.1em !important;
 }
