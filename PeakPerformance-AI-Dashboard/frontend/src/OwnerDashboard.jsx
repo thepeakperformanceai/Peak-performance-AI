@@ -45,8 +45,8 @@ function NavLink({ item, active, onNav }) {
 function Placeholder({ title, text }) {
   return (
     <div className="rounded-lg border border-surface-variant bg-surface p-10 text-center">
-      <h2 className="font-headline-md text-headline-md text-chalk mb-2">{title}</h2>
-      <p className="font-body-sm text-body-sm text-chalk-dim m-0">{text}</p>
+      <h2 className="text-[20px] font-semibold text-chalk mb-2" style={{ fontFamily: "'Space Grotesk', sans-serif" }}>{title}</h2>
+      <p className="text-[14px] text-chalk-dim m-0">{text}</p>
     </div>
   )
 }
@@ -119,14 +119,14 @@ export default function OwnerDashboard() {
       <button
         type="button"
         onClick={() => setShowAdd(true)}
-        className="border border-ignite-orange bg-transparent font-button-text text-button-text uppercase text-ignite-orange px-4 md:px-6 py-2 rounded hover:bg-ignite-orange/10 transition-colors"
+        className="border border-ignite-orange bg-transparent text-[13px] font-bold uppercase uppercase text-ignite-orange px-4 md:px-6 py-2 rounded hover:bg-ignite-orange/10 transition-colors"
       >
         + Add member
       </button>
       <button
         type="button"
         onClick={logout}
-        className="border border-surface-variant text-chalk font-button-text text-button-text uppercase px-4 md:px-6 py-2 rounded hover:bg-surface-container transition-colors"
+        className="border border-surface-variant text-chalk text-[13px] font-bold uppercase uppercase px-4 md:px-6 py-2 rounded hover:bg-surface-container transition-colors"
       >
         Log out
       </button>
@@ -137,7 +137,7 @@ export default function OwnerDashboard() {
     <div className="bg-void text-chalk font-body-md min-h-screen flex flex-col md:flex-row">
       {/* Mobile header */}
       <header className="bg-void border-b border-surface-variant w-full md:hidden flex justify-between items-center px-6 py-4 z-50">
-        <div className="font-headline-md text-headline-md font-bold text-chalk">PeakPerformance</div>
+        <div className="text-[20px] font-bold text-chalk" style={{ fontFamily: "'Space Grotesk', sans-serif" }}>PeakPerformance</div>
         <div className="flex items-center gap-4">{headerActions}</div>
       </header>
 
@@ -145,15 +145,15 @@ export default function OwnerDashboard() {
       <nav className="bg-surface-container-lowest hidden md:flex flex-col border-r border-surface-variant fixed left-0 top-0 h-screen w-64 z-40 pt-8 pb-4 justify-between">
         <div className="px-6">
           <div className="mb-12">
-            <h1 className="font-headline-md text-headline-md font-bold text-chalk tracking-tight">PeakPerformance</h1>
+            <h1 className="text-[20px] font-bold text-chalk tracking-tight" style={{ fontFamily: "'Space Grotesk', sans-serif" }}>PeakPerformance</h1>
             <p className="font-label-caps text-xl text-chalk-dim mt-2">Test. Train. Perform.</p>
-            <p className="font-body-sm text-body-sm text-chalk-dim mt-1">Elite Performance Lab</p>
+            <p className="text-[14px] text-chalk-dim mt-1">Elite Performance Lab</p>
           </div>
 
           <button
             type="button"
             onClick={() => setShowAdd(true)}
-            className="w-full bg-ignite-orange text-void font-button-text text-button-text uppercase px-4 py-3 rounded-lg mb-8 hover:opacity-90 transition-opacity flex justify-center items-center gap-2"
+            className="w-full bg-ignite-orange text-void text-[13px] font-bold uppercase uppercase px-4 py-3 rounded-lg mb-8 hover:opacity-90 transition-opacity flex justify-center items-center gap-2"
           >
             <Icon name="add" />
             New Assessment
@@ -182,13 +182,11 @@ export default function OwnerDashboard() {
         {showMainDashboard && (
           <>
             <div className="mb-12 max-w-3xl">
-              <h1 className="font-headline-lg-mobile md:font-headline-lg text-headline-lg-mobile md:text-headline-lg text-chalk mb-6 font-bold">
-                PeakPerformance
-              </h1>
-              <h2 className="font-headline-lg-mobile md:font-headline-lg text-headline-lg-mobile md:text-headline-lg text-chalk mb-4">
+              <h1 className="text-[24px] md:text-[32px] font-bold text-chalk mb-6" style={{ fontFamily: "'Space Grotesk', sans-serif" }}>PeakPerformance</h1>
+              <h2 className="text-[24px] md:text-[32px] font-bold text-chalk mb-4" style={{ fontFamily: "'Space Grotesk', sans-serif" }}>
                 Member Testing Dashboard
               </h2>
-              <p className="font-body-md text-body-md text-chalk-dim">
+              <p className="text-[16px] text-chalk-dim">
                 Every Continuum member tested on HumanTrak and Dynamo — football, padel and strength training members
                 side by side, tracked against their own history session over session.
               </p>
@@ -221,10 +219,10 @@ export default function OwnerDashboard() {
         {active === 'squad' && (
           <>
             <div className="mb-12 max-w-3xl">
-              <h1 className="font-headline-lg-mobile md:font-headline-lg text-headline-lg-mobile md:text-headline-lg text-chalk mb-4 font-bold">
+              <h1 className="text-[24px] md:text-[32px] font-bold text-chalk mb-4" style={{ fontFamily: "'Space Grotesk', sans-serif" }}>
                 Squad Comparison
               </h1>
-              <p className="font-body-md text-body-md text-chalk-dim">
+              <p className="text-[16px] text-chalk-dim">
                 Filter by sport or sex to see how sub-groups are trending — same data, sliced the way a coach actually
                 thinks about a squad.
               </p>

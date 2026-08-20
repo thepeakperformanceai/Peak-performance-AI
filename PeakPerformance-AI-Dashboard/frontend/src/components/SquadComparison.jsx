@@ -5,7 +5,7 @@ function FilterPill({ label, active, onClick }) {
     <button
       type="button"
       onClick={onClick}
-      className={`px-4 py-1.5 rounded-full font-label-caps text-xl uppercase transition-colors ${
+      className={`px-4 py-1.5 rounded-full text-[12px] tracking-[0.1em] uppercase text-xl uppercase transition-colors ${
         active
           ? 'border border-ignite-orange text-ignite-orange bg-transparent'
           : 'border border-surface-variant text-chalk-dim hover:border-chalk-dim'
@@ -19,7 +19,7 @@ function FilterPill({ label, active, onClick }) {
 function MetricCard({ label, value, unit }) {
   return (
     <div className="bg-surface-container-lowest border border-surface-variant rounded-lg p-6">
-      <h4 className="font-label-caps text-xl text-chalk-dim uppercase mb-4">{label}</h4>
+      <h4 className="text-[12px] tracking-[0.1em] uppercase text-xl text-chalk-dim uppercase mb-4">{label}</h4>
       <div className="flex items-baseline gap-2">
         <span className="text-4xl font-bold font-mono text-chalk">{value}</span>
         {unit && <span className="font-mono text-chalk-dim">{unit}</span>}
@@ -33,7 +33,7 @@ function ChartPlaceholder({ title, bars }) {
 
   return (
     <div>
-      <p className="font-body-sm text-chalk-dim mb-2">{title}</p>
+      <p className="text-[14px] text-chalk-dim mb-2">{title}</p>
       {hasData ? (
         <>
           <div className="flex items-end justify-between gap-3 px-2 h-40 border-b border-l border-surface-variant border-dashed opacity-80">
@@ -60,7 +60,7 @@ function ChartPlaceholder({ title, bars }) {
         </>
       ) : (
         <div className="h-40 border-b border-l border-surface-variant border-dashed opacity-50 flex items-end justify-center pb-4">
-          <span className="font-label-caps text-chalk-dim uppercase">No data</span>
+          <span className="text-[12px] tracking-[0.1em] uppercase text-chalk-dim uppercase">No data</span>
         </div>
       )}
     </div>
@@ -84,11 +84,11 @@ export default function SquadComparison({
   return (
     <div className="mb-section-margin">
       <div className="mb-8">
-        <p className="font-label-caps text-xl text-chalk-dim uppercase mb-2">-- SQUAD COMPARISON</p>
-        <h3 className="font-headline-lg-mobile md:font-headline-lg text-headline-lg-mobile md:text-headline-lg text-chalk mb-2">
+        <p className="text-[12px] tracking-[0.1em] uppercase text-xl text-chalk-dim uppercase mb-2">-- SQUAD COMPARISON</p>
+        <h3 className="text-[24px] md:text-[32px] font-bold text-chalk mb-2" style={{ fontFamily: "'Space Grotesk', sans-serif" }}>
           Compare Members
         </h3>
-        <p className="font-body-md text-body-md text-chalk-dim max-w-2xl">
+        <p className="text-[16px] text-chalk-dim max-w-2xl">
           Filter by sport or sex to see how sub-groups are trending — same data, sliced the way a coach actually thinks
           about a squad.
         </p>
@@ -98,7 +98,7 @@ export default function SquadComparison({
         {/* Filters */}
         <div className="flex flex-wrap items-center gap-6 mb-8 border-b border-surface-variant pb-6">
           <div className="flex items-center gap-4">
-            <span className="font-label-caps text-xl text-chalk-dim uppercase">Sport</span>
+            <span className="text-[12px] tracking-[0.1em] uppercase text-xl text-chalk-dim uppercase">Sport</span>
             <div className="flex gap-2 flex-wrap">
               {sports.map((sp) => (
                 <FilterPill
@@ -111,7 +111,7 @@ export default function SquadComparison({
             </div>
           </div>
           <div className="flex items-center gap-4">
-            <span className="font-label-caps text-xl text-chalk-dim uppercase">Sex</span>
+            <span className="text-[12px] tracking-[0.1em] uppercase text-xl text-chalk-dim uppercase">Sex</span>
             <div className="flex gap-2">
               {sexes.map((sx) => (
                 <FilterPill
@@ -135,7 +135,7 @@ export default function SquadComparison({
 
         {/* Charts */}
         <div className="border border-surface-variant rounded-lg p-6 mb-8 min-h-64 flex flex-col relative overflow-hidden bg-surface-container-lowest">
-          <h4 className="font-label-caps text-xl text-chalk-dim uppercase mb-6 z-10 relative">
+          <h4 className="text-[12px] tracking-[0.1em] uppercase text-xl text-chalk-dim uppercase mb-6 z-10 relative">
             Group Averages by Sport (Latest Session, All Members)
           </h4>
           <div className="flex-1 grid grid-cols-1 md:grid-cols-2 gap-8 z-10 relative">
@@ -147,7 +147,7 @@ export default function SquadComparison({
 
         {/* Comparison table */}
         <div className="border border-surface-variant rounded-lg overflow-hidden">
-          <div className="grid grid-cols-7 gap-4 p-4 border-b border-surface-variant bg-surface-container-lowest font-label-caps text-xl text-chalk-dim uppercase overflow-x-auto whitespace-nowrap">
+          <div className="grid grid-cols-7 gap-4 p-4 border-b border-surface-variant bg-surface-container-lowest text-[12px] tracking-[0.1em] uppercase text-xl text-chalk-dim uppercase overflow-x-auto whitespace-nowrap">
             <div className="col-span-2">Member</div>
             <div>Sex</div>
             <div>Age</div>
@@ -159,11 +159,11 @@ export default function SquadComparison({
 
           {loading ? (
             <div className="p-8 text-center bg-surface">
-              <p className="font-body-sm text-chalk-dim font-label-caps uppercase">Filtering squad members…</p>
+              <p className="text-[14px] text-chalk-dim text-[12px] tracking-[0.1em] uppercase uppercase">Filtering squad members…</p>
             </div>
           ) : squadData?.members?.length === 0 ? (
             <div className="p-8 text-center bg-surface">
-              <p className="font-body-sm text-chalk-dim font-label-caps uppercase">
+              <p className="text-[14px] text-chalk-dim text-[12px] tracking-[0.1em] uppercase uppercase">
                 No members found matching selected filters.
               </p>
             </div>
@@ -173,11 +173,11 @@ export default function SquadComparison({
                 key={m.id}
                 className="grid grid-cols-7 gap-4 p-4 border-b border-surface-variant last:border-b-0 bg-surface items-center"
               >
-                <div className="col-span-2 font-headline-md text-body-sm font-bold text-chalk">{m.name}</div>
+                <div className="col-span-2 text-[14px] font-semibold text-chalk">{m.name}</div>
                 <div className="font-mono text-body-sm text-chalk-dim">{m.sex}</div>
                 <div className="font-mono text-body-sm text-chalk-dim">{m.age}</div>
                 <div>
-                  <span className="px-4 py-1.5 rounded-full border border-surface-variant text-chalk-dim font-label-caps text-xl inline-block">
+                  <span className="px-4 py-1.5 rounded-full border border-surface-variant text-chalk-dim text-[12px] tracking-[0.1em] uppercase text-xl inline-block">
                     {m.sport}
                   </span>
                 </div>
