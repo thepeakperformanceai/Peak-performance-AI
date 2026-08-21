@@ -71,14 +71,14 @@ export const downloadReportPDF = async reportId => {
       const ring = (r) => order.map((_, i) => pt(i, r).join(',')).join(' ')
       const poly = order.map((n, i) => pt(i, val(n)).join(',')).join(' ')
       const lab = { Speed: [cx + R + 30, cy + 4], Agility: pt(1, 1.34), Power: pt(2, 1.34), Endurance: [cx - R - 34, cy + 4], Reaction: pt(4, 1.34), Balance: pt(5, 1.34) }
-      return `<svg viewBox="0 0 360 300" width="360" height="300">
+      return `<svg viewBox="0 0 500 360" width="500" height="360">
         ${[0.25, 0.5, 0.75, 1].map(r => `<polygon points="${ring(r)}" fill="none" stroke="#2a2d33"/>`).join('')}
         ${order.map((_, i) => { const [x, y] = pt(i, 1); return `<line x1="${cx}" y1="${cy}" x2="${x}" y2="${y}" stroke="#2a2d33"/>` }).join('')}
         <polygon points="${poly}" fill="${ORANGE}33" stroke="${ORANGE}" stroke-width="2.5"/>
         ${order.map(n => { const [x, y] = pt(order.indexOf(n), val(n)); return `<circle cx="${x}" cy="${y}" r="4" fill="${ORANGE}"/>` }).join('')}
         <text x="${cx}" y="${cy - 4}" text-anchor="middle" font-family="Space Grotesk" font-weight="700" font-size="44" fill="${ORANGE}">${overall}</text>
         <text x="${cx}" y="${cy + 16}" text-anchor="middle" font-family="monospace" font-size="10" fill="${FAINT}">OVERALL OVR</text>
-        ${order.map(n => { const [x, y] = lab[n]; const anc = n === 'Endurance' ? 'start' : n === 'Speed' ? 'end' : 'middle'; return `<text x="${x}" y="${y}" text-anchor="${anc}" font-size="12" fill="${MUTED}">${n}</text>` }).join('')}</svg>`
+        ${order.map(n => { const [x, y] = lab[n]; const anc = n === 'Endurance' ? 'end' : n === 'Speed' ? 'start' : 'middle'; return `<text x="${x}" y="${y}" text-anchor="${anc}" font-size="13" fill="${MUTED}">${n}</text>` }).join('')}</svg>`
     }
     const ringSvg = (lsi) => {
       const c = 2 * Math.PI * 52, dash = (lsi / 100) * c
