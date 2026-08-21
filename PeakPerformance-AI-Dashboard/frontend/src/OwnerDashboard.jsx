@@ -175,14 +175,14 @@ export default function OwnerDashboard() {
       <main className="flex-1 md:ml-64 p-6 md:p-12">
         <div className="hidden md:flex justify-end items-center gap-4 mb-12">{headerActions}</div>
 
-        {showMainDashboard && (
+        {/* Dashboard — member list + squad comparison (no member detail) */}
+        {active === 'dashboard' && (
           <>
             <div className="mb-12 max-w-3xl">
               <h1 className="text-[24px] md:text-[32px] font-bold text-chalk mb-6" style={{ fontFamily: "'Space Grotesk', sans-serif" }}>PeakPerformance</h1>
               <h2 className="text-[24px] md:text-[32px] font-bold text-chalk mb-4" style={{ fontFamily: "'Space Grotesk', sans-serif" }}>
-                Member Testing Dashboard
+                Dashboard
               </h2>
-
             </div>
 
             <MemberRoster
@@ -192,12 +192,6 @@ export default function OwnerDashboard() {
               loading={loadingRoster}
             />
 
-            {/* {selectedMemberId && (
-              <div className="mb-section-margin">
-                <MemberDetail member={selectedMemberDetail} loading={loadingDetail} />
-              </div>
-            )} */}
-
             <SquadComparison
               squadData={squadData}
               sportFilter={sportFilter}
@@ -206,6 +200,28 @@ export default function OwnerDashboard() {
               onSexFilterChange={setSexFilter}
               loading={loadingSquad}
             />
+          </>
+        )}
+
+        {/* Member Testing — the member list + selected member's detail */}
+        {active === 'testing' && (
+          <>
+            <div className="mb-12 max-w-3xl">
+              <h2 className="text-[24px] md:text-[32px] font-bold text-chalk mb-4" style={{ fontFamily: "'Space Grotesk', sans-serif" }}>
+                Member Testing
+              </h2>
+            </div>
+
+            <MemberRoster
+              members={rosterMembers}
+              selectedMemberId={selectedMemberId}
+              onSelectMember={setSelectedMemberId}
+              loading={loadingRoster}
+            />
+
+            {selectedMemberId && (
+              <MemberDetail member={selectedMemberDetail} loading={loadingDetail} />
+            )}
           </>
         )}
 
