@@ -2,6 +2,7 @@ import React, { useState } from 'react'
 import Logo from '../components/Logo'
 import { useAuth } from '../context/AuthContext'
 import { authApi, apiError } from '../services/authApi'
+import PasswordInput from '../components/PasswordInput'
 
 const wrap = { minHeight: '100vh', backgroundColor: '#06090e', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '24px' }
 const card = { width: '100%', maxWidth: '380px', backgroundColor: '#0e1823', border: '1px solid #172333', borderRadius: '16px', padding: '32px' }
@@ -48,8 +49,8 @@ export default function FirstLoginPage() {
           Welcome{user?.name ? `, ${user.name.split(' ')[0]}` : ''}. Choose a password to finish setup.
         </p>
 
-        <input style={input} type="password" placeholder="Temporary password" value={currentPassword} onChange={e => setCurrentPassword(e.target.value)} />
-        <input style={input} type="password" placeholder="New password" value={newPassword} onChange={e => setNewPassword(e.target.value)} />
+        <PasswordInput style={input} placeholder="Temporary password" value={currentPassword} onChange={e => setCurrentPassword(e.target.value)} />
+        <PasswordInput style={input} placeholder="New password" value={newPassword} onChange={e => setNewPassword(e.target.value)} />
         {newPassword && (
           <div style={{ marginBottom: 12 }}>
             <Req ok={newPassword.length >= 8}>At least 8 characters</Req>
@@ -57,7 +58,7 @@ export default function FirstLoginPage() {
             <Req ok={/[^A-Za-z0-9]/.test(newPassword)}>One special character</Req>
           </div>
         )}
-        <input style={input} type="password" placeholder="Confirm new password" value={confirmPassword} onChange={e => setConfirmPassword(e.target.value)} onKeyDown={e => e.key === 'Enter' && canSubmit && submit()} />
+        <PasswordInput style={input} placeholder="Confirm new password" value={confirmPassword} onChange={e => setConfirmPassword(e.target.value)} onKeyDown={e => e.key === 'Enter' && canSubmit && submit()} />
 
         {error && <div style={{ color: '#ff6b6b', fontSize: '12px', marginBottom: 8 }}>{error}</div>}
 

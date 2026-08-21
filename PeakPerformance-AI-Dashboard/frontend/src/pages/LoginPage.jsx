@@ -2,6 +2,7 @@ import React, { useState } from 'react'
 import Logo from '../components/Logo'
 import { useAuth } from '../context/AuthContext'
 import { apiError } from '../services/authApi'
+import PasswordInput from '../components/PasswordInput'
 
 const wrap = { minHeight: '100vh', backgroundColor: '#06090e', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '24px' }
 const card = { width: '100%', maxWidth: '400px', backgroundColor: '#0e1823', border: '1px solid #172333', borderRadius: '16px', padding: '30px' }
@@ -58,8 +59,8 @@ export default function LoginPage() {
 
         {/* Tabs */}
         <div style={{ display: 'flex', marginBottom: 22 }}>
-          <button style={tabBtn(tab === 'member')} onClick={() => { setTab('member'); reset() }}>MEMBER</button>
-          <button style={tabBtn(tab === 'owner')} onClick={() => { setTab('owner'); reset() }}>GYM OWNER</button>
+          <button className="button-nav" style={tabBtn(tab === 'member')} onClick={() => { setTab('member'); reset() }}>MEMBER</button>
+          <button className="button-nav" style={tabBtn(tab === 'owner')} onClick={() => { setTab('owner'); reset() }}>GYM OWNER</button>
         </div>
 
         <h1 className="font-space" style={{ fontSize: '1.1rem', fontWeight: 700, color: '#e9eef2', marginBottom: 4 }}>
@@ -77,11 +78,11 @@ export default function LoginPage() {
           <input style={input} placeholder="Your name" value={form.name} onChange={upd('name')} />
         )}
         <input style={input} type="email" placeholder="Email" value={form.email} onChange={upd('email')} />
-        <input style={input} type="password" placeholder="Password" value={form.password} onChange={upd('password')}
-               onKeyDown={e => e.key === 'Enter' && !isOwnerSignup && (tab === 'member' ? doLogin() : doLogin())} />
+        <PasswordInput style={input} placeholder="Password" value={form.password} onChange={upd('password')}
+          onKeyDown={e => e.key === 'Enter' && !isOwnerSignup && (tab === 'member' ? doLogin() : doLogin())} />
         {isOwnerSignup && (
-          <input style={input} type="password" placeholder="Confirm password" value={form.confirmPassword}
-                 onChange={upd('confirmPassword')} onKeyDown={e => e.key === 'Enter' && doSignup()} />
+          <PasswordInput style={input} placeholder="Confirm password" value={form.confirmPassword}
+            onChange={upd('confirmPassword')} onKeyDown={e => e.key === 'Enter' && doSignup()} />
         )}
 
         {error && <div style={{ color: '#ff6b6b', fontSize: '12px', marginBottom: 8 }}>{error}</div>}
@@ -95,11 +96,6 @@ export default function LoginPage() {
             <button style={btn(busy)} disabled={busy} onClick={doLogin}>
               {busy ? 'Signing in…' : 'Sign in'}
             </button>
-            <p className="font-inter text-center" style={{ color: '#8b99a6', fontSize: 12, marginTop: 14 }}>
-              New here?{' '}
-              <span style={{ color: '#ff4b12', cursor: 'pointer', fontWeight: 600 }}
-                    onClick={() => { setOwnerMode('signup'); reset() }}>Create a gym account</span>
-            </p>
           </>
         ) : (
           <>
@@ -109,7 +105,7 @@ export default function LoginPage() {
             <p className="font-inter text-center" style={{ color: '#8b99a6', fontSize: 12, marginTop: 14 }}>
               Already have an account?{' '}
               <span style={{ color: '#ff4b12', cursor: 'pointer', fontWeight: 600 }}
-                    onClick={() => { setOwnerMode('login'); reset() }}>Log in</span>
+                onClick={() => { setOwnerMode('login'); reset() }}>Log in</span>
             </p>
           </>
         )}

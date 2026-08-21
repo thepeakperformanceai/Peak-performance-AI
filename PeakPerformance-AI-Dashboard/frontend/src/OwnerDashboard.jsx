@@ -10,13 +10,9 @@ const NAV = [
   { id: 'dashboard', label: 'Dashboard', icon: 'dashboard' },
   { id: 'testing', label: 'Member Testing', icon: 'analytics' },
   { id: 'squad', label: 'Squad Comparison', icon: 'group_work' },
-  { id: 'settings', label: 'Settings', icon: 'settings' },
 ]
 
-const NAV_BOTTOM = [
-  { id: 'support', label: 'Support', icon: 'help' },
-  { id: 'account', label: 'Account', icon: 'person' },
-]
+const NAV_BOTTOM = []
 
 function Icon({ name, className = '' }) {
   return <span className={`material-symbols-outlined ${className}`}>{name}</span>
@@ -186,10 +182,7 @@ export default function OwnerDashboard() {
               <h2 className="text-[24px] md:text-[32px] font-bold text-chalk mb-4" style={{ fontFamily: "'Space Grotesk', sans-serif" }}>
                 Member Testing Dashboard
               </h2>
-              <p className="text-[16px] text-chalk-dim">
-                Every Continuum member tested on HumanTrak and Dynamo — football, padel and strength training members
-                side by side, tracked against their own history session over session.
-              </p>
+
             </div>
 
             <MemberRoster
