@@ -92,11 +92,11 @@ export const downloadReportPDF = async (report) => {
       <div style="color:${MUTED};font-size:13px;margin:4px 0 20px">DynaMo bilateral force testing — Left vs Right, expressed as Limb Symmetry Index (LSI)</div>
       <div style="display:flex;gap:16px;justify-content:center">
         ${dynamo.map(d=>`<div style="flex:1;text-align:center">
-          <div style="font-family:'Space Grotesk',Arial;font-weight:700;color:${INK};margin-bottom:10px">${esc(d.joint)}</div>
+          <div style="font-family:'Space Grotesk',Arial;font-weight:700;color:${INK};margin-bottom:10px; margin-top:10px">${esc(d.joint)}</div>
           ${ringSvg(d.lsi ?? 0)}
           <div style="display:flex;justify-content:space-between;font-family:monospace;font-size:11px;color:${FAINT};margin:8px 10px 0">
             <span>LEFT<br><b style="color:${MUTED}">${esc(d.left)}</b></span><span>RIGHT<br><b style="color:${MUTED}">${esc(d.right)}</b></span></div>
-          <span style="display:inline-block;margin-top:10px;font-family:monospace;font-size:10px;color:${TEAL};border:1px solid ${TEAL};border-radius:4px;padding:2px 8px">${esc(d.status)}</span>
+          <span style="display:inline-block;margin-top:10px; font-family:monospace;font-size:10px;color:${TEAL};border:1px solid ${TEAL};border-radius:4px;padding:0px 8px 10px">${esc(d.status)}</span>
         </div>`).join('')}
       </div>
       <div style="border-left:3px solid ${ORANGE};padding-left:16px;margin-top:26px;display:flex;gap:24px">
@@ -117,7 +117,7 @@ export const downloadReportPDF = async (report) => {
         ${fm.stats.map(s=>`<div style="flex:0 0 46%">
           <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">
             <span style="display:flex;align-items:center;gap:8px"><span style="width:14px;height:8px;border-radius:4px;background:${tagColor(s.tag)};display:inline-block"></span><b style="color:${INK};font-family:'Space Grotesk',Arial">${esc(s.name)}</b></span>
-            <span style="font-family:monospace;font-size:10px;color:${tagColor(s.tag)};border:1px solid ${tagColor(s.tag)};border-radius:4px;padding:2px 7px">${esc(s.tag)}</span></div>
+            <span style="font-family:monospace;font-size:10px;color:${tagColor(s.tag)};border:1px solid ${tagColor(s.tag)};border-radius:4px;padding:0px 7px 10px">${esc(s.tag)}</span></div>
           <div style="font-family:monospace;font-size:11px;color:${FAINT};margin:0 0 6px 22px">Score: ${s.score}/100</div>
           <p style="color:${MUTED};font-size:13px;line-height:1.5;margin:0 0 0 22px">${esc(s.body)}</p></div>`).join('')}
       </div>`) : ''
