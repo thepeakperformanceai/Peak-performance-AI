@@ -114,7 +114,10 @@ const callGeminiOnce = async (systemPrompt, userPrompt, apiKey, model) => {
         systemInstruction: { parts: [{ text: systemPrompt }] },
         contents: [{ role: 'user', parts: [{ text: userPrompt }] }],
         generationConfig: {
-          temperature: 0.2,
+          // Deterministic settings: same input -> same output as much as the model allows.
+          temperature: 0,
+          topP: 0,
+          topK: 1,
           responseMimeType: 'application/json',
           maxOutputTokens: GEMINI_MAX_OUTPUT_TOKENS
         }

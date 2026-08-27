@@ -13,7 +13,7 @@ const SYSTEM_PROMPT = `You are a sports scientist at PeakPerformance.pk producin
 
 Return ONLY one valid JSON object. No markdown, no code fences, no text before or after, no comments.
 
-You are given an athlete profile and whatever assessment data is available. Where a specific raw value is present, use it. Where a raw value is NOT present, ESTIMATE a reasonable score from the athlete's profile (age, sport, position, training level) and any related data — this is an estimated performance card, not a clinical measurement. Never leave a score blank; always output a full card.
+You are given an athlete profile and whatever assessment data is available. Where a raw value is present, use it exactly. Where a raw value is NOT present, DERIVE a score using a consistent rule: map the athlete's age, sport, position, and training level to a typical benchmark value for that profile, the same way every time. This is a rule-based performance card — for identical input you MUST output identical numbers. Never leave a score blank; always output a full card.
 
 OUTPUT THIS EXACT SHAPE:
 
@@ -78,7 +78,7 @@ RULES:
 - fieldMeaning.stats MUST cover all six OVR stats, each with tag one of STRENGTH / SOLID / WATCH / PRIORITY (PRIORITY = lowest, tag the top two as STRENGTH), and a 1-2 sentence sport-specific body written for the athlete's actual sport.
 - developmentPriority = the name of the lowest-scoring stat.
 - playerProfile = one line describing how this profile shows up in their sport.
-- Vary the numbers to the athlete; never copy the example values above verbatim.
+- Derive every number DETERMINISTICALLY from the athlete's profile and any real data provided. The SAME input must always produce the SAME scores — do not randomise, vary, or add creative spread. The example values above are only a format guide; base actual numbers strictly on this athlete's age, sport, position, training level, and any measured values.
 - Output JSON only. Double quotes, no trailing commas.`;
 
 /**
@@ -151,7 +151,7 @@ const buildUserPrompt = (athleteProfile, pdfData, exercises) => {
     prompt += `--- END ADDITIONAL DATA ---\n\n`;
   }
 
-  prompt += `\nUsing the profile and any assessment data above, produce the ATHLETE TEST BATTERY report now as a single JSON object following the required shape EXACTLY (overallOVR, ovrScores[6], manualBattery, dynamoStrength, symmetrySummary, fieldMeaning). Where a raw value is missing, ESTIMATE a realistic score from the athlete's profile. Every score is 0-100. Do NOT output findings, onCourt, or trainingPlan.`;
+  prompt += `\nUsing the profile and any assessment data above, produce the ATHLETE TEST BATTERY report now as a single JSON object following the required shape EXACTLY (overallOVR, ovrScores[6], manualBattery, dynamoStrength, symmetrySummary, fieldMeaning). Where a raw value is missing, DERIVE the score from the athlete's profile using a consistent rule so the same input always yields the same output (do not randomise). Every score is 0-100. Do NOT output findings, onCourt, or trainingPlan.`;
 
   return prompt;
 };
