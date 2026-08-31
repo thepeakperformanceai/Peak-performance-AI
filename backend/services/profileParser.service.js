@@ -102,6 +102,11 @@ const findHeaderLines = (text) => {
 const parseName = (text) => {
   // 1) "Patient:" / "Athlete:" label (appears on VALD detail pages)
   let name = firstMatch(text, [
+    // Test Input Sheet, labels glued to values by pdf-parse:
+    // "AthleteKamran HashmiAthlete IDPP-..."  -> name = "Kamran Hashmi"
+    /Athlete([A-Z][a-zA-Z.'-]+(?:\s+[A-Z][a-zA-Z.'-]+){0,3}?)(?:Athlete\s*ID|Sport|Date|Tester|ID\b)/,
+    // space-separated variant
+    /\bAthlete\s+([A-Z][a-zA-Z.'-]+(?:\s+[A-Z][a-zA-Z.'-]+){0,3}?)\s+(?:Athlete\s+ID|ID|Sport|Date|Tester)\b/,
     /\b(?:[Pp]atient|[Aa]thlete|[Cc]lient|[Pp]layer|[Nn]ame)\s*[:\-]\s*([A-Z][a-zA-Z.'-]+(?:\s+[A-Z][a-zA-Z.'-]+){0,4})/,
   ])
   if (name) return cleanName(name)
@@ -193,12 +198,20 @@ const parseProfileFromText = (text = '') => {
   // the word "sport" turning up incidentally in body prose (e.g. "...before
   // the demands of sport increase" would otherwise wrongly capture "Increase").
   const headerZone = t.split(/\n\s*\n/)[0] || t
-  const sport = firstMatch(headerZone, [/\bsport\s*[:\-]?\s*([A-Za-z]{2,30})/i])
+  const sport = firstMatch(headerZone, [
+    /\bsport\s*[:\-]\s*([A-Za-z]{2,30})/i,
+    // glued: "SportFootballDate..." -> capture up to next label word
+    /Sport([A-Z][a-z]{1,29}?)(?:Date|Tester|Athlete|ID)/,
+    /\bsport\s+([A-Za-z]{2,30}?)\s+(?:Date|Tester|Athlete|ID)\b/i,
+    /\bsport\s+([A-Za-z]{2,30})\b/i,
+  ])
 
   // ── Test date ──  "Last test: 9 June 2026" or "Test Date 4 June 2026"
   const testDate = firstMatch(t, [
     /\b(?:last test|test date|assessment date|date of (?:test|assessment))\s*[:\-]?\s*(\d{1,2}\s+[A-Za-z]+\s+\d{2,4})/i,
     /\b(?:last test|test date|assessment date)\s*[:\-]?\s*(\d{1,2}[\/\-.]\d{1,2}[\/\-.]\d{2,4})/i,
+    // glued or spaced ISO: "Date2026-03-20"
+    /Date\s*[:\-]?\s*(\d{4}-\d{1,2}-\d{1,2})/i,
   ])
 
   // ── Practitioner ──  "Practitioner: Faraz Khawaja" or "PractitionerFaraz Khawaja"
@@ -206,6 +219,9 @@ const parseProfileFromText = (text = '') => {
   // next line's text, e.g. a "Pakistan's ..." tagline right below it)
   const practitioner = firstMatch(t, [
     /\b[Pp]ractitioner\s*[:\-]?[ \t]*([A-Z][a-zA-Z.'-]+(?:[ \t]+[A-Z][a-zA-Z.'-]+){0,2})/,
+    /\b[Tt]ester\s*[:\-]?[ \t]*([A-Z][a-zA-Z.'-]+(?:[ \t]+[A-Z][a-zA-Z.'-]+){0,2})/,
+    // glued: "TesterPeakPerformance Staff"
+    /Tester([A-Z][a-zA-Z.'-]+(?:\s+[A-Z][a-zA-Z.'-]+){0,2})/,
   ])
 
   return {

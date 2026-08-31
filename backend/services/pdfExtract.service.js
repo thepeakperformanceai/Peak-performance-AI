@@ -9,7 +9,20 @@ const path = require('path');
 const extractPdfText = async (filePath) => {
   try {
     const dataBuffer = fs.readFileSync(filePath);
-    const data = await pdfParse(dataBuffer);
+    let data;
+    try {
+      data = await pdfParse(dataBuffer);
+    } catch (parseErr) {
+      const msg = (parseErr && parseErr.message || '').toLowerCase();
+      const structural = msg.includes('xref') || msg.includes('invalid') ||
+                         msg.includes('corrupt') || msg.includes('startxref') ||
+                         msg.includes('stream') || msg.includes('fetch');
+      if (structural) {
+        const vision = await visionExtract.transcribeScannedPdf(filePath);
+        return { text: vision.text, type: 'ManualIntake', pages: vision.pages || 1, scanned: true, header: vision.header, recovered: true };
+      }
+      throw parseErr;
+    }
     const text = data.text;
 
     // A scanned / handwritten sheet has no text layer — pdf-parse returns ~nothing.

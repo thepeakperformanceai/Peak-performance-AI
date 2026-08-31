@@ -75,7 +75,7 @@ const transcribeScannedPdf = async (filePath) => {
     );
   }
 
-  const model = process.env.GEMINI_VISION_MODEL || 'gemini-2.5-flash';
+  const model = process.env.GEMINI_VISION_MODEL || process.env.GEMINI_MODEL || 'gemini-3.6-flash';
   const base64 = fs.readFileSync(filePath).toString('base64');
 
   const response = await axios.post(
