@@ -7,7 +7,7 @@ import { authApi, apiError } from '../services/authApi'
 const page = { minHeight: '100vh', backgroundColor: '#06090e', padding: '40px 16px' }
 const card = { maxWidth: '640px', margin: '0 auto', backgroundColor: '#0e1823', border: '1px solid #172333', borderRadius: '16px', padding: '32px' }
 const btn = (d) => ({ width: '100%', padding: '13px', borderRadius: '10px', border: 'none', backgroundColor: '#ff4b12', color: '#0A0E13', fontWeight: 700, fontSize: '13px', fontFamily: "'IBM Plex Mono', monospace", cursor: d ? 'default' : 'pointer', opacity: d ? 0.6 : 1, marginTop: 18 })
-const SPORTS = ['Football', 'Padel', 'Strength & Conditioning', 'Other']
+const SPORTS = ['Football', 'Cricket', 'Padel', 'Strength & Conditioning', 'Other']
 
 export default function GenerateReportPage({ onGenerated, firstTime }) {
   const { user, logout } = useAuth()

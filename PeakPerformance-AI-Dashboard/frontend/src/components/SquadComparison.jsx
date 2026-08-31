@@ -75,7 +75,7 @@ export default function SquadComparison({
   onSexFilterChange,
   loading,
 }) {
-  const sports = ['All', 'Football', 'Padel', 'S&C']
+  const sports = ['All', 'Football', 'Cricket', 'Padel', 'S&C']
   const sexes = ['All', 'M', 'F']
 
   const cmjBars = squadData?.groupAverages?.CMJ || []

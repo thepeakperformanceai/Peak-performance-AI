@@ -5,7 +5,7 @@ const overlay = { position: 'fixed', inset: 0, backgroundColor: 'rgba(3,6,10,0.7
 const modal = { width: '100%', maxWidth: 440, backgroundColor: '#0e1823', border: '1px solid #172333', borderRadius: 16, padding: 26 }
 const input = { width: '100%', padding: '10px 12px', borderRadius: 10, backgroundColor: '#0b141f', border: '1px solid #1c2e42', color: '#e9eef2', fontSize: 14, outline: 'none', marginBottom: 11 }
 const label = { color: '#566e85', fontSize: 11, letterSpacing: 0.5, fontFamily: "'IBM Plex Mono', monospace", textTransform: 'uppercase', display: 'block', marginBottom: 4 }
-const SPORTS = ['Football', 'Padel', 'Strength & Conditioning', 'Other']
+const SPORTS = ['Football', 'Cricket', 'Padel', 'Strength & Conditioning', 'Other']
 const strong = (pw) => pw.length >= 8 && /[A-Z]/.test(pw) && /[^A-Za-z0-9]/.test(pw)
 
 export default function AddMemberModal({ onClose, onCreated }) {
