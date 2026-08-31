@@ -43,7 +43,10 @@ export default function MemberRoster({ members = [], selectedMemberId, onSelectM
           return (
             <button key={m.id} onClick={() => onSelectMember?.(m.id)}
               className={`grid grid-cols-6 gap-4 p-4 w-full text-left items-center border-b border-surface-variant transition-colors button-nav ${on ? 'bg-surface-container' : 'bg-surface hover:bg-surface-container-low'}`}>
-              <div className={`col-span-2 text-[14px] ${on ? 'text-ignite-orange' : 'text-chalk'}`} style={{ fontFamily: "'Inter', sans-serif" }}>{m.name}</div>
+              <div className="col-span-2">
+                <div className={`text-[14px] ${on ? 'text-ignite-orange' : 'text-chalk'}`} style={{ fontFamily: "'Inter', sans-serif" }}>{m.name}</div>
+                {m.email && <div className="text-[12px] text-chalk-dim mt-0.5" style={{ fontFamily: "'IBM Plex Mono', monospace" }}>{m.email}</div>}
+              </div>
               <div className="text-[14px] text-chalk-dim" style={{ fontFamily: "'JetBrains Mono', monospace" }}>{m.sex || '—'}</div>
               <div className="text-[14px] text-chalk-dim" style={{ fontFamily: "'JetBrains Mono', monospace" }}>{m.age ?? '—'}</div>
               <div className="text-[14px] text-chalk-dim" style={{ fontFamily: "'Inter', sans-serif" }}>{m.sport || '—'}</div>

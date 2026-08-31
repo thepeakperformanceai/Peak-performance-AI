@@ -94,4 +94,46 @@ const getSquadComparison = async (req, res, next) => {
   } catch (e) { next(e); }
 };
 
-module.exports = { createMember, getMembers, getMemberDetail, getSquadComparison, loadGymMembers };
+
+const isStrongPw = (pw) => pw && pw.length >= 8 && /[A-Z]/.test(pw) && /[^A-Za-z0-9]/.test(pw);
+
+// Resolve a member (by slug id or _id) within the owner's gym.
+const findGymMember = async (gymId, idParam) => {
+  const members = await loadGymMembers(gymId);
+  return members.find(m => m.id === idParam || String(m._id) === idParam) || null;
+};
+
+const deleteMember = async (req, res, next) => {
+  try {
+    const target = await findGymMember(req.user.gym, req.params.id);
+    if (!target) throw fail('Member not found in your gym.', 404);
+
+    // Remove the member's sessions, then the member — scoped to this gym.
+    await Session.deleteMany({ gym: req.user.gym, member: target._id });
+    await User.deleteOne({ _id: target._id, gym: req.user.gym, role: 'member' });
+
+    res.json({ message: 'Member deleted.' });
+  } catch (e) { next(e); }
+};
+
+const changeMemberPassword = async (req, res, next) => {
+  try {
+    const { password } = req.body;
+    if (!isStrongPw(password)) {
+      throw fail('Password must be at least 8 characters and include a capital letter and a special character.', 400);
+    }
+    const target = await findGymMember(req.user.gym, req.params.id);
+    if (!target) throw fail('Member not found in your gym.', 404);
+
+    const member = await User.findOne({ _id: target._id, gym: req.user.gym, role: 'member' });
+    if (!member) throw fail('Member not found in your gym.', 404);
+
+    member.password = password;            // hashed by the pre-save hook
+    member.mustChangePassword = false;
+    await member.save();
+
+    res.json({ message: 'Password updated.' });
+  } catch (e) { next(e); }
+};
+
+module.exports = { createMember, getMembers, getMemberDetail, getSquadComparison, loadGymMembers, deleteMember, changeMemberPassword };

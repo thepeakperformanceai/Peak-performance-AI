@@ -15,6 +15,7 @@ const buildMemberObject = (member, sessions) => {
     id: slugify(member.name) || String(member._id),
     _id: member._id,
     name: member.name,
+    email: member.email,
     sex: member.memberProfile?.sex || '',
     age: member.memberProfile?.age ?? (latest?.age ?? null),
     sport: member.memberProfile?.sport || latest?.sport || '',

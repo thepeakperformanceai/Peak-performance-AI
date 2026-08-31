@@ -27,6 +27,14 @@ export const apiService = {
     const { data } = await client.post('/gym/members', payload)
     return data
   },
+  async deleteMember(id) {
+    const { data } = await client.delete(`/gym/members/${id}`)
+    return data
+  },
+  async changeMemberPassword(id, password) {
+    const { data } = await client.patch(`/gym/members/${id}/password`, { password })
+    return data
+  },
 }
 
 export const apiError = (err, fallback = 'Something went wrong.') =>

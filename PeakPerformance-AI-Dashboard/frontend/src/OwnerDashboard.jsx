@@ -220,7 +220,11 @@ export default function OwnerDashboard() {
             />
 
             {selectedMemberId && (
-              <MemberDetail member={selectedMemberDetail} loading={loadingDetail} />
+              <MemberDetail
+                member={selectedMemberDetail}
+                loading={loadingDetail}
+                onDeleted={() => { setSelectedMemberId(null); setSelectedMemberDetail(null); loadRoster() }}
+              />
             )}
           </>
         )}
