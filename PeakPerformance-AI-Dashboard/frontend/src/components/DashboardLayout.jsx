@@ -83,8 +83,7 @@ export default function DashboardLayout({
           <div>
             <div className="mb-10">
               <h1 className="font-headline-md text-headline-md font-bold text-chalk">PeakPerformance</h1>
-              <p className="mt-2 font-label-caps text-xl text-chalk-dim">Test. Train. Perform.</p>
-              <p className="mt-1 font-body-sm text-body-sm text-chalk-dim">Elite Performance Lab</p>
+              <p className="mt-2 font-label-caps text-xl text-chalk-dim">Test. Train. Perform.</p>cd
             </div>
 
             <button

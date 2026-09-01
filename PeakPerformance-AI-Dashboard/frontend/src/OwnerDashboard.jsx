@@ -143,7 +143,6 @@ export default function OwnerDashboard() {
           <div className="mb-8">
             <p className="font-bold text-chalk tracking-tight text-[18px]" style={{ fontFamily: "'Space Grotesk', sans-serif" ,  }}>PeakPerformance</p>
             <p className="font-label-caps text-xl text-chalk-dim mt-2">Test. Train. Perform.</p>
-            <p className="text-[14px] text-chalk-dim mt-1">Elite Performance Lab</p>
           </div>
 
           <button
