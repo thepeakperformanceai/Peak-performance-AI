@@ -55,11 +55,7 @@ export default function OwnerDashboard() {
   const [rosterMembers, setRosterMembers] = useState([])
   const [selectedMemberId, setSelectedMemberId] = useState(null)
   const [selectedMemberDetail, setSelectedMemberDetail] = useState(null)
-  const [squadData, setSquadData] = useState(null)
-  const [sportFilter, setSportFilter] = useState('All')
-  const [sexFilter, setSexFilter] = useState('All')
   const [loadingRoster, setLoadingRoster] = useState(true)
-  const [loadingSquad, setLoadingSquad] = useState(true)
   const [loadingDetail, setLoadingDetail] = useState(false)
 
   const loadRoster = async () => {
@@ -78,19 +74,6 @@ export default function OwnerDashboard() {
   useEffect(() => {
     loadRoster()
   }, [])
-
-  useEffect(() => {
-    ;(async () => {
-      setLoadingSquad(true)
-      try {
-        setSquadData(await apiService.getSquadComparison(sportFilter, sexFilter))
-      } catch (e) {
-        console.error(e)
-      } finally {
-        setLoadingSquad(false)
-      }
-    })()
-  }, [sportFilter, sexFilter])
 
   useEffect(() => {
     if (!selectedMemberId) return
@@ -191,14 +174,7 @@ export default function OwnerDashboard() {
               loading={loadingRoster}
             />
 
-            <SquadComparison
-              squadData={squadData}
-              sportFilter={sportFilter}
-              sexFilter={sexFilter}
-              onSportFilterChange={setSportFilter}
-              onSexFilterChange={setSexFilter}
-              loading={loadingSquad}
-            />
+            <SquadComparison />
           </>
         )}
 
@@ -239,14 +215,7 @@ export default function OwnerDashboard() {
                 thinks about a squad.
               </p>
             </div>
-            <SquadComparison
-              squadData={squadData}
-              sportFilter={sportFilter}
-              sexFilter={sexFilter}
-              onSportFilterChange={setSportFilter}
-              onSexFilterChange={setSexFilter}
-              loading={loadingSquad}
-            />
+            <SquadComparison />
           </>
         )}
 

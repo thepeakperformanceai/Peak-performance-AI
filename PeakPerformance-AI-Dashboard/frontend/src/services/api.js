@@ -15,8 +15,11 @@ export const apiService = {
     const { data } = await client.get('/gym/members')
     return data
   },
-  async getSquadComparison(sport = 'All', sex = 'All') {
-    const { data } = await client.get('/gym/squad-comparison', { params: { sport, sex } })
+  async getSquadComparison(sport, test) {
+    const params = {}
+    if (sport) params.sport = sport
+    if (test) params.test = test
+    const { data } = await client.get('/gym/squad-comparison', { params })
     return data
   },
   async getMemberDetail(id) {

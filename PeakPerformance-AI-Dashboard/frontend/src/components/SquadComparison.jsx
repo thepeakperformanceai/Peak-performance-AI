@@ -1,194 +1,129 @@
-import React from 'react'
+import React, { useState, useEffect } from 'react'
+import { apiService } from '../services/api'
 
-function FilterPill({ label, active, onClick }) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className={`px-4 py-1.5 rounded-full font-small tracking-[0.1em] uppercase uppercase transition-colors ${
-        active
-          ? 'border border-ignite-orange text-ignite-orange bg-transparent'
-          : 'border border-surface-variant text-chalk-dim hover:border-chalk-dim'
-      }`}
-    >
-      {label}
-    </button>
-  )
-}
+const ORANGE = '#FF4B12', VOID = '#0A0A0C', SURFACE = '#131315', BORDER = '#353437'
+const CHALK = '#F4F3EF', DIM = '#A8A8AD', FAINT = '#5b5b5f', TEAL = '#39d0c8'
+const MONO = { fontFamily: "'IBM Plex Mono', monospace" }
+const SG = { fontFamily: "'Space Grotesk', sans-serif" }
+const INTER = { fontFamily: "'Inter', sans-serif" }
 
-function MetricCard({ label, value, unit }) {
-  return (
-    <div className="bg-surface-container-lowest border border-surface-variant rounded-lg p-6">
-      <h4 className="font-small tracking-[0.1em] uppercase text-chalk-dim uppercase mb-4">{label}</h4>
-      <div className="flex items-baseline gap-2">
-        <span className="text-4xl font-bold font-mono text-chalk">{value}</span>
-        {unit && <span className="font-mono text-chalk-dim">{unit}</span>}
-      </div>
+const Panel = ({ label, children }) => (
+  <div className="rounded-lg border p-5" style={{ background: SURFACE, borderColor: BORDER }}>
+    <p className="text-[11px] tracking-[0.1em] uppercase mb-3" style={{ ...MONO, color: FAINT }}>{label}</p>
+    {children}
+  </div>
+)
+
+const Stat = ({ value, unit = '/100', sub }) => (
+  <div>
+    <div className="flex items-end gap-1">
+      <span className="text-[36px] leading-none font-bold" style={{ ...SG, color: CHALK }}>{value ?? '—'}</span>
+      {value != null && <span className="text-[13px] mb-1" style={{ ...MONO, color: DIM }}>{unit}</span>}
     </div>
-  )
-}
+    {sub && <p className="text-[12px] mt-2" style={{ ...INTER, color: DIM }}>{sub}</p>}
+  </div>
+)
 
-function ChartPlaceholder({ title, bars }) {
-  const hasData = bars && bars.length > 0
+const Bar = ({ label, value, color = ORANGE, count }) => (
+  <div className="mb-3 last:mb-0">
+    <div className="flex justify-between items-center mb-1">
+      <span className="text-[13px]" style={{ ...INTER, color: CHALK }}>{label}{count != null && <span style={{ color: FAINT }}> · {count}</span>}</span>
+      <span className="text-[13px] font-bold" style={{ ...SG, color: CHALK }}>{value ?? '—'}</span>
+    </div>
+    <div className="h-2 rounded" style={{ background: '#1c1e22' }}>
+      <div className="h-full rounded" style={{ width: `${Math.min(100, value || 0)}%`, background: color }} />
+    </div>
+  </div>
+)
+
+export default function SquadComparison() {
+  const [data, setData] = useState(null)
+  const [sport, setSport] = useState(null)
+  const [test, setTest] = useState(null)
+  const [loading, setLoading] = useState(true)
+
+  const load = async (sp, ts) => {
+    setLoading(true)
+    try {
+      const d = await apiService.getSquadComparison(sp, ts)
+      setData(d); setSport(d.sport); setTest(d.test)
+    } catch (e) { console.error(e) } finally { setLoading(false) }
+  }
+  useEffect(() => { load() }, [])
+
+  const onSport = (sp) => { setSport(sp); setTest(null); load(sp, null) }
+  const onTest = (ts) => { setTest(ts); load(sport, ts) }
+
+  const sports = data?.sports || []
+  const tests = data?.tests || []
+  const unit = data?.unit || '/100'
 
   return (
-    <div>
-      <p className="text-[14px] text-chalk-dim mb-2">{title}</p>
-      {hasData ? (
+    <section className="rounded-lg border p-6 md:p-8 mb-16" style={{ background: VOID, borderColor: BORDER }}>
+      <h3 className="text-[24px] md:text-[28px] font-bold mb-2" style={{ ...SG, color: CHALK }}>Compare Members</h3>
+      <p className="text-[14px] mb-6" style={{ ...INTER, color: DIM }}>
+        Pick a sport and a test (manual or DynaMo) to see how that squad performs — overall, by sex, and by age.
+      </p>
+
+      <div className="flex items-center gap-3 flex-wrap mb-4">
+        <span className="text-[12px] tracking-[0.1em] uppercase" style={{ ...MONO, color: FAINT }}>Sport</span>
+        {sports.length === 0 && !loading && <span className="text-[13px]" style={{ ...INTER, color: DIM }}>No members yet.</span>}
+        {sports.map(sp => {
+          const on = sp === sport
+          return (
+            <button key={sp} onClick={() => onSport(sp)}
+              className="text-[13px] px-4 py-1.5 rounded-full border transition-colors"
+              style={{ ...INTER, borderColor: on ? ORANGE : BORDER, color: on ? ORANGE : DIM, background: 'transparent' }}>
+              {sp === 'Strength & Conditioning' ? 'S&C' : sp}
+            </button>
+          )
+        })}
+      </div>
+
+      <div className="flex items-center gap-3 flex-wrap mb-6">
+        <span className="text-[12px] tracking-[0.1em] uppercase" style={{ ...MONO, color: FAINT }}>Test</span>
+        <select value={test || ''} onChange={(e) => onTest(e.target.value)}
+          className="text-[14px] px-4 py-2 rounded-lg outline-none"
+          style={{ ...INTER, background: SURFACE, border: `1px solid ${BORDER}`, color: CHALK, minWidth: 300 }}>
+          {tests.map(t => <option key={t} value={t}>{t}</option>)}
+        </select>
+      </div>
+
+      {loading ? (
+        <p className="text-[13px] py-8 text-center" style={{ ...MONO, color: DIM }}>Loading…</p>
+      ) : !data || data.testedCount === 0 ? (
+        <div className="rounded-lg border p-8 text-center" style={{ background: SURFACE, borderColor: BORDER }}>
+          <p className="text-[14px]" style={{ ...INTER, color: DIM }}>
+            No members in {sport === 'Strength & Conditioning' ? 'S&C' : sport} have a result for “{test}” yet.
+          </p>
+        </div>
+      ) : (
         <>
-          <div className="flex items-end justify-between gap-3 px-2 h-40 border-b border-l border-surface-variant border-dashed opacity-80">
-            {bars.map((b, idx) => {
-              const heightPercent = Math.min((b.value / 40) * 100, 100)
-              return (
-                <div key={idx} className="flex flex-col items-center flex-1 h-full justify-end">
-                  <div className="font-mono text-chalk-dim text-sm mb-2">{b.value}</div>
-                  <div
-                    className="w-full bg-ignite-orange rounded-t"
-                    style={{ height: `${heightPercent}%`, minHeight: b.value > 0 ? '4px' : 0 }}
-                  />
-                </div>
-              )
-            })}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+            <Panel label={`Squad average · ${test}`}>
+              <Stat value={data.overallAvg} unit={unit} sub={`${data.testedCount} of ${data.totalInSport} tested`} />
+            </Panel>
+            <Panel label="Best performer">
+              {data.best ? <Stat value={data.best.score} unit={unit} sub={`${data.best.name}${data.best.raw ? ` · ${data.best.raw}` : ''}`} /> : <Stat value={null} />}
+            </Panel>
+            <Panel label="Needs work">
+              {data.worst ? <Stat value={data.worst.score} unit={unit} sub={`${data.worst.name}${data.worst.raw ? ` · ${data.worst.raw}` : ''}`} /> : <Stat value={null} />}
+            </Panel>
           </div>
-          <div className="flex justify-between font-mono mt-2 px-2 text-chalk-dim font-small">
-            {bars.map((b, idx) => (
-              <div key={idx} className="flex-1 text-center">
-                {b.shortName}
-              </div>
-            ))}
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <Panel label={`Male vs Female (avg ${unit === 'LSI %' ? 'LSI' : 'score'})`}>
+              <Bar label="Male" value={data.maleAvg} count={data.maleCount} color={ORANGE} />
+              <Bar label="Female" value={data.femaleAvg} count={data.femaleCount} color={TEAL} />
+            </Panel>
+            <Panel label={`By age group (avg ${unit === 'LSI %' ? 'LSI' : 'score'})`}>
+              {data.ageBreakdown.length === 0
+                ? <p className="text-[13px]" style={{ ...INTER, color: DIM }}>No age data.</p>
+                : data.ageBreakdown.map(g => <Bar key={g.group} label={g.group} value={g.avg} count={g.count} />)}
+            </Panel>
           </div>
         </>
-      ) : (
-        <div className="h-40 border-b border-l border-surface-variant border-dashed opacity-50 flex items-end justify-center pb-4">
-          <span className="font-small tracking-[0.1em] uppercase text-chalk-dim uppercase">No data</span>
-        </div>
       )}
-    </div>
-  )
-}
-
-export default function SquadComparison({
-  squadData,
-  sportFilter,
-  sexFilter,
-  onSportFilterChange,
-  onSexFilterChange,
-  loading,
-}) {
-  const sports = ['All', 'Football', 'Cricket', 'Padel', 'S&C']
-  const sexes = ['All', 'M', 'F']
-
-  const cmjBars = squadData?.groupAverages?.CMJ || []
-  const asymBars = squadData?.groupAverages?.Asymmetry || []
-
-  return (
-    <div className="mb-section-margin">
-      <div className="mb-8">
-        <p className="font-small tracking-[0.1em] uppercase text-chalk-dim uppercase mb-2">-- SQUAD COMPARISON</p>
-        <h3 className="text-[24px] md:text-[32px] font-bold text-chalk mb-2" style={{ fontFamily: "'Space Grotesk', sans-serif" }}>
-          Compare Members
-        </h3>
-        <p className="text-[16px] text-chalk-dim max-w-2xl">
-          Filter by sport or sex to see how sub-groups are trending — same data, sliced the way a coach actually thinks
-          about a squad.
-        </p>
-      </div>
-
-      <div className="bg-surface border border-surface-variant rounded-lg p-6 md:p-8">
-        {/* Filters */}
-        <div className="flex flex-wrap items-center gap-6 mb-8 border-b border-surface-variant pb-6">
-          <div className="flex items-center gap-4">
-            <span className="font-small tracking-[0.1em] uppercase text-chalk-dim uppercase">Sport</span>
-            <div className="flex gap-2 flex-wrap">
-              {sports.map((sp) => (
-                <FilterPill
-                  key={sp}
-                  label={sp}
-                  active={sportFilter === sp}
-                  onClick={() => onSportFilterChange(sp)}
-                />
-              ))}
-            </div>
-          </div>
-          <div className="flex items-center gap-4">
-            <span className="font-small tracking-[0.1em] uppercase text-chalk-dim uppercase">Sex</span>
-            <div className="flex gap-2">
-              {sexes.map((sx) => (
-                <FilterPill
-                  key={sx}
-                  label={sx}
-                  active={sexFilter === sx}
-                  onClick={() => onSexFilterChange(sx)}
-                />
-              ))}
-            </div>
-          </div>
-        </div>
-
-        {/* Metric cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-          <MetricCard label="Members" value={loading ? '…' : (squadData?.totalMembers ?? 0)} />
-          <MetricCard label="Avg CMJ Height" value={loading ? '…' : (squadData?.avgCMJ ?? 0)} unit="cm" />
-          <MetricCard label="Avg Grip Strength" value={loading ? '…' : (squadData?.avgGrip ?? 0)} unit="kg" />
-          <MetricCard label="Avg Landing Asym." value={loading ? '…' : (squadData?.avgAsym ?? 0)} unit="%" />
-        </div>
-
-        {/* Charts */}
-        <div className="border border-surface-variant rounded-lg p-6 mb-8 min-h-64 flex flex-col relative overflow-hidden bg-surface-container-lowest">
-          <h4 className="font-small tracking-[0.1em] uppercase text-chalk-dim uppercase mb-6 z-10 relative">
-            Group Averages by Sport (Latest Session, All Members)
-          </h4>
-          <div className="flex-1 grid grid-cols-1 md:grid-cols-2 gap-8 z-10 relative">
-            <ChartPlaceholder title="Avg. CMJ Height (cm)" bars={cmjBars} />
-            <ChartPlaceholder title="Avg. Landing Asymmetry (%)" bars={asymBars} />
-          </div>
-          <div className="absolute inset-0 bg-gradient-to-tr from-surface-container-lowest to-surface opacity-30 pointer-events-none" />
-        </div>
-
-        {/* Comparison table */}
-        <div className="border border-surface-variant rounded-lg overflow-hidden">
-          <div className="grid grid-cols-7 gap-4 p-4 border-b border-surface-variant bg-surface-container-lowest font-small tracking-[0.1em] uppercase text-chalk-dim uppercase overflow-x-auto whitespace-nowrap">
-            <div className="col-span-2">Member</div>
-            <div>Sex</div>
-            <div>Age</div>
-            <div>Sport</div>
-            <div className="font-mono">Latest CMJ</div>
-            <div className="font-mono">Latest Grip</div>
-            <div className="font-mono">Latest Asym.</div>
-          </div>
-
-          {loading ? (
-            <div className="p-8 text-center bg-surface">
-              <p className="text-[14px] text-chalk-dim font-small tracking-[0.1em] uppercase uppercase">Filtering squad members…</p>
-            </div>
-          ) : squadData?.members?.length === 0 ? (
-            <div className="p-8 text-center bg-surface">
-              <p className="text-[14px] text-chalk-dim font-small tracking-[0.1em] uppercase uppercase">
-                No members found matching selected filters.
-              </p>
-            </div>
-          ) : (
-            squadData?.members?.map((m) => (
-              <div
-                key={m.id}
-                className="grid grid-cols-7 gap-4 p-4 border-b border-surface-variant last:border-b-0 bg-surface items-center"
-              >
-                <div className="col-span-2 text-[14px] font-semibold text-chalk">{m.name}</div>
-                <div className="font-mono text-body-sm text-chalk-dim">{m.sex}</div>
-                <div className="font-mono text-body-sm text-chalk-dim">{m.age}</div>
-                <div>
-                  <span className="w-full text-center py-1.5 rounded-full border border-surface-variant text-chalk-dim font-small tracking-[0.1em] uppercase inline-block">
-                    {m.sport}
-                  </span>
-                </div>
-                <div className="font-mono text-body-sm text-chalk-dim">{m.latestCMJ} cm</div>
-                <div className="font-mono text-body-sm text-chalk-dim">{m.latestGrip} kg</div>
-                <div className="font-mono text-body-sm text-chalk-dim">{m.latestAsym}%</div>
-              </div>
-            ))
-          )}
-        </div>
-      </div>
-    </div>
+    </section>
   )
 }

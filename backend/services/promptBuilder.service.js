@@ -5,6 +5,8 @@
 const MAX_PDF_CHARS = 5000  // ~1500 tokens per PDF; tune as needed
 
 const trim = (text = '') =>
+
+
   text.length > MAX_PDF_CHARS
     ? text.slice(0, MAX_PDF_CHARS) + '\n...[truncated]'
     : text
@@ -15,7 +17,7 @@ Return ONLY one valid JSON object. No markdown, no code fences, no text before o
 
 You are given an athlete profile and whatever assessment data is available. Where a raw value is present, use it exactly. Where a raw value is NOT present, DERIVE a score using a consistent rule: map the athlete's age, sport, position, and training level to a typical benchmark value for that profile, the same way every time. This is a rule-based performance card — for identical input you MUST output identical numbers. Never leave a score blank; always output a full card.
 
-OUTPUT THIS EXACT SHAPE:
+OUTPUT THIS EXACT SHAPE (the test names shown are FOOTBALL examples — replace them with the sport-specific tests given in the user message):
 
 {
   "athleteName": "Full Name",
@@ -73,13 +75,44 @@ RULES:
 - All scores are 0-100 integers. overallOVR = rounded average of the six ovrScores.
 - ovrScores MUST have exactly these six: Speed, Agility, Power, Endurance, Reaction, Balance.
 - manualBattery: the six standard tests above. "raw" = the athlete's result (real if in the data, else a realistic estimate for their profile); "avg" = the benchmark band string; "score" = 0-100 mapped to how the raw compares to the band.
-- dynamoStrength: if DynaMo/isometric data present use it; else estimate left/right forces and compute lsi = round(min/max * 100, 1). status = "WITHIN RANGE" if lsi >= 90 else "REVIEW".
+- dynamoStrength: use EXACTLY the sport-specific joints named in "REQUIRED TEST BATTERY FOR THIS SPORT". If DynaMo/isometric data present use it; else estimate left/right forces and compute lsi = round(min/max * 100, 1). status = "WITHIN RANGE" if lsi >= 90 else "REVIEW".
 - symmetrySummary.lowest = the joint with the lowest lsi. flag/recommendation follow the 90% rule.
 - fieldMeaning.stats MUST cover all six OVR stats, each with tag one of STRENGTH / SOLID / WATCH / PRIORITY (PRIORITY = lowest, tag the top two as STRENGTH), and a 1-2 sentence sport-specific body written for the athlete's actual sport.
 - developmentPriority = the name of the lowest-scoring stat.
 - playerProfile = one line describing how this profile shows up in their sport.
 - Derive every number DETERMINISTICALLY from the athlete's profile and any real data provided. The SAME input must always produce the SAME scores — do not randomise, vary, or add creative spread. The example values above are only a format guide; base actual numbers strictly on this athlete's age, sport, position, training level, and any measured values.
 - Output JSON only. Double quotes, no trailing commas.`;
+
+
+// Sport-specific test batteries (from PeakPerformance protocol).
+// The manual battery + DynaMo joints differ per sport — the report MUST use the
+// correct set for the athlete's sport, not a generic Football list.
+const SPORT_BATTERY = {
+  Football: {
+    manual: ['30m Sprint (0-30m)', 'Illinois Agility Test', 'Standing Broad Jump', 'Single Leg Stand (Eyes Closed)', 'Ruler Drop Test', 'Beep Test'],
+    dynamo: ['Hip Extension', 'Knee Extension', 'Ankle Plantarflexion'],
+  },
+  Cricket: {
+    manual: ['30m Sprint (0-30m)', '5-10-5 Pro Agility Shuttle', 'Medicine Ball Chest Throw', 'Single Leg Stand (Eyes Closed)', 'Ruler Drop Test', 'Yo-Yo Intermittent Recovery Test'],
+    dynamo: ['Shoulder External Rotation', 'Shoulder Internal Rotation', 'Elbow Extension', 'Hip Extension'],
+  },
+  Padel: {
+    manual: ['10m Sprint', 'T-Test', 'Medicine Ball Overhead Throw', 'Single Leg Stand (Eyes Closed)', 'Wall Toss Reaction Test', '12-Minute Cooper Run'],
+    dynamo: ['Shoulder External Rotation', 'Shoulder Internal Rotation', 'Wrist Flexion', 'Hip Abduction'],
+  },
+  Rowing: {
+    manual: ['Erg 100m Sprint', 'Seated Trunk Rotation Range', 'Erg 6-Stroke Max Power Test', 'Single Leg Stand (Eyes Closed)', 'Ruler Drop Test', 'Erg 2000m Time Trial'],
+    dynamo: ['Knee Extension', 'Hip Extension', 'Scapula Retraction'],
+  },
+};
+
+// Normalise a sport string to a battery key (handles "Strength & Conditioning",
+// "General Fitness", casing, etc. — falls back to Football's general athletic set).
+const batteryForSport = (sport) => {
+  const key = Object.keys(SPORT_BATTERY).find(k => (sport || '').toLowerCase().includes(k.toLowerCase()));
+  return SPORT_BATTERY[key] || SPORT_BATTERY.Football;
+};
+
 
 /**
  * Builds the system prompt
@@ -103,6 +136,16 @@ const buildUserPrompt = (athleteProfile, pdfData, exercises) => {
   prompt += `- Training Level: ${athleteProfile.trainingLevel || 'N/A'}\n`;
   prompt += `- Known Injuries: ${athleteProfile.knownInjuries || 'None'}\n`;
   prompt += `- Test Date: ${athleteProfile.testDate || 'N/A'}\n`;
+
+  // Tell the AI EXACTLY which tests belong to this athlete's sport, so the
+  // manual battery + DynaMo joints match the sport (not a generic Football list).
+  const battery = batteryForSport(athleteProfile.sport);
+  prompt += `\nREQUIRED TEST BATTERY FOR THIS SPORT (${athleteProfile.sport || 'General'}):\n`;
+  prompt += `- manualBattery MUST use EXACTLY these six manual tests, in this order:\n`;
+  battery.manual.forEach((t, i) => { prompt += `  ${i + 1}. ${t}\n`; });
+  prompt += `- dynamoStrength MUST use EXACTLY these joints:\n`;
+  battery.dynamo.forEach((j) => { prompt += `  - ${j}\n`; });
+  prompt += `Do NOT substitute tests from another sport. Use the athlete's real values where present, otherwise derive them. The example JSON below is only a FORMAT guide — its Football test names must be replaced with the ${athleteProfile.sport || 'sport'} tests listed here.\n`;
 
   // Add custom parameters if any
   if (athleteProfile.customParams && Object.keys(athleteProfile.customParams).length > 0) {
