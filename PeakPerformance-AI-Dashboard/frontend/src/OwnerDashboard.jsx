@@ -5,6 +5,7 @@ import MemberDetail from './components/MemberDetail'
 import AddMemberModal from './components/AddMemberModal'
 import { apiService } from './services/api'
 import { useAuth } from './context/AuthContext'
+import { ThemeToggle } from './context/ThemeContext'
 
 const NAV = [
   { id: 'dashboard', label: 'Dashboard', icon: 'dashboard' },
@@ -109,6 +110,7 @@ export default function OwnerDashboard() {
       >
         Log out
       </button>
+      <ThemeToggle />
     </>
   )
 

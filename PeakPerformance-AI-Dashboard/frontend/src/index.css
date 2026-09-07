@@ -1,18 +1,18 @@
 @import "tailwindcss";
 
 @theme {
-  --color-void: #0A0A0C;
-  --color-chalk: #F4F3EF;
-  --color-chalk-dim: #A8A8AD;
+  --color-void: var(--pp-bg);
+  --color-chalk: var(--pp-text);
+  --color-chalk-dim: var(--pp-text-dim);
   --color-ignite-orange: #FF4B12;
-  --color-surface: #131315;
-  --color-surface-variant: #353437;
-  --color-surface-container-lowest: #0e0e10;
-  --color-surface-container-low: #1c1b1d;
-  --color-surface-container: #201f21;
-  --color-surface-container-high: #2a2a2c;
-  --color-surface-dim: #131315;
-  --color-background: #131315;
+  --color-surface: var(--pp-surface);
+  --color-surface-variant: var(--pp-border);
+  --color-surface-container-lowest: var(--pp-surface-2);
+  --color-surface-container-low: var(--pp-surface-3);
+  --color-surface-container: var(--pp-surface-3);
+  --color-surface-container-high: var(--pp-surface-3);
+  --color-surface-dim: var(--pp-surface);
+  --color-background: var(--pp-bg);
 
   --font-headline-md: "Space Grotesk", sans-serif;
   --font-headline-lg: "Space Grotesk", sans-serif;
@@ -125,3 +125,39 @@ button {
 .button-nav {
   border-radius: 0px !important;
 }
+/* ============================================================
+   Runtime theme variables (dark default + light override).
+   Components reference these via var(--pp-*), so a single
+   data-theme flip on <html> switches the whole dashboard.
+   ============================================================ */
+:root, html[data-theme="dark"] {
+  --pp-bg:            #0A0A0C;  /* page background (void) */
+  --pp-surface:       #131315;  /* cards */
+  --pp-surface-2:     #0e0e10;  /* sidebar / lowest */
+  --pp-surface-3:     #201f21;  /* raised / hover */
+  --pp-border:        #353437;
+  --pp-text:          #F4F3EF;  /* chalk */
+  --pp-text-dim:      #A8A8AD;
+  --pp-text-faint:    #5b5b5f;
+  --pp-track:         #1c1e22;  /* bar tracks */
+  --pp-orange:        #FF4B12;
+  --pp-on-orange:     #0A0A0C;  /* text on orange buttons */
+  --pp-teal:          #39d0c8;
+}
+
+html[data-theme="light"] {
+  --pp-bg:            #ffffff;
+  --pp-surface:       #f6f6f4;
+  --pp-surface-2:     #efeeec;
+  --pp-surface-3:     #e7e6e3;
+  --pp-border:        #d9d8d4;
+  --pp-text:          #16151a;
+  --pp-text-dim:      #5c5b62;
+  --pp-text-faint:    #8a8992;
+  --pp-track:         #e2e1de;
+  --pp-orange:        #FF4B12;
+  --pp-on-orange:     #ffffff;
+  --pp-teal:          #12a89f;
+}
+
+html, body { background: var(--pp-bg); color: var(--pp-text); transition: background-color .2s ease, color .2s ease; }

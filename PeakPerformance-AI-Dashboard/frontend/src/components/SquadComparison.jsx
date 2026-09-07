@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react'
 import { apiService } from '../services/api'
 
-const ORANGE = '#FF4B12', VOID = '#0A0A0C', SURFACE = '#131315', BORDER = '#353437'
-const CHALK = '#F4F3EF', DIM = '#A8A8AD', FAINT = '#5b5b5f', TEAL = '#39d0c8'
+const ORANGE = 'var(--pp-orange)', VOID = 'var(--pp-bg)', SURFACE = 'var(--pp-surface)', BORDER = 'var(--pp-border)'
+const CHALK = 'var(--pp-text)', DIM = 'var(--pp-text-dim)', FAINT = 'var(--pp-text-faint)', TEAL = 'var(--pp-teal)'
 const MONO = { fontFamily: "'IBM Plex Mono', monospace" }
 const SG = { fontFamily: "'Space Grotesk', sans-serif" }
 const INTER = { fontFamily: "'Inter', sans-serif" }
@@ -30,7 +30,7 @@ const Bar = ({ label, value, color = ORANGE, count }) => (
       <span className="text-[13px]" style={{ ...INTER, color: CHALK }}>{label}{count != null && <span style={{ color: FAINT }}> · {count}</span>}</span>
       <span className="text-[13px] font-bold" style={{ ...SG, color: CHALK }}>{value ?? '—'}</span>
     </div>
-    <div className="h-2 rounded" style={{ background: '#1c1e22' }}>
+    <div className="h-2 rounded" style={{ background: 'var(--pp-track)' }}>
       <div className="h-full rounded" style={{ width: `${Math.min(100, value || 0)}%`, background: color }} />
     </div>
   </div>

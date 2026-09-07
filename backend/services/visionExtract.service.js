@@ -66,6 +66,29 @@ const stripFences = (s) => s.replace(/```json\s*|\s*```/g, '').trim();
 /**
  * @returns {Promise<{ text: string, header: object, structured: object }>}
  */
+// Compact fallback: when the full transcription is too long, just pull the
+// header fields the autofill actually needs.
+const VISION_HEADER_PROMPT = `From this sports-science assessment sheet, extract ONLY the header fields. Return ONLY this JSON (no markdown, no prose):
+{ "header": { "athleteName": "", "sport": "", "date": "", "age": "", "academy": "", "testedBy": "" } }`;
+
+const callVision = async (apiKey, model, base64, promptText, maxTokens) => {
+  const response = await axios.post(
+    `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`,
+    {
+      contents: [{
+        role: 'user',
+        parts: [
+          { inlineData: { mimeType: 'application/pdf', data: base64 } },
+          { text: promptText }
+        ]
+      }],
+      generationConfig: { temperature: 0, responseMimeType: 'application/json', maxOutputTokens: maxTokens }
+    },
+    { headers: { 'x-goog-api-key': apiKey, 'Content-Type': 'application/json' }, timeout: 60000 }
+  );
+  return response.data?.candidates?.[0];
+};
+
 const transcribeScannedPdf = async (filePath) => {
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) {
@@ -78,32 +101,19 @@ const transcribeScannedPdf = async (filePath) => {
   const model = process.env.GEMINI_VISION_MODEL || process.env.GEMINI_MODEL || 'gemini-3.6-flash';
   const base64 = fs.readFileSync(filePath).toString('base64');
 
-  const response = await axios.post(
-    `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`,
-    {
-      contents: [{
-        role: 'user',
-        parts: [
-          { inlineData: { mimeType: 'application/pdf', data: base64 } },
-          { text: VISION_PROMPT }
-        ]
-      }],
-      generationConfig: {
-        temperature: 0,                         // transcription must be deterministic
-        responseMimeType: 'application/json',
-        maxOutputTokens: 4000
-      }
-    },
-    {
-      headers: { 'x-goog-api-key': apiKey, 'Content-Type': 'application/json' },
-      timeout: 60000
-    }
-  );
-
-  const candidate = response.data?.candidates?.[0];
+  // 1) Try the full transcription (header + all test rows).
+  let candidate = await callVision(apiKey, model, base64, VISION_PROMPT, 16000);
   if (!candidate) throw new Error('Vision extraction returned no result.');
+
+  // 2) If the sheet was too long and got cut off, fall back to header-only so
+  //    autofill still works (it only needs the profile fields).
   if (candidate.finishReason === 'MAX_TOKENS') {
-    throw new Error('Vision extraction was cut off before finishing. The sheet may have too many rows.');
+    const headerOnly = await callVision(apiKey, model, base64, VISION_HEADER_PROMPT, 1500);
+    if (headerOnly && headerOnly.finishReason !== 'MAX_TOKENS') {
+      candidate = headerOnly;
+    } else {
+      throw new Error('Vision extraction was cut off before finishing. The sheet may have too many rows.');
+    }
   }
 
   const raw = candidate.content?.parts?.[0]?.text || '';

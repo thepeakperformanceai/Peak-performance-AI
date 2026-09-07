@@ -7,11 +7,7 @@ import { useParamStore } from '../store/paramStore'
 import { sanitizeInput } from '../utils/sanitize'
 
 
-const SPORTS = [
-  'Cricket', 'Football', 'Basketball', 'Athletics',
-  'Swimming', 'Tennis', 'Rugby', 'Volleyball',
-  'Martial Arts', 'General Fitness', 'Other',
-]
+const SPORTS = ['Football', 'Cricket', 'Padel']
 
 const STEPS = [
   { num: 1, label: 'Upload files' },
@@ -49,7 +45,7 @@ export default function UploadPage({ onReportGenerated }) {
   const enabledParams           = useParamStore(s => s.params.filter(p => p.enabled))
 
   const [form, setForm] = useState({
-    name: '', age: '', sport: 'General Fitness',
+    name: '', age: '', sport: 'Football',
     position: '', trainingLevel: 'Semi-Professional',
     knownInjuries: '',
   })
