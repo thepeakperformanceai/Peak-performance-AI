@@ -55,7 +55,7 @@ export default function LoginPage() {
   return (
     <div style={wrap}>
       <div style={card}>
-        <div className="mb-4 text-center"><Logo width={190} height={58} /></div>
+
 
         {/* Tabs */}
         <div style={{ display: 'flex', marginBottom: 22 }}>
