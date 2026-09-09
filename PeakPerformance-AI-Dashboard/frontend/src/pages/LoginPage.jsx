@@ -4,16 +4,16 @@ import { useAuth } from '../context/AuthContext'
 import { apiError } from '../services/authApi'
 import PasswordInput from '../components/PasswordInput'
 
-const wrap = { minHeight: '100vh', backgroundColor: '#06090e', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '24px' }
-const card = { width: '100%', maxWidth: '400px', backgroundColor: '#0e1823', border: '1px solid #172333', borderRadius: '16px', padding: '30px' }
-const input = { width: '100%', padding: '11px 12px', borderRadius: '10px', backgroundColor: '#0b141f', border: '1px solid #1c2e42', color: '#e9eef2', fontSize: '14px', fontFamily: "'Inter', sans-serif", outline: 'none', marginBottom: '12px' }
-const btn = (d) => ({ width: '100%', padding: '12px', borderRadius: '10px', border: 'none', backgroundColor: '#ff4b12', color: '#0A0E13', fontWeight: 700, fontSize: '13px', fontFamily: "'IBM Plex Mono', monospace", cursor: d ? 'default' : 'pointer', opacity: d ? 0.6 : 1, marginTop: '6px' })
+const wrap = { minHeight: '100vh', backgroundColor: 'var(--pp-bg)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '24px' }
+const card = { width: '100%', maxWidth: '400px', backgroundColor: 'var(--pp-surface)', border: '1px solid var(--pp-border)', borderRadius: '16px', padding: '30px' }
+const input = { width: '100%', padding: '11px 12px', borderRadius: '10px', backgroundColor: 'var(--pp-surface-2)', border: '1px solid var(--pp-border)', color: 'var(--pp-text)', fontSize: '14px', fontFamily: "'Inter', sans-serif", outline: 'none', marginBottom: '12px' }
+const btn = (d) => ({ width: '100%', padding: '12px', borderRadius: '10px', border: 'none', backgroundColor: 'var(--pp-orange)', color: 'var(--pp-on-orange)', fontWeight: 700, fontSize: '13px', fontFamily: "'IBM Plex Mono', monospace", cursor: d ? 'default' : 'pointer', opacity: d ? 0.6 : 1, marginTop: '6px' })
 
 const tabBtn = (active) => ({
   flex: 1, padding: '10px', border: 'none', cursor: 'pointer',
-  backgroundColor: active ? '#0e1823' : 'transparent',
-  color: active ? '#ff4b12' : '#8b99a6',
-  borderBottom: active ? '2px solid #ff4b12' : '2px solid #172333',
+  backgroundColor: active ? 'var(--pp-surface)' : 'transparent',
+  color: active ? 'var(--pp-orange)' : 'var(--pp-text-dim)',
+  borderBottom: active ? '2px solid var(--pp-orange)' : '2px solid var(--pp-border)',
   fontFamily: "'IBM Plex Mono', monospace", fontSize: '12px', fontWeight: 600, letterSpacing: '0.5px'
 })
 
@@ -63,10 +63,10 @@ export default function LoginPage() {
           <button className="button-nav" style={tabBtn(tab === 'owner')} onClick={() => { setTab('owner'); reset() }}>GYM OWNER</button>
         </div>
 
-        <h1 className="font-space" style={{ fontSize: '1.1rem', fontWeight: 700, color: '#e9eef2', marginBottom: 4 }}>
+        <h1 className="font-space" style={{ fontSize: '1.1rem', fontWeight: 700, color: 'var(--pp-text)', marginBottom: 4 }}>
           {tab === 'member' ? 'Member login' : isOwnerSignup ? 'Create your gym' : 'Gym owner login'}
         </h1>
-        <p className="font-inter" style={{ color: '#8b99a6', fontSize: '12.5px', marginBottom: 20, lineHeight: 1.5 }}>
+        <p className="font-inter" style={{ color: 'var(--pp-text-dim)', fontSize: '12.5px', marginBottom: 20, lineHeight: 1.5 }}>
           {tab === 'member'
             ? 'Sign in with the credentials your gym gave you.'
             : isOwnerSignup
@@ -102,9 +102,9 @@ export default function LoginPage() {
             <button style={btn(busy)} disabled={busy} onClick={doSignup}>
               {busy ? 'Creating…' : 'Create account'}
             </button>
-            <p className="font-inter text-center" style={{ color: '#8b99a6', fontSize: 12, marginTop: 14 }}>
+            <p className="font-inter text-center" style={{ color: 'var(--pp-text-dim)', fontSize: 12, marginTop: 14 }}>
               Already have an account?{' '}
-              <span style={{ color: '#ff4b12', cursor: 'pointer', fontWeight: 600 }}
+              <span style={{ color: 'var(--pp-orange)', cursor: 'pointer', fontWeight: 600 }}
                 onClick={() => { setOwnerMode('login'); reset() }}>Log in</span>
             </p>
           </>

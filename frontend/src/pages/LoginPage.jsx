@@ -1,114 +1,69 @@
-import React, { useState } from 'react'
-import Logo from '../components/Logo'
+import { useState } from 'react'
 import { useAuth } from '../context/AuthContext'
-import { apiError } from '../services/authApi'
+import { apiError } from '../services/auth'
 import PasswordInput from '../components/PasswordInput'
 
-const wrap = { minHeight: '100vh', backgroundColor: 'var(--pp-bg)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '24px' }
-const card = { width: '100%', maxWidth: '400px', backgroundColor: 'var(--pp-surface)', border: '1px solid var(--pp-border)', borderRadius: '16px', padding: '30px' }
-const input = { width: '100%', padding: '11px 12px', borderRadius: '10px', backgroundColor: 'var(--pp-surface-2)', border: '1px solid var(--pp-border)', color: 'var(--pp-text)', fontSize: '14px', fontFamily: "'Inter', sans-serif", outline: 'none', marginBottom: '12px' }
-const btn = (d) => ({ width: '100%', padding: '12px', borderRadius: '10px', border: 'none', backgroundColor: 'var(--pp-orange)', color: 'var(--pp-on-orange)', fontWeight: 700, fontSize: '13px', fontFamily: "'IBM Plex Mono', monospace", cursor: d ? 'default' : 'pointer', opacity: d ? 0.6 : 1, marginTop: '6px' })
+const INPUT = 'w-full px-3 py-2.5 rounded-lg border border-gray-200 text-sm outline-none ' +
+              'focus:border-pp-orange focus:ring-1 focus:ring-pp-orange'
 
-const tabBtn = (active) => ({
-  flex: 1, padding: '10px', border: 'none', cursor: 'pointer',
-  backgroundColor: active ? 'var(--pp-surface)' : 'transparent',
-  color: active ? 'var(--pp-orange)' : 'var(--pp-text-dim)',
-  borderBottom: active ? '2px solid var(--pp-orange)' : '2px solid var(--pp-border)',
-  fontFamily: "'IBM Plex Mono', monospace", fontSize: '12px', fontWeight: 600, letterSpacing: '0.5px'
-})
+export default function LoginPage({ onForgotPassword, onSignup }) {
+  const { login } = useAuth()
 
-const strong = (pw) => pw.length >= 8 && /[A-Z]/.test(pw) && /[^A-Za-z0-9]/.test(pw)
-
-export default function LoginPage() {
-  const { login, signup } = useAuth()
-  const [tab, setTab] = useState('member')        // 'member' | 'owner'
-  const [ownerMode, setOwnerMode] = useState('login')  // 'login' | 'signup'
-
-  const [form, setForm] = useState({ name: '', email: '', password: '', confirmPassword: '' })
-  const [busy, setBusy] = useState(false)
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
   const [error, setError] = useState('')
-  const upd = (k) => (e) => setForm(f => ({ ...f, [k]: e.target.value }))
-  const reset = () => { setForm({ name: '', email: '', password: '', confirmPassword: '' }); setError('') }
+  const [busy, setBusy] = useState(false)
 
-  const doLogin = async () => {
+  // No redirect needed: setting the user in context re-renders App
+  const handleSubmit = async () => {
     setError('')
-    if (!form.email || !form.password) return setError('Enter your email and password.')
-    setBusy(true)
-    try { await login(form.email, form.password) }   // App re-renders by role
-    catch (err) { setError(apiError(err, 'Login failed.')) }
-    finally { setBusy(false) }
-  }
+    if (!email || !password) return setError('Please enter your email and password.')
 
-  const doSignup = async () => {
-    setError('')
-    if (!form.name || !form.email) return setError('Enter your name and email.')
-    if (!strong(form.password)) return setError('Password needs 8+ chars, a capital and a special character.')
-    if (form.password !== form.confirmPassword) return setError('Passwords do not match.')
     setBusy(true)
-    try { await signup(form) }   // creates owner + gym, logs in
-    catch (err) { setError(apiError(err, 'Sign up failed.')) }
-    finally { setBusy(false) }
+    try {
+      await login(email, password)
+    } catch (err) {
+      setError(apiError(err, 'Login failed.'))
+    } finally {
+      setBusy(false)
+    }
   }
-
-  const isOwnerSignup = tab === 'owner' && ownerMode === 'signup'
 
   return (
-    <div style={wrap}>
-      <div style={card}>
-        <div className="mb-4 text-center"><Logo width={190} height={58} /></div>
+    <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4">
+      <div className="w-full max-w-sm bg-white rounded-xl shadow-sm border border-gray-100 p-7">
+        <h1 className="font-display font-bold text-lg text-gray-900">Welcome back</h1>
+        <p className="text-xs text-gray-500 mt-1 mb-6">PeakPerformance.pk — Sports Science Platform</p>
 
-        {/* Tabs */}
-        <div style={{ display: 'flex', marginBottom: 22 }}>
-          <button className="button-nav" style={tabBtn(tab === 'member')} onClick={() => { setTab('member'); reset() }}>MEMBER</button>
-          <button className="button-nav" style={tabBtn(tab === 'owner')} onClick={() => { setTab('owner'); reset() }}>GYM OWNER</button>
+        <div className="space-y-3">
+          <input className={INPUT} type="email" placeholder="Email" autoComplete="email"
+                 value={email} onChange={e => setEmail(e.target.value)} />
+          <PasswordInput
+            className={INPUT + ' pr-10'}
+            placeholder="Password"
+            autoComplete="current-password"
+            value={password}
+            onChange={e => setPassword(e.target.value)}
+            onKeyDown={e => e.key === 'Enter' && handleSubmit()}
+          />
         </div>
 
-        <h1 className="font-space" style={{ fontSize: '1.1rem', fontWeight: 700, color: 'var(--pp-text)', marginBottom: 4 }}>
-          {tab === 'member' ? 'Member login' : isOwnerSignup ? 'Create your gym' : 'Gym owner login'}
-        </h1>
-        <p className="font-inter" style={{ color: 'var(--pp-text-dim)', fontSize: '12.5px', marginBottom: 20, lineHeight: 1.5 }}>
-          {tab === 'member'
-            ? 'Sign in with the credentials your gym gave you.'
-            : isOwnerSignup
-              ? 'Set up your account — your gym is created automatically.'
-              : 'Sign in to manage your members and view stats.'}
+        {error && <p className="text-xs text-red-600 mt-3">{error}</p>}
+
+        <button onClick={handleSubmit} disabled={busy}
+                className="w-full mt-5 py-2.5 rounded-lg bg-pp-orange text-white text-sm font-medium disabled:opacity-60">
+          {busy ? 'Logging in…' : 'Log in'}
+        </button>
+
+        <button onClick={onForgotPassword}
+                className="w-full mt-3 text-xs text-gray-500 hover:text-gray-800">
+          Forgot your password?
+        </button>
+
+        <p className="text-xs text-gray-500 text-center mt-4">
+          Don't have an account?{' '}
+          <button onClick={onSignup} className="text-pp-orange font-medium">Sign up</button>
         </p>
-
-        {isOwnerSignup && (
-          <input style={input} placeholder="Your name" value={form.name} onChange={upd('name')} />
-        )}
-        <input style={input} type="email" placeholder="Email" value={form.email} onChange={upd('email')} />
-        <PasswordInput style={input} placeholder="Password" value={form.password} onChange={upd('password')}
-          onKeyDown={e => e.key === 'Enter' && !isOwnerSignup && (tab === 'member' ? doLogin() : doLogin())} />
-        {isOwnerSignup && (
-          <PasswordInput style={input} placeholder="Confirm password" value={form.confirmPassword}
-            onChange={upd('confirmPassword')} onKeyDown={e => e.key === 'Enter' && doSignup()} />
-        )}
-
-        {error && <div style={{ color: '#ff6b6b', fontSize: '12px', marginBottom: 8 }}>{error}</div>}
-
-        {tab === 'member' ? (
-          <button style={btn(busy)} disabled={busy} onClick={doLogin}>
-            {busy ? 'Signing in…' : 'Sign in'}
-          </button>
-        ) : ownerMode === 'login' ? (
-          <>
-            <button style={btn(busy)} disabled={busy} onClick={doLogin}>
-              {busy ? 'Signing in…' : 'Sign in'}
-            </button>
-          </>
-        ) : (
-          <>
-            <button style={btn(busy)} disabled={busy} onClick={doSignup}>
-              {busy ? 'Creating…' : 'Create account'}
-            </button>
-            <p className="font-inter text-center" style={{ color: 'var(--pp-text-dim)', fontSize: 12, marginTop: 14 }}>
-              Already have an account?{' '}
-              <span style={{ color: 'var(--pp-orange)', cursor: 'pointer', fontWeight: 600 }}
-                onClick={() => { setOwnerMode('login'); reset() }}>Log in</span>
-            </p>
-          </>
-        )}
       </div>
     </div>
   )
