@@ -8,7 +8,7 @@ const apply = (t) => {
 
 export function ThemeProvider({ children }) {
   const [theme, setTheme] = useState(() => {
-    try { return localStorage.getItem('pp_theme') || 'dark' } catch { return 'dark' }
+    try { return localStorage.getItem('pp_theme') || 'light' } catch { return 'light' }
   })
   useEffect(() => {
     apply(theme)

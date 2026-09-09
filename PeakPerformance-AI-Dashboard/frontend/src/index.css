@@ -130,22 +130,8 @@ button {
    Components reference these via var(--pp-*), so a single
    data-theme flip on <html> switches the whole dashboard.
    ============================================================ */
-:root, html[data-theme="dark"] {
-  --pp-bg:            #0A0A0C;  /* page background (void) */
-  --pp-surface:       #131315;  /* cards */
-  --pp-surface-2:     #0e0e10;  /* sidebar / lowest */
-  --pp-surface-3:     #201f21;  /* raised / hover */
-  --pp-border:        #353437;
-  --pp-text:          #F4F3EF;  /* chalk */
-  --pp-text-dim:      #A8A8AD;
-  --pp-text-faint:    #5b5b5f;
-  --pp-track:         #1c1e22;  /* bar tracks */
-  --pp-orange:        #FF4B12;
-  --pp-on-orange:     #0A0A0C;  /* text on orange buttons */
-  --pp-teal:          #39d0c8;
-}
-
-html[data-theme="light"] {
+/* LIGHT is the default (also used when no data-theme is set yet) */
+:root, html[data-theme="light"] {
   --pp-bg:            #ffffff;
   --pp-surface:       #f6f6f4;
   --pp-surface-2:     #efeeec;
@@ -158,6 +144,21 @@ html[data-theme="light"] {
   --pp-orange:        #FF4B12;
   --pp-on-orange:     #ffffff;
   --pp-teal:          #12a89f;
+}
+
+html[data-theme="dark"] {
+  --pp-bg:            #0A0A0C;
+  --pp-surface:       #131315;
+  --pp-surface-2:     #0e0e10;
+  --pp-surface-3:     #201f21;
+  --pp-border:        #353437;
+  --pp-text:          #F4F3EF;
+  --pp-text-dim:      #A8A8AD;
+  --pp-text-faint:    #5b5b5f;
+  --pp-track:         #1c1e22;
+  --pp-orange:        #FF4B12;
+  --pp-on-orange:     #0A0A0C;
+  --pp-teal:          #39d0c8;
 }
 
 html, body { background: var(--pp-bg); color: var(--pp-text); transition: background-color .2s ease, color .2s ease; }

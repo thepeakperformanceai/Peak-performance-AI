@@ -4,14 +4,14 @@ import { useAuth } from '../context/AuthContext'
 import { authApi, apiError } from '../services/authApi'
 import PasswordInput from '../components/PasswordInput'
 
-const wrap = { minHeight: '100vh', backgroundColor: '#06090e', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '24px' }
-const card = { width: '100%', maxWidth: '380px', backgroundColor: '#0e1823', border: '1px solid #172333', borderRadius: '16px', padding: '32px' }
-const input = { width: '100%', padding: '11px 12px', borderRadius: '10px', backgroundColor: '#0b141f', border: '1px solid #1c2e42', color: '#e9eef2', fontSize: '14px', fontFamily: "'Inter', sans-serif", outline: 'none', marginBottom: '12px' }
-const btn = (d) => ({ width: '100%', padding: '12px', borderRadius: '10px', border: 'none', backgroundColor: '#ff4b12', color: '#0A0E13', fontWeight: 700, fontSize: '13px', fontFamily: "'IBM Plex Mono', monospace", cursor: d ? 'default' : 'pointer', opacity: d ? 0.6 : 1, marginTop: '6px' })
+const wrap = { minHeight: '100vh', backgroundColor: 'var(--pp-bg)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '24px' }
+const card = { width: '100%', maxWidth: '380px', backgroundColor: 'var(--pp-surface)', border: '1px solid var(--pp-border)', borderRadius: '16px', padding: '32px' }
+const input = { width: '100%', padding: '11px 12px', borderRadius: '10px', backgroundColor: 'var(--pp-surface-2)', border: '1px solid var(--pp-border)', color: 'var(--pp-text)', fontSize: '14px', fontFamily: "'Inter', sans-serif", outline: 'none', marginBottom: '12px' }
+const btn = (d) => ({ width: '100%', padding: '12px', borderRadius: '10px', border: 'none', backgroundColor: 'var(--pp-orange)', color: 'var(--pp-on-orange)', fontWeight: 700, fontSize: '13px', fontFamily: "'IBM Plex Mono', monospace", cursor: d ? 'default' : 'pointer', opacity: d ? 0.6 : 1, marginTop: '6px' })
 
 const strong = (pw) => pw.length >= 8 && /[A-Z]/.test(pw) && /[^A-Za-z0-9]/.test(pw)
 const Req = ({ ok, children }) => (
-  <div style={{ color: ok ? '#ff4b12' : '#566e85', fontSize: '11.5px', fontFamily: "'IBM Plex Mono', monospace", marginBottom: 3 }}>
+  <div style={{ color: ok ? 'var(--pp-orange)' : '#566e85', fontSize: '11.5px', fontFamily: "'IBM Plex Mono', monospace", marginBottom: 3 }}>
     {ok ? '✓' : '○'} {children}
   </div>
 )
@@ -42,10 +42,10 @@ export default function FirstLoginPage() {
     <div style={wrap}>
       <div style={card}>
         <div className="mb-4"><Logo width={180} height={56} /></div>
-        <h1 className="font-space" style={{ fontSize: '1.15rem', fontWeight: 700, color: '#e9eef2', marginBottom: 4 }}>
+        <h1 className="font-space" style={{ fontSize: '1.15rem', fontWeight: 700, color: 'var(--pp-text)', marginBottom: 4 }}>
           Set your password
         </h1>
-        <p className="font-inter" style={{ color: '#8b99a6', fontSize: '13px', marginBottom: 22 }}>
+        <p className="font-inter" style={{ color: 'var(--pp-text-dim)', fontSize: '13px', marginBottom: 22 }}>
           Welcome{user?.name ? `, ${user.name.split(' ')[0]}` : ''}. Choose a password to finish setup.
         </p>
 
