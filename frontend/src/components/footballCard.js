@@ -248,11 +248,11 @@ export function footballCardHtml(report) {
 
   const header = `
   <div style="position:relative;height:238px;background:${t.band};overflow:hidden">
-    <div style="position:absolute;left:420px;top:-120px;width:90px;height:520px;background:${t.stripe};transform:rotate(28deg)"></div>
-    <div style="position:absolute;left:530px;top:-120px;width:26px;height:520px;background:${t.stripe};transform:rotate(28deg)"></div>
-    <div style="position:absolute;left:590px;top:-120px;width:10px;height:520px;background:${t.stripe};transform:rotate(28deg)"></div>
+    <div style="position:absolute;left:232px;top:-120px;width:90px;height:520px;background:${t.stripe};transform:rotate(-28deg)"></div>
+    <div style="position:absolute;left:186px;top:-120px;width:26px;height:520px;background:${t.stripe};transform:rotate(-28deg)"></div>
+    <div style="position:absolute;left:142px;top:-120px;width:10px;height:520px;background:${t.stripe};transform:rotate(-28deg)"></div>
 
-    <div style="position:absolute;left:30px;top:20px;width:168px;text-align:center">
+    <div style="position:absolute;right:30px;top:20px;width:168px;text-align:center">
       <div style="font-family:${DISPLAY};font-size:${pending ? 104 : 118}px;line-height:0.86;color:${t.ink};letter-spacing:1px">${pending ? '—' : esc(rc.overallOVR)}</div>
       <div style="font-family:${TEXT};font-size:10px;font-weight:700;letter-spacing:2px;color:${t.soft};margin-top:4px">OVERALL</div>
       <div style="height:2px;background:${t.ink};opacity:0.35;margin:8px 22px"></div>
@@ -260,15 +260,15 @@ export function footballCardHtml(report) {
       <div style="margin-top:10px">${statusBadge}</div>
     </div>
 
-    <div style="position:absolute;left:222px;top:30px;bottom:30px;width:2px;background:${t.ink};opacity:0.18"></div>
+    <div style="position:absolute;right:222px;top:30px;bottom:30px;width:2px;background:${t.ink};opacity:0.18"></div>
 
-    <img src="${LOGO_URL}" alt="Peak Performance" width="134" height="102" style="position:absolute;right:24px;top:18px;width:134px;height:102px;opacity:0.92">
+    <img src="${LOGO_URL}" alt="Peak Performance" width="134" height="102" style="position:absolute;left:24px;top:18px;width:134px;height:102px;opacity:0.92">
 
-    <div style="position:absolute;left:248px;right:28px;top:22px">
-      <div style="display:flex;align-items:center;margin-right:150px">
+    <div style="position:absolute;left:28px;right:248px;top:22px">
+      <div style="display:flex;align-items:center;margin-left:150px">
         <span style="font-family:${DISPLAY};font-size:18px;letter-spacing:2.5px;color:${t.ink};border:2px solid ${t.ink};border-radius:5px;padding:1px 8px 0">${t.label} CARD</span>
       </div>
-      <div style="font-family:${DISPLAY};font-size:${nameSize}px;line-height:0.95;color:${t.ink};letter-spacing:1px;margin-top:16px;margin-right:150px">${esc(name.toUpperCase())}</div>
+      <div style="font-family:${DISPLAY};font-size:${nameSize}px;line-height:0.95;color:${t.ink};letter-spacing:1px;margin-top:16px;margin-left:150px">${esc(name.toUpperCase())}</div>
       ${rc.fieldMeaning?.playerProfile ? `<div style="font-family:${TEXT};font-size:12.5px;font-style:italic;color:${t.soft};margin-top:6px;line-height:1.35">${esc(rc.fieldMeaning.playerProfile)}</div>` : ''}
       <div style="display:flex;gap:8px;margin-top:14px;flex-wrap:wrap">
         ${meta.map(([k, v]) => `<span style="font-family:${TEXT};font-size:10.5px;color:${t.ink};background:rgba(255,255,255,0.55);border-radius:5px;padding:4px 9px"><span style="font-weight:700;letter-spacing:0.8px;color:${t.soft}">${k}</span>&nbsp; <b>${esc(v)}</b></span>`).join('')}
