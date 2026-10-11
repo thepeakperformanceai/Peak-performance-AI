@@ -80,18 +80,26 @@ export const downloadReportPDF = async reportId => {
         const order = ['Speed','Agility','Power','Endurance','Reaction','Balance']
         const angles = [0,-60,-120,180,120,60].map(d => d*Math.PI/180)
         const pt = (i,r) => [cx+Math.cos(angles[i])*R*r, cy+Math.sin(angles[i])*R*r]
-        const val = (n) => (ovr.find(s=>s.name===n)?.score ?? 0)/100
+        // Untested stats (score null) get no point: the shape joins measured stats only.
+        const scoreOf = (n) => ovr.find(s=>s.name===n)?.score
+        const missing = (n) => scoreOf(n) == null
+        const measured = order.filter(n => !missing(n))
+        const val = (n) => (scoreOf(n) ?? 0)/100
         const ring = (r) => order.map((_,i)=>pt(i,r).join(',')).join(' ')
-        const poly = order.map((n,i)=>pt(i,val(n)).join(',')).join(' ')
+        const poly = measured.map(n=>pt(order.indexOf(n),val(n)).join(',')).join(' ')
         const lab = { Speed:[cx+R+18,cy+5], Agility:pt(1,1.28), Power:pt(2,1.28), Endurance:[cx-R-18,cy+5], Reaction:pt(4,1.28), Balance:pt(5,1.28) }
         return `<svg viewBox="0 0 ${size} 360" width="500" height="360">
           ${[0.25,0.5,0.75,1].map(r=>`<polygon points="${ring(r)}" fill="none" stroke="#2a2d33" stroke-width="1"/>`).join('')}
-          ${order.map((_,i)=>{const[x,y]=pt(i,1);return `<line x1="${cx}" y1="${cy}" x2="${x}" y2="${y}" stroke="#2a2d33"/>`}).join('')}
-          <polygon points="${poly}" fill="${ORANGE}33" stroke="${ORANGE}" stroke-width="2.5"/>
-          ${order.map(n=>{const[x,y]=pt(order.indexOf(n),val(n));return `<circle cx="${x}" cy="${y}" r="4" fill="${ORANGE}"/>`}).join('')}
+          ${order.map((n,i)=>{const[x,y]=pt(i,1);return missing(n)
+            ? `<line x1="${cx}" y1="${cy}" x2="${x}" y2="${y}" stroke="${FAINT}" stroke-dasharray="4 4"/>`
+            : `<line x1="${cx}" y1="${cy}" x2="${x}" y2="${y}" stroke="#2a2d33"/>`}).join('')}
+          ${measured.length >= 3 ? `<polygon points="${poly}" fill="${ORANGE}33" stroke="${ORANGE}" stroke-width="2.5"/>` : ''}
+          ${measured.length === 2 ? `<polyline points="${poly}" fill="none" stroke="${ORANGE}" stroke-width="2.5"/>` : ''}
+          ${measured.map(n=>{const[x,y]=pt(order.indexOf(n),val(n));return `<circle cx="${x}" cy="${y}" r="4" fill="${ORANGE}"/>`}).join('')}
           <text x="${cx}" y="${cy-4}" text-anchor="middle" font-family="Space Grotesk" font-weight="700" font-size="44" fill="${ORANGE}">${overall}</text>
           <text x="${cx}" y="${cy+16}" text-anchor="middle" font-family="monospace" font-size="10" fill="${FAINT}">OVERALL OVR</text>
-          ${order.map(n=>{const[x,y]=lab[n];const anc=n==='Endurance'?'end':n==='Speed'?'start':'middle';return `<text x="${x}" y="${y}" text-anchor="${anc}" font-size="13" fill="${MUTED}">${n}</text>`}).join('')}
+          ${order.map(n=>{const[x,y]=lab[n];const anc=n==='Endurance'?'end':n==='Speed'?'start':'middle';return `<text x="${x}" y="${y}" text-anchor="${anc}" font-size="13" fill="${missing(n)?FAINT:MUTED}">${n}</text>`
+            + (missing(n) ? `<text x="${x}" y="${y+14}" text-anchor="${anc}" font-family="monospace" font-size="9" fill="${FAINT}">NOT TESTED</text>` : '')}).join('')}
         </svg>`
       }
     const ringSvg = (lsi) => {

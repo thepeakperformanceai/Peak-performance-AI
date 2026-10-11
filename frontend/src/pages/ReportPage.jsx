@@ -14,21 +14,34 @@ const h1 = { fontFamily: "'Space Grotesk', sans-serif", fontWeight: 700, color: 
 function Hexagon({ scores, overall }) {
   const size = 500, cx = 250, cy = 180, R = 130
   const order = ['Speed', 'Agility', 'Power', 'Endurance', 'Reaction', 'Balance']
-  const val = (n) => (scores.find(s => s.name === n)?.score ?? 0) / 100
+  // A stat with no score (football: not tested) gets no point: the shape joins
+  // only the measured stats, and its spoke is dashed and labelled "Not tested".
+  const scoreOf = (n) => scores.find(s => s.name === n)?.score
+  const missing = (n) => scoreOf(n) == null
+  const measured = order.filter(n => !missing(n))
+  const val = (n) => (scoreOf(n) ?? 0) / 100
   const angles = [0, -60, -120, 180, 120, 60].map(d => (d * Math.PI) / 180)
   const pt = (i, r) => [cx + Math.cos(angles[i]) * R * r, cy + Math.sin(angles[i]) * R * r]
   const ring = (r) => order.map((_, i) => pt(i, r).join(',')).join(' ')
-  const poly = order.map((n, i) => pt(i, val(n)).join(',')).join(' ')
+  const poly = measured.map(n => pt(order.indexOf(n), val(n)).join(',')).join(' ')
   const lab = { Speed: [cx + R + 18, cy + 5], Agility: pt(1, 1.28), Power: pt(2, 1.28), Endurance: [cx - R - 18, cy + 5], Reaction: pt(4, 1.28), Balance: pt(5, 1.28) }
   return (
     <svg viewBox={`0 0 ${size} 360`} style={{ width: '100%', maxWidth: 460 }}>
       {[0.25, 0.5, 0.75, 1].map(r => <polygon key={r} points={ring(r)} fill="none" stroke="#2a2d33" strokeWidth="1" />)}
-      {order.map((_, i) => { const [x, y] = pt(i, 1); return <line key={i} x1={cx} y1={cy} x2={x} y2={y} stroke="#2a2d33" /> })}
-      <polygon points={poly} fill={`${ORANGE}33`} stroke={ORANGE} strokeWidth="2.5" />
-      {order.map((n) => { const [x, y] = pt(order.indexOf(n), val(n)); return <circle key={n} cx={x} cy={y} r="4" fill={ORANGE} /> })}
+      {order.map((n, i) => { const [x, y] = pt(i, 1); return missing(n)
+        ? <line key={i} x1={cx} y1={cy} x2={x} y2={y} stroke={FAINT} strokeDasharray="4 4" />
+        : <line key={i} x1={cx} y1={cy} x2={x} y2={y} stroke="#2a2d33" /> })}
+      {measured.length >= 3 && <polygon points={poly} fill={`${ORANGE}33`} stroke={ORANGE} strokeWidth="2.5" />}
+      {measured.length === 2 && <polyline points={poly} fill="none" stroke={ORANGE} strokeWidth="2.5" />}
+      {measured.map((n) => { const [x, y] = pt(order.indexOf(n), val(n)); return <circle key={n} cx={x} cy={y} r="4" fill={ORANGE} /> })}
       <text x={cx} y={cy - 6} textAnchor="middle" fontFamily="Space Grotesk" fontWeight="700" fontSize="46" fill={ORANGE}>{overall}</text>
       <text x={cx} y={cy + 16} textAnchor="middle" fontFamily="IBM Plex Mono" fontSize="10" fill={FAINT} letterSpacing="1">OVERALL OVR</text>
-      {order.map(n => { const [x, y] = lab[n]; const anc = n === 'Endurance' ? 'end' : n === 'Speed' ? 'start' : 'middle'; return <text key={n} x={x} y={y} textAnchor={anc} fontFamily="Inter" fontSize="13" fill={MUTED}>{n}</text> })}
+      {order.map(n => { const [x, y] = lab[n]; const anc = n === 'Endurance' ? 'end' : n === 'Speed' ? 'start' : 'middle'; return (
+        <g key={n}>
+          <text x={x} y={y} textAnchor={anc} fontFamily="Inter" fontSize="13" fill={missing(n) ? FAINT : MUTED}>{n}</text>
+          {missing(n) && <text x={x} y={y + 14} textAnchor={anc} fontFamily="IBM Plex Mono" fontSize="9" fill={FAINT} letterSpacing="0.5">NOT TESTED</text>}
+        </g>
+      ) })}
     </svg>
   )
 }
