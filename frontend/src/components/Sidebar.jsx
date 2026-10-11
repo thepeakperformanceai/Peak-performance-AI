@@ -6,7 +6,33 @@ const NAV_ITEMS = [
   { id: 'settings', label: 'Settings',    icon: '👤' },
 ]
 
+import { useEffect, useState } from 'react'
 import { useAuth } from '../context/AuthContext'
+
+// Which frontend build is running, and which backend it talks to. Makes it
+// obvious when a deploy hasn't picked up a change, or the API is out of date.
+function BuildStamp() {
+  const [api, setApi] = useState({ text: 'checking…' })
+  useEffect(() => {
+    let cancelled = false
+    fetch(`${import.meta.env.VITE_API_URL}/health`)
+      .then(r => r.json())
+      .then(h => {
+        if (cancelled) return
+        setApi(h.footballScoring
+          ? { text: `API ${h.commit} · football scoring ✓` }
+          : { text: 'API has no football scoring', warn: true })
+      })
+      .catch(() => { if (!cancelled) setApi({ text: 'API unreachable', warn: true }) })
+    return () => { cancelled = true }
+  }, [])
+  return (
+    <div className="px-5 pb-2 text-[10px] leading-4 text-white/30 font-mono">
+      <div>App {__APP_BUILD__} · player card</div>
+      <div className={api.warn ? 'text-amber-300/80' : ''}>{api.text}</div>
+    </div>
+  )
+}
 
 export default function Sidebar({ activePage, onNavigate }) {
   const { user } = useAuth()
@@ -72,6 +98,8 @@ export default function Sidebar({ activePage, onNavigate }) {
           </button>
         ))}
       </nav>
+
+      <BuildStamp />
 
       {/* User chip */}
       <div className="p-3 border-t border-white/[0.08]">

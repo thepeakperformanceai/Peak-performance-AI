@@ -72,8 +72,16 @@ setTimeout(seedExercises, 1000);
 setTimeout(seedAdminUser, 1500);
 
 // Health check
+// Also reports which commit is running (Render sets RENDER_GIT_COMMIT) and
+// whether this build has football scoring, so a deploy can be checked at a glance.
+const { config_version: scoringConfigVersion } = require('./scoring/scoring').loadConfig();
 app.get('/api/health', (req, res) => {
-  res.json({ status: 'ok' });
+  res.json({
+    status: 'ok',
+    commit: (process.env.RENDER_GIT_COMMIT || '').slice(0, 7) || 'local',
+    footballScoring: true,
+    scoringConfig: scoringConfigVersion
+  });
 });
 
 // Routes

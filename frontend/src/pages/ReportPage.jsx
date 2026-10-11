@@ -139,8 +139,18 @@ export default function ReportPage() {
     )
   }
 
+  // A football report made by the old AI pipeline has no engine scores, so it
+  // can't be shown as a player card (its numbers were estimated, not measured).
+  const legacyFootball = /football/i.test(report.sport || rc.sport || '')
+
   return (
     <div style={{ maxWidth: 920, margin: '0 auto' }}>
+      {legacyFootball && (
+        <div style={{ background: '#fff7e6', border: '1px solid #f6c667', color: '#6b4a00', borderRadius: 10, padding: '10px 14px', fontSize: 13, marginBottom: 12 }}>
+          This football report was made with the old AI pipeline, before engine scoring, so it can't show the player card.
+          Create a new report from <b>New report</b> with sport <b>Football</b> and enter the test results to get the card.
+        </div>
+      )}
       <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 12 }}>
         <button onClick={handleDownload} disabled={downloading}
           style={{ background: ORANGE, color: '#0A0E13', border: 'none', borderRadius: 10, padding: '10px 16px', fontSize: 13, fontWeight: 700, cursor: downloading ? 'default' : 'pointer', opacity: downloading ? 0.6 : 1, fontFamily: "'IBM Plex Mono', monospace" }}>

@@ -229,6 +229,10 @@ export default function UploadPage({ onReportGenerated }) {
       toast.success('Report generated!')
       onReportGenerated()
     } catch (err) {
+      if (isFootball && /route not found/i.test(err.message || '')) {
+        toast.error('The backend this site uses has no football scoring yet. Redeploy it from the football branch.', { duration: 8000 })
+        return
+      }
       toast.error(err.message || 'Report generation failed. Please try again.')
     } finally {
       clearInterval(iv)
@@ -438,7 +442,9 @@ export default function UploadPage({ onReportGenerated }) {
           className="btn"
           onClick={() => {
             setFiles([])
-            setForm({ name:'', age:'', sport:'General Fitness', position:'', trainingLevel:'Semi-Professional', knownInjuries:'' })
+            // 'General Fitness' isn't in SPORTS: the dropdown still showed Football
+            // while reports silently went through the non-football pipeline.
+            setForm({ name:'', age:'', sport:'Football', position:'', trainingLevel:'Semi-Professional', knownInjuries:'' })
             setFbProfile(emptyFootballProfile())
             setFbResults(emptyFootballResults())
             setStep(1)
