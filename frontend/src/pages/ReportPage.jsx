@@ -32,6 +32,30 @@ function Hexagon({ scores, overall }) {
     </svg>
   )
 }
+// Engine-scored (football) reports can have missing scores: show them as
+// "Not tested" instead of a bar. Other reports always have a number.
+const NotTested = ({ label = 'Not tested' }) => (
+  <span style={{ flex: 1, fontFamily: "'IBM Plex Mono', monospace", fontSize: 11, color: FAINT, letterSpacing: 0.5 }}>{label}</span>
+)
+const ScoreOrNotTested = ({ score, label }) => score == null ? <NotTested label={label} /> : <ScoreBar score={score} />
+const statusColor = (s = '') => s.startsWith('REVIEW — RED') ? '#ff5a5a' : s.startsWith('REVIEW') || s === 'ONE SIDE ONLY' ? '#f6c667' : s === 'NOT TESTED' ? FAINT : TEAL
+const flagColor = (level) => level === 'red' ? '#ff5a5a' : '#f6c667'
+
+function OvrBadge({ rc }) {
+  if (rc.ovrStatus === 'pending') {
+    return <div style={{ ...pageTag, color: '#f6c667', marginBottom: 12 }}>{rc.ovrMessage || 'OVR pending: complete testing'}</div>
+  }
+  if (rc.ovrStatus === 'provisional') {
+    return (
+      <div style={{ marginBottom: 12 }}>
+        <span style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 10, color: '#f6c667', border: '1px solid #f6c667', borderRadius: 4, padding: '2px 8px', letterSpacing: 0.5 }}>PROVISIONAL OVR</span>
+        <span style={{ color: FAINT, fontSize: 12, marginLeft: 10 }}>{(rc.ovrReasons || []).join(' · ')}</span>
+      </div>
+    )
+  }
+  return null
+}
+
 const ScoreBar = ({ score }) => (
   <div style={{ flex: 1, height: 16, background: TRACK, borderRadius: 4, overflow: 'hidden' }}>
     <div style={{ width: `${score}%`, height: '100%', background: ORANGE, borderRadius: 4 }} />
@@ -48,7 +72,7 @@ function Ring({ lsi }) {
     </svg>
   )
 }
-const tagColor = (t) => t === 'STRENGTH' ? TEAL : t === 'PRIORITY' ? ORANGE : '#f6c667'
+const tagColor = (t) => t === 'STRENGTH' ? TEAL : t === 'PRIORITY' ? ORANGE : t === 'NOT TESTED' ? FAINT : '#f6c667'
 const Tag = ({ t }) => <span style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 10, color: tagColor(t), border: `1px solid ${tagColor(t)}`, borderRadius: 4, padding: '2px 7px', letterSpacing: 0.5 }}>{t}</span>
 
 function EmptyState() {
@@ -68,6 +92,10 @@ export default function ReportPage() {
   const rc = report.reportContent || {}
   const ovr = rc.ovrScores || [], battery = rc.manualBattery || [], dynamo = rc.dynamoStrength || []
   const ss = rc.symmetrySummary || {}, fm = rc.fieldMeaning || {}
+  // Set only on reports scored by the scoring engine (football).
+  const engineScored = !!rc.configVersion
+  const movement = rc.movementScreen || [], flags = rc.flags || []
+  const overallShown = engineScored && rc.overallOVR == null ? '—' : (rc.overallOVR ?? 0)
 
   const handleDownload = async () => {
     setDownloading(true)
@@ -89,7 +117,7 @@ export default function ReportPage() {
       <div style={page}>
         <div style={pageTag}>Page 1 / 4 — OVR Card</div>
         <div style={{ display: 'flex', gap: 24, flexWrap: 'wrap', alignItems: 'center', marginTop: 10 }}>
-          <div style={{ flex: '1 1 300px', textAlign: 'center' }}><Hexagon scores={ovr} overall={rc.overallOVR ?? 0} /></div>
+          <div style={{ flex: '1 1 300px', textAlign: 'center' }}><Hexagon scores={ovr} overall={overallShown} /></div>
           <div style={{ flex: '1 1 340px' }}>
             <h1 style={{ ...h1, fontSize: 34 }}>{report.athleteName}</h1>
             <p style={{ color: MUTED, margin: '6px 0 14px', fontSize: 14 }}>{[rc.sport, rc.position].filter(Boolean).join(' — ')} · {rc.batteryLabel}</p>
@@ -98,13 +126,15 @@ export default function ReportPage() {
               {rc.sport && <span>SPORT <b style={{ color: INK }}>{rc.sport}</b></span>}
               {rc.testDate && <span>SESSION <b style={{ color: INK }}>{rc.testDate}</b></span>}
             </div>
+            {engineScored && <OvrBadge rc={rc} />}
             {ovr.map(s => (
               <div key={s.name} style={{ display: 'flex', alignItems: 'center', marginBottom: 12 }}>
                 <span style={{ flex: '0 0 96px', fontSize: 14, color: INK }}>{s.name}</span>
-                <span style={{ flex: 1, display: 'flex', alignItems: 'center' }}><ScoreBar score={s.score} /></span>
-                <span style={{ flex: '0 0 34px', textAlign: 'right', fontFamily: "'Space Grotesk', sans-serif", fontWeight: 700, fontSize: 15, color: INK }}>{s.score}</span>
+                <span style={{ flex: 1, display: 'flex', alignItems: 'center' }}><ScoreOrNotTested score={s.score} /></span>
+                <span style={{ flex: '0 0 34px', textAlign: 'right', fontFamily: "'Space Grotesk', sans-serif", fontWeight: 700, fontSize: 15, color: INK }}>{s.score ?? '—'}</span>
               </div>
             ))}
+            {engineScored && rc.summary && <p style={{ color: MUTED, fontSize: 13, lineHeight: 1.55, marginTop: 14 }}>{rc.summary}</p>}
           </div>
         </div>
       </div>
@@ -117,8 +147,8 @@ export default function ReportPage() {
           {battery.map((t, i) => (
             <div key={i} style={{ display: 'flex', alignItems: 'center', padding: '11px 0', borderTop: i ? `1px solid ${BORDER}` : 'none' }}>
               <span style={{ flex: '0 0 210px', fontSize: 13, color: INK }}>{t.test}</span>
-              <span style={{ flex: 1, display: 'flex', alignItems: 'center', paddingRight: 16 }}><ScoreBar score={t.score} /></span>
-              <span style={{ flex: '0 0 34px', textAlign: 'right', fontFamily: "'Space Grotesk', sans-serif", fontWeight: 700, fontSize: 15, color: INK }}>{t.score}</span>
+              <span style={{ flex: 1, display: 'flex', alignItems: 'center', paddingRight: 16 }}><ScoreOrNotTested score={t.score} /></span>
+              <span style={{ flex: '0 0 34px', textAlign: 'right', fontFamily: "'Space Grotesk', sans-serif", fontWeight: 700, fontSize: 15, color: INK }}>{t.score ?? '—'}</span>
               <span style={{ flex: '0 0 130px', textAlign: 'right', fontFamily: "'IBM Plex Mono', monospace", paddingLeft: 16 }}>
                 <span style={{ color: ORANGE, fontWeight: 700, fontSize: 13 }}>{t.raw}</span>
                 <span style={{ color: FAINT, fontSize: 10.5, display: 'block' }}>{t.avg}</span>
@@ -138,12 +168,14 @@ export default function ReportPage() {
             {dynamo.map((d, i) => (
               <div key={i} style={{ flex: '1 1 0', maxWidth: 280, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
                 <div style={{ fontFamily: "'Space Grotesk', sans-serif", fontWeight: 700, fontSize: 15, color: INK, marginBottom: 12 }}>{d.joint}</div>
-                <Ring lsi={d.lsi ?? 0} />
+                {engineScored && d.lsi == null
+                  ? <div style={{ width: 130, height: 130, display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: "'IBM Plex Mono', monospace", fontSize: 11, color: FAINT, textAlign: 'center' }}>NO LSI<br />(both sides needed)</div>
+                  : <Ring lsi={d.lsi ?? 0} />}
                 <div style={{ display: 'flex', justifyContent: 'space-between', width: '100%', maxWidth: 200, fontFamily: "'IBM Plex Mono', monospace", fontSize: 11, color: FAINT, margin: '12px 0 0' }}>
                   <span style={{ textAlign: 'left' }}>LEFT<br /><b style={{ color: MUTED, fontSize: 12 }}>{d.left}</b></span>
                   <span style={{ textAlign: 'right' }}>RIGHT<br /><b style={{ color: MUTED, fontSize: 12 }}>{d.right}</b></span>
                 </div>
-                <span style={{ display: 'inline-block', marginTop: 12, fontFamily: "'IBM Plex Mono', monospace", fontSize: 10, color: TEAL, border: `1px solid ${TEAL}`, borderRadius: 4, padding: '3px 10px' }}>{d.status}</span>
+                <span style={{ display: 'inline-block', marginTop: 12, fontFamily: "'IBM Plex Mono', monospace", fontSize: 10, color: engineScored ? statusColor(d.status) : TEAL, border: `1px solid ${engineScored ? statusColor(d.status) : TEAL}`, borderRadius: 4, padding: '3px 10px' }}>{d.status}</span>
               </div>
             ))}
           </div>
@@ -154,6 +186,34 @@ export default function ReportPage() {
               <div><div style={pageTag}>Recommendation</div><div style={{ color: INK, fontSize: 13, marginTop: 6 }}>{ss.recommendation}</div></div>
             </div>
           )}
+          {movement.length > 0 && (
+            <div style={{ marginTop: 28 }}>
+              <div style={pageTag}>HumanTrak Movement Screen</div>
+              {movement.map((m, i) => (
+                <div key={i} style={{ display: 'flex', alignItems: 'center', padding: '10px 0', borderTop: i ? `1px solid ${BORDER}` : 'none' }}>
+                  <span style={{ flex: '0 0 210px', fontSize: 13, color: INK }}>{m.test}{!m.feedsOvr && <span style={{ color: FAINT, fontSize: 11 }}> · flag only</span>}</span>
+                  <span style={{ flex: 1, display: 'flex', alignItems: 'center', paddingRight: 16 }}><ScoreOrNotTested score={m.score} label={m.status === 'completed' ? 'Not tested' : m.result} /></span>
+                  <span style={{ flex: '0 0 34px', textAlign: 'right', fontFamily: "'Space Grotesk', sans-serif", fontWeight: 700, fontSize: 15, color: INK }}>{m.score ?? '—'}</span>
+                  <span style={{ flex: '0 0 160px', textAlign: 'right', fontFamily: "'IBM Plex Mono', monospace", paddingLeft: 16 }}>
+                    {m.status === 'completed' && <span style={{ color: ORANGE, fontWeight: 700, fontSize: 12 }}>{m.result}</span>}
+                    <span style={{ color: FAINT, fontSize: 10.5, display: 'block' }}>{m.band}</span>
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
+          {flags.length > 0 && (
+            <div style={{ marginTop: 24 }}>
+              <div style={pageTag}>Areas to work on</div>
+              {flags.map((f, i) => (
+                <div key={i} style={{ display: 'flex', gap: 10, alignItems: 'baseline', marginTop: 8 }}>
+                  <span style={{ width: 8, height: 8, borderRadius: 4, background: flagColor(f.level), flex: '0 0 8px' }} />
+                  <span style={{ color: INK, fontSize: 13 }}><b>{f.test}</b>{f.note ? ` — ${f.note}` : ''}</span>
+                </div>
+              ))}
+            </div>
+          )}
+          {engineScored && rc.benchmarkNote && <p style={{ color: FAINT, fontSize: 11, marginTop: 20 }}>{rc.benchmarkNote}</p>}
         </div>
       )}
 
@@ -179,7 +239,7 @@ export default function ReportPage() {
                   </span>
                   <Tag t={s.tag} />
                 </div>
-                <div style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 11, color: FAINT, marginBottom: 6, paddingLeft: 22 }}>Score: {s.score}/100</div>
+                <div style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 11, color: FAINT, marginBottom: 6, paddingLeft: 22 }}>{s.score == null ? 'Not tested this session' : `Score: ${s.score}/100`}</div>
                 <p style={{ color: MUTED, fontSize: 13, lineHeight: 1.55, margin: 0, paddingLeft: 22 }}>{s.body}</p>
               </div>
             ))}

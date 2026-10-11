@@ -38,7 +38,9 @@ const reportSchema = new mongoose.Schema({
   },
   trainingLevel: {
     type: String,
-    enum: ['Beginner', 'Intermediate', 'Semi-Professional', 'Professional'],
+    // Recreational / Elite are what the upload form offers; without them those
+    // reports failed to save.
+    enum: ['Beginner', 'Intermediate', 'Semi-Professional', 'Professional', 'Recreational', 'Elite'],
     required: [true, 'Training level is required']
   },
   knownInjuries: {
@@ -77,6 +79,34 @@ const reportSchema = new mongoose.Schema({
       }
     ],
     default: []
+  },
+  // ── Football (scoring engine) reports only ──
+  // footballSession: the tester's entry, in the scoring engine's input shape.
+  // Kept so a report can be re-scored when benchmarks change.
+  footballSession: {
+    type: mongoose.Schema.Types.Mixed,
+    default: undefined
+  },
+  // scoring: the engine's full output; scoringPayload: exactly what Gemini saw.
+  scoring: {
+    type: mongoose.Schema.Types.Mixed,
+    default: undefined
+  },
+  scoringPayload: {
+    type: mongoose.Schema.Types.Mixed,
+    default: undefined
+  },
+  configVersion: {
+    type: String,
+    default: undefined
+  },
+  sex: {
+    type: String,
+    default: undefined
+  },
+  bodyweightKg: {
+    type: Number,
+    default: undefined
   },
   createdAt: {
     type: Date,

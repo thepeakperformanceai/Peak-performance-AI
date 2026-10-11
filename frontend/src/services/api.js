@@ -42,6 +42,18 @@ export const generateReport = async (files, athleteProfile) => {
   })
 }
 
+// Football: manually entered results, scored by the backend's scoring engine.
+// VALD PDFs are optional and kept with the report as reference.
+export const generateFootballReport = async (files, athleteProfile, footballResults) => {
+  const formData = new FormData()
+  files.forEach(f => formData.append('files', f))
+  formData.append('profile', JSON.stringify(athleteProfile))
+  formData.append('football', JSON.stringify(footballResults))
+  return api.post('/report/football', formData, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+  })
+}
+
 export const downloadReportPDF = async reportId => {
   try {
     const response = await api.get(`/report/${reportId}/export`)
@@ -52,7 +64,7 @@ export const downloadReportPDF = async reportId => {
     const PANEL = '#0e0f11', BORDER = '#22242a', TRACK = '#1c1e22', TEAL = '#39d0c8', BG = '#0a0b0d'
     const esc = (v) => String(v ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
     const bar = (score) => `<div style="flex:1;height:15px;background:${TRACK};border-radius:4px;overflow:hidden"><div style="width:${score}%;height:100%;background:${ORANGE};border-radius:4px"></div></div>`
-    const tagColor = (t) => t === 'STRENGTH' ? TEAL : t === 'PRIORITY' ? ORANGE : '#f6c667'
+    const tagColor = (t) => t === 'STRENGTH' ? TEAL : t === 'PRIORITY' ? ORANGE : t === 'NOT TESTED' ? FAINT : '#f6c667'
     const pageWrap = (label, inner) => `
       <div style="background:${BG};color:${INK};font-family:Inter,Arial,sans-serif;padding:38px 44px;min-height:760px;page-break-after:always;position:relative">
         <div style="display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid ${BORDER};padding-bottom:14px;margin-bottom:26px">
@@ -92,9 +104,23 @@ export const downloadReportPDF = async reportId => {
     }
 
     const ovr = rc.ovrScores || [], battery = rc.manualBattery || [], dynamo = rc.dynamoStrength || [], ss = rc.symmetrySummary || {}, fm = rc.fieldMeaning || {}
+    // Engine-scored (football) reports: missing scores print as "Not tested",
+    // plus OVR status, HumanTrak screen and flags. Other reports print as before.
+    const engineScored = !!rc.configVersion
+    const AMBER = '#f6c667', RED = '#ff5a5a'
+    const notTested = (label = 'Not tested') => `<span style="flex:1;font-family:monospace;font-size:11px;color:${FAINT}">${esc(label)}</span>`
+    const barOr = (score, label) => score == null ? notTested(label) : bar(score)
+    const num = (score) => score ?? '—'
+    const overallShown = engineScored && rc.overallOVR == null ? '—' : (rc.overallOVR ?? 0)
+    const statusColor = (st = '') => st.startsWith('REVIEW — RED') ? RED : st.startsWith('REVIEW') || st === 'ONE SIDE ONLY' ? AMBER : st === 'NOT TESTED' ? FAINT : TEAL
+    const ovrBadge = !engineScored ? '' : rc.ovrStatus === 'pending'
+      ? `<div style="font-family:monospace;font-size:11px;color:${AMBER};margin-bottom:12px">${esc(rc.ovrMessage || 'OVR pending: complete testing')}</div>`
+      : rc.ovrStatus === 'provisional'
+        ? `<div style="margin-bottom:12px"><span style="font-family:monospace;font-size:10px;color:${AMBER};border:1px solid ${AMBER};border-radius:4px;padding:2px 8px 8px">PROVISIONAL OVR</span><span style="color:${FAINT};font-size:12px;margin-left:10px">${esc((rc.ovrReasons || []).join(' · '))}</span></div>`
+        : ''
     const p1 = pageWrap('PAGE 1 / 4 — OVR CARD', `
       <div style="display:flex;gap:30px;align-items:center">
-        <div style="flex:0 0 400px;text-align:center">${hexSvg(ovr, rc.overallOVR ?? 0)}</div>
+        <div style="flex:0 0 400px;text-align:center">${hexSvg(ovr, overallShown)}</div>
         <div style="flex:1">
           <div style="font-family:'Space Grotesk',Arial;font-weight:700;font-size:34px">${esc(report.athleteName)}</div>
           <div style="color:${MUTED};font-size:14px;margin:6px 0 14px">${esc([rc.sport,rc.position].filter(Boolean).join(' — '))} · ${esc(rc.batteryLabel||'')}</div>
@@ -103,9 +129,11 @@ export const downloadReportPDF = async reportId => {
             ${rc.sport?`SPORT <b style="color:${INK}">${esc(rc.sport)}</b>&nbsp;&nbsp;&nbsp;`:''}
             ${rc.testDate?`SESSION <b style="color:${INK}">${esc(rc.testDate)}</b>`:''}
           </div>
+          ${ovrBadge}
           ${ovr.map(s=>`<div style="display:flex;align-items:center;gap:12px;margin-bottom:11px">
-            <span style="width:90px;font-size:14px;color:${INK}">${esc(s.name)}</span>${bar(s.score)}
-            <span style="width:26px;text-align:right;font-family:'Space Grotesk',Arial;font-weight:700;color:${INK}">${s.score}</span></div>`).join('')}
+            <span style="width:90px;font-size:14px;color:${INK}">${esc(s.name)}</span>${engineScored ? barOr(s.score) : bar(s.score)}
+            <span style="width:26px;text-align:right;font-family:'Space Grotesk',Arial;font-weight:700;color:${INK}">${engineScored ? num(s.score) : s.score}</span></div>`).join('')}
+          ${engineScored && rc.summary ? `<p style="color:${MUTED};font-size:13px;line-height:1.5;margin-top:12px">${esc(rc.summary)}</p>` : ''}
         </div>
       </div>`)
 
@@ -113,8 +141,8 @@ export const downloadReportPDF = async reportId => {
     const p2 = battery.length ? pageWrap('PAGE 2 / 4 — MANUAL TEST BATTERY', `
       <div style="font-family:'Space Grotesk',Arial;font-weight:700;font-size:24px;margin-bottom:18px">Manual Test Battery</div>
       ${battery.map((t,i)=>`<div style="display:flex;align-items:center;gap:16px;padding:10px 0;${i?`border-top:1px solid ${BORDER}`:''}">
-        <span style="flex:0 0 200px;font-size:13px;color:${INK}">${esc(t.test)}</span>${bar(t.score)}
-        <span style="width:26px;text-align:right;font-family:'Space Grotesk',Arial;font-weight:700;color:${INK}">${t.score}</span>
+        <span style="flex:0 0 200px;font-size:13px;color:${INK}">${esc(t.test)}</span>${engineScored ? barOr(t.score) : bar(t.score)}
+        <span style="width:26px;text-align:right;font-family:'Space Grotesk',Arial;font-weight:700;color:${INK}">${engineScored ? num(t.score) : t.score}</span>
         <span style="flex:0 0 150px;text-align:right;font-family:monospace">
           <span style="color:${ORANGE};font-weight:700;font-size:13px">${esc(t.raw)}</span>
           <span style="color:${FAINT};font-size:10px;display:block">${esc(t.avg)}</span></span></div>`).join('')}`) : ''
@@ -126,17 +154,25 @@ export const downloadReportPDF = async reportId => {
       <div style="display:flex;gap:16px;justify-content:center">
         ${dynamo.map(d=>`<div style="flex:1;text-align:center">
           <div style="font-family:'Space Grotesk',Arial;font-weight:700;color:${INK};margin-bottom:10px">${esc(d.joint)}</div>
-          ${ringSvg(d.lsi ?? 0)}
+          ${engineScored && d.lsi == null ? `<div style="height:120px;display:flex;align-items:center;justify-content:center;font-family:monospace;font-size:11px;color:${FAINT}">NO LSI<br>(both sides needed)</div>` : ringSvg(d.lsi ?? 0)}
           <div style="display:flex;justify-content:space-between;font-family:monospace;font-size:11px;color:${FAINT};margin:8px 10px 0">
             <span>LEFT<br><b style="color:${MUTED}">${esc(d.left)}</b></span><span>RIGHT<br><b style="color:${MUTED}">${esc(d.right)}</b></span></div>
-          <span style="display:inline-block;margin-top:10px;font-family:monospace;font-size:10px;color:${TEAL};border:1px solid ${TEAL};border-radius:4px;padding:2px 8px 10px">${esc(d.status)}</span>
+          <span style="display:inline-block;margin-top:10px;font-family:monospace;font-size:10px;color:${engineScored ? statusColor(d.status) : TEAL};border:1px solid ${engineScored ? statusColor(d.status) : TEAL};border-radius:4px;padding:2px 8px 10px">${esc(d.status)}</span>
         </div>`).join('')}
       </div>
       <div style="border-left:3px solid ${ORANGE};padding-left:16px;margin-top:26px;display:flex;gap:24px">
         <div style="flex:1"><div style="font-family:monospace;font-size:10px;color:${FAINT};letter-spacing:1px">LOWEST SYMMETRY SCORE</div><div style="color:${INK};font-size:13px;margin-top:6px">${esc(ss.lowest||'')}</div></div>
         <div style="flex:1"><div style="font-family:monospace;font-size:10px;color:${FAINT};letter-spacing:1px">FLAG</div><div style="color:${INK};font-size:13px;margin-top:6px">${esc(ss.flag||'')}</div></div>
         <div style="flex:1"><div style="font-family:monospace;font-size:10px;color:${FAINT};letter-spacing:1px">RECOMMENDATION</div><div style="color:${INK};font-size:13px;margin-top:6px">${esc(ss.recommendation||'')}</div></div>
-      </div>`) : ''
+      </div>
+      ${(rc.movementScreen||[]).length ? `<div style="margin-top:22px"><div style="font-family:monospace;font-size:10px;color:${FAINT};letter-spacing:1px">HUMANTRAK MOVEMENT SCREEN</div>
+        ${rc.movementScreen.map((m,i)=>`<div style="display:flex;align-items:center;gap:16px;padding:8px 0;${i?`border-top:1px solid ${BORDER}`:''}">
+          <span style="flex:0 0 200px;font-size:13px;color:${INK}">${esc(m.test)}${m.feedsOvr?'':`<span style="color:${FAINT};font-size:11px"> · flag only</span>`}</span>${barOr(m.score, m.status==='completed'?'Not tested':m.result)}
+          <span style="width:26px;text-align:right;font-family:'Space Grotesk',Arial;font-weight:700;color:${INK}">${num(m.score)}</span>
+          <span style="flex:0 0 150px;text-align:right;font-family:monospace">${m.status==='completed'?`<span style="color:${ORANGE};font-weight:700;font-size:12px">${esc(m.result)}</span>`:''}<span style="color:${FAINT};font-size:10px;display:block">${esc(m.band)}</span></span></div>`).join('')}</div>` : ''}
+      ${(rc.flags||[]).length ? `<div style="margin-top:18px"><div style="font-family:monospace;font-size:10px;color:${FAINT};letter-spacing:1px">AREAS TO WORK ON</div>
+        ${rc.flags.map(f=>`<div style="margin-top:6px;font-size:12px;color:${INK}"><span style="display:inline-block;width:8px;height:8px;border-radius:4px;background:${f.level==='red'?RED:AMBER};margin-right:8px"></span><b>${esc(f.test)}</b>${f.note?` — ${esc(f.note)}`:''}</div>`).join('')}</div>` : ''}
+      ${engineScored && rc.benchmarkNote ? `<div style="color:${FAINT};font-size:10px;margin-top:14px">${esc(rc.benchmarkNote)}</div>` : ''}`) : ''
 
     // Page 4
     const p4 = (fm.stats||[]).length ? pageWrap('PAGE 4 / 4 — WHAT THIS MEANS ON THE FIELD', `
@@ -151,7 +187,7 @@ export const downloadReportPDF = async reportId => {
           <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">
             <span style="display:flex;align-items:center;gap:8px"><span style="width:14px;height:8px;border-radius:4px;background:${tagColor(s.tag)};display:inline-block"></span><b style="color:${INK};font-family:'Space Grotesk',Arial">${esc(s.name)}</b></span>
             <span style="font-family:monospace;font-size:10px;color:${tagColor(s.tag)};border:1px solid ${tagColor(s.tag)};border-radius:4px;padding:2px 7px 10px">${esc(s.tag)}</span></div>
-          <div style="font-family:monospace;font-size:11px;color:${FAINT};margin:0 0 6px 22px">Score: ${s.score}/100</div>
+          <div style="font-family:monospace;font-size:11px;color:${FAINT};margin:0 0 6px 22px">${s.score == null ? 'Not tested this session' : `Score: ${s.score}/100`}</div>
           <p style="color:${MUTED};font-size:13px;line-height:1.5;margin:0 0 0 22px">${esc(s.body)}</p></div>`).join('')}
       </div>`) : ''
 

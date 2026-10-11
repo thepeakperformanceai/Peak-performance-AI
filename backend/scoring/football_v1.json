@@ -1,0 +1,47 @@
+{
+  "config_version": "football-v1.1",
+  "sport": "football",
+  "hand_timing_offset_s": 0.22,
+  "score_floor": 25,
+  "score_cap": 99,
+
+  "manual_anchors": {
+    "sprint_10m": [[2.10, 40], [1.95, 55], [1.85, 70], [1.75, 85], [1.68, 95]],
+    "sprint_30m": [[4.85, 40], [4.55, 55], [4.30, 70], [4.10, 85], [3.95, 95]],
+    "ruler_drop": [[28.0, 40], [20.4, 55], [16.0, 70], [11.0, 85], [7.5, 95]],
+    "beep_test":  [[8.0, 40], [10.0, 55], [11.5, 70], [13.0, 85], [14.0, 95]]
+  },
+
+  "vald_band_labels": ["well_below", "below", "within_normal", "slightly_above", "well_above"],
+  "vald_band_edge_scores": [25, 40, 55, 70, 85, 99],
+  "vald_band_midpoints": [33, 48, 63, 78, 92],
+
+  "beep_shuttles_per_level": {
+    "1": 7, "2": 8, "3": 8, "4": 9, "5": 9, "6": 10, "7": 10, "8": 11, "9": 11, "10": 11,
+    "11": 12, "12": 12, "13": 13, "14": 13, "15": 13, "16": 14, "17": 14, "18": 15,
+    "19": 15, "20": 16, "21": 16
+  },
+
+  "tests": {
+    "sprint_10m":      {"source": "manual", "stat": "speed",     "stat_weight": 0.6, "plausible": [1.40, 3.50]},
+    "sprint_30m":      {"source": "manual", "stat": "speed",     "stat_weight": 0.4, "plausible": [3.50, 8.00]},
+    "ruler_drop":      {"source": "manual", "stat": "reaction",  "stat_weight": 1.0, "plausible": [0, 30]},
+    "beep_test":       {"source": "manual", "stat": "endurance", "stat_weight": 1.0, "plausible": [1.1, 21.0]},
+    "single_leg_stand":{"source": "vald", "bilateral": true,  "stat": "balance", "stat_weight": 1.0, "plausible": [0, 30]},
+    "trunk_rotation":  {"source": "vald", "bilateral": true,  "stat": null, "plausible": [0, 90]},
+    "overhead_squat":  {"source": "vald", "bilateral": false, "stat": null, "plausible": null},
+    "hip_extension":   {"source": "vald", "bilateral": true,  "dynamo": true, "stat": "power", "stat_weight": 0.5, "plausible": [50, 3000]},
+    "knee_extension":  {"source": "vald", "bilateral": true,  "dynamo": true, "stat": "power", "stat_weight": 0.5, "plausible": [50, 3000]}
+  },
+
+  "stat_weights": {"speed": 25, "power": 20, "agility": 20, "endurance": 20, "balance": 10, "reaction": 5},
+  "stats_not_in_battery": ["agility"],
+
+  "lsi": {"amber_below": 90, "red_below": 85, "power_cap": 75},
+  "flags": {"sls_side_diff_s": 10, "trunk_rotation_min_deg": 40, "trunk_rotation_side_diff_deg": 10},
+
+  "ovr_min_stats": 3,
+  "ovr_min_weight_share": 0.5,
+  "provisional_under_age": 18,
+  "provisional_sexes": ["F"]
+}

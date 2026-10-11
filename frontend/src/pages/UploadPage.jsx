@@ -1,10 +1,11 @@
 import { useState, useCallback } from 'react'
 import { useDropzone } from 'react-dropzone'
 import toast from 'react-hot-toast'
-import { generateReport, extractProfile } from '../services/api'
+import { generateReport, generateFootballReport, extractProfile } from '../services/api'
 import { useReportStore } from '../store/reportStore'
 import { useParamStore } from '../store/paramStore'
 import { sanitizeInput } from '../utils/sanitize'
+import FootballResultsForm, { FOOTBALL_POSITIONS, emptyFootballResults, footballProblems } from '../components/FootballResultsForm'
 
 
 const SPORTS = ['Football', 'Cricket', 'Padel']
@@ -14,6 +15,21 @@ const STEPS = [
   { num: 2, label: 'Athlete details' },
   { num: 3, label: 'Generate' },
 ]
+
+const todayISO = () => new Date().toISOString().slice(0, 10)
+
+const emptyFootballProfile = () => ({ dob: '', sex: '', bodyweight: '', position: '', testDate: todayISO() })
+
+// Whole years on the test date, for display; the backend recalculates it.
+function ageFromDob(dob, onDate) {
+  if (!dob || !onDate) return null
+  const b = new Date(`${dob}T00:00:00Z`), d = new Date(`${onDate}T00:00:00Z`)
+  if (Number.isNaN(b.getTime()) || Number.isNaN(d.getTime())) return null
+  let age = d.getUTCFullYear() - b.getUTCFullYear()
+  const m = d.getUTCMonth() - b.getUTCMonth()
+  if (m < 0 || (m === 0 && d.getUTCDate() < b.getUTCDate())) age--
+  return age
+}
 
 function mergeProfileIntoForm(prev, profile) {
   const applied = []
@@ -50,6 +66,14 @@ export default function UploadPage({ onReportGenerated }) {
     knownInjuries: '',
   })
 
+  // Football only: extra required profile fields + the test results.
+  const [fbProfile, setFbProfile] = useState(emptyFootballProfile)
+  const [fbResults, setFbResults] = useState(emptyFootballResults)
+  const isFootball = form.sport === 'Football'
+  const fbAge = ageFromDob(fbProfile.dob, fbProfile.testDate)
+  const handleFbChange = e =>
+    setFbProfile(prev => ({ ...prev, [e.target.name]: e.target.value }))
+
   const onDrop = useCallback(accepted => {
     const valid = accepted.filter(f =>
       f.type === 'application/pdf' || f.name.endsWith('.csv')
@@ -78,7 +102,28 @@ export default function UploadPage({ onReportGenerated }) {
   const handleChange = e =>
     setForm(prev => ({ ...prev, [e.target.name]: e.target.value }))
 
+  const validateFootball = () => {
+    if (!form.name.trim())         { toast.error('Athlete name is required.'); return false }
+    if (!fbProfile.dob)            { toast.error('Date of birth is required.'); return false }
+    if (fbAge === null || fbAge < 5 || fbAge > 80) { toast.error('Please check the date of birth.'); return false }
+    if (!fbProfile.sex)            { toast.error('Sex is required.'); return false }
+    if (!fbProfile.position)       { toast.error('Position is required.'); return false }
+    if (!fbProfile.bodyweight)     { toast.error('Bodyweight is required.'); return false }
+    const bw = Number(fbProfile.bodyweight)
+    if (bw < 30 || bw > 160)       { toast.error('Bodyweight must be 30–160 kg. Please re-check it.'); return false }
+    for (const p of enabledParams) {
+      if (p.required && !form[p.key]?.toString().trim()) {
+        toast.error(`${p.label} is required.`)
+        return false
+      }
+    }
+    const problems = footballProblems(fbResults)
+    if (problems.length) { toast.error(problems[0]); return false }
+    return true
+  }
+
   const validate = () => {
+    if (isFootball) return validateFootball()
     if (files.length === 0) { toast.error('Please upload at least one file.'); return false }
     if (!form.name.trim())  { toast.error('Athlete name is required.'); return false }
     if (!form.age)          { toast.error('Age is required.'); return false }
@@ -151,7 +196,9 @@ export default function UploadPage({ onReportGenerated }) {
     if (!validate()) return
     setLoading(true)
 
-    const messages = [
+    const messages = isFootball
+      ? ['Scoring test results…', 'Writing the report…', 'Checking every number…', 'Almost done…']
+      : [
       'Extracting VALD data…',
       'Building AI prompt…',
       'Generating report…',
@@ -171,7 +218,13 @@ export default function UploadPage({ onReportGenerated }) {
         knownInjuries: sanitizeInput(form.knownInjuries),
         position:      sanitizeInput(form.position),
       }
-      const data = await generateReport(files, sanitizedForm)
+      const data = isFootball
+        ? await generateFootballReport(files, {
+            ...sanitizedForm,
+            ...fbProfile,
+            age: fbAge,
+          }, fbResults)
+        : await generateReport(files, sanitizedForm)
       setReport(data)
       toast.success('Report generated!')
       onReportGenerated()
@@ -220,7 +273,9 @@ export default function UploadPage({ onReportGenerated }) {
       <div className="card">
         <h2 className="text-sm font-medium text-gray-900 mb-4 flex items-center gap-2">
           📁 Upload VALD files
-          <span className="text-xs text-gray-400 font-normal">(up to 3 files)</span>
+          <span className="text-xs text-gray-400 font-normal">
+            {isFootball ? '(optional for football: kept with the report as reference)' : '(up to 3 files)'}
+          </span>
         </h2>
 
         <div
@@ -279,6 +334,14 @@ export default function UploadPage({ onReportGenerated }) {
             />
           </div>
 
+          {isFootball ? (
+            <div className="space-y-1">
+              <label className="text-xs font-medium text-gray-500">
+                Date of birth * {fbAge !== null && <span className="text-gray-400">(age {fbAge} on test day)</span>}
+              </label>
+              <input name="dob" value={fbProfile.dob} onChange={handleFbChange} type="date" className="inp" />
+            </div>
+          ) : (
           <div className="space-y-1">
             <label className="text-xs font-medium text-gray-500">Age *</label>
             <input
@@ -286,6 +349,7 @@ export default function UploadPage({ onReportGenerated }) {
               type="number" min="1" max="99" className="inp" placeholder="Years"
             />
           </div>
+          )}
 
           <div className="space-y-1">
             <label className="text-xs font-medium text-gray-500">Sport *</label>
@@ -294,6 +358,15 @@ export default function UploadPage({ onReportGenerated }) {
             </select>
           </div>
 
+          {isFootball ? (
+            <div className="space-y-1">
+              <label className="text-xs font-medium text-gray-500">Position *</label>
+              <select name="position" value={fbProfile.position} onChange={handleFbChange} className="inp">
+                <option value="">Select…</option>
+                {FOOTBALL_POSITIONS.map(p => <option key={p.value} value={p.value}>{p.label}</option>)}
+              </select>
+            </div>
+          ) : (
           <div className="space-y-1">
             <label className="text-xs font-medium text-gray-500">Position / role</label>
             <input
@@ -301,6 +374,31 @@ export default function UploadPage({ onReportGenerated }) {
               className="inp" placeholder="e.g. Fast Bowler"
             />
           </div>
+          )}
+
+          {isFootball && (
+            <>
+              <div className="space-y-1">
+                <label className="text-xs font-medium text-gray-500">Sex *</label>
+                <select name="sex" value={fbProfile.sex} onChange={handleFbChange} className="inp">
+                  <option value="">Select…</option>
+                  <option value="M">Male</option>
+                  <option value="F">Female</option>
+                </select>
+              </div>
+              <div className="space-y-1">
+                <label className="text-xs font-medium text-gray-500">Bodyweight (kg) *</label>
+                <input
+                  name="bodyweight" value={fbProfile.bodyweight} onChange={handleFbChange}
+                  type="number" step="0.1" min="30" max="160" className="inp" placeholder="e.g. 71.4"
+                />
+              </div>
+              <div className="space-y-1">
+                <label className="text-xs font-medium text-gray-500">Test date *</label>
+                <input name="testDate" value={fbProfile.testDate} onChange={handleFbChange} type="date" className="inp" />
+              </div>
+            </>
+          )}
 
           <div className="space-y-1">
             <label className="text-xs font-medium text-gray-500">Training level *</label>
@@ -332,6 +430,8 @@ export default function UploadPage({ onReportGenerated }) {
         </div>
       </div>
 
+      {isFootball && <FootballResultsForm results={fbResults} onChange={setFbResults} />}
+
       {/* Actions */}
       <div className="flex items-center justify-end gap-3">
         <button
@@ -339,6 +439,8 @@ export default function UploadPage({ onReportGenerated }) {
           onClick={() => {
             setFiles([])
             setForm({ name:'', age:'', sport:'General Fitness', position:'', trainingLevel:'Semi-Professional', knownInjuries:'' })
+            setFbProfile(emptyFootballProfile())
+            setFbResults(emptyFootballResults())
             setStep(1)
           }}
         >

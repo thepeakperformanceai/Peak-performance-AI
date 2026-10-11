@@ -7,6 +7,7 @@ const reportParser = require('../services/reportParser.service');
 const profileParser = require('../services/profileParser.service');
 const { ownerFilter } = require('../middleware/auth.middleware');
 const { extractDashboardMetrics } = require('../services/metricExtract.service');
+const footballReport = require('../services/footballReport.service');
 
 
 /**
@@ -155,6 +156,113 @@ const generateReport = async (req, res, next) => {
 };
 
 /**
+ * POST /api/report/football - Football report from manually entered results.
+ * Scores the session with the scoring engine (every number), then asks Gemini
+ * for the words only. VALD PDFs are optional and kept as reference; they are
+ * not sent to Gemini.
+ */
+const generateFootballReport = async (req, res, next) => {
+  const uploadedFiles = req.files || [];
+  try {
+    let profileIn, footballIn;
+    try {
+      profileIn = JSON.parse(req.body.profile || '{}');
+      footballIn = JSON.parse(req.body.football || '{}');
+    } catch (e) {
+      const err = new Error('Invalid football report JSON');
+      err.statusCode = 400;
+      throw err;
+    }
+
+    const { profile, session } = footballReport.validateFootballInput(profileIn, footballIn);
+
+    const pdfData = uploadedFiles.length ? await pdfExtractService.processPdfs(uploadedFiles) : [];
+
+    const { scored, payload, rawResponse, reportContent } =
+      await footballReport.runFootballPipeline(profile, session);
+
+    const report = new Report({
+      user: req.user._id,
+      athleteName: profile.name,
+      age: profile.age,
+      sport: 'Football',
+      dob: profile.dob,
+      weight: `${profile.bodyweight} kg`,
+      bodyweightKg: profile.bodyweight,
+      sex: profile.sex,
+      position: profile.position,
+      trainingLevel: profile.trainingLevel,
+      knownInjuries: profile.knownInjuries,
+      customParams: profile.customParams,
+      testDate: profile.testDate,
+      practitioner: profile.practitioner,
+      reportContent,
+      rawAiResponse: rawResponse,
+      sourcePdfData: pdfData.map(p => ({ type: p.type, text: p.text })),
+      footballSession: session,
+      scoring: scored,
+      scoringPayload: payload,
+      configVersion: scored.config_version
+    });
+    await report.save();
+    console.log(`Football report saved with ID: ${report._id} (OVR ${scored.ovr.value ?? 'pending'}, ${scored.config_version})`);
+
+    if (uploadedFiles.length) pdfExtractService.cleanupTempFiles(uploadedFiles);
+
+    res.status(201).json(reportResponse(report, 'Report generated successfully'));
+  } catch (error) {
+    if (uploadedFiles.length) {
+      try { pdfExtractService.cleanupTempFiles(uploadedFiles); } catch (_) {}
+    }
+    next(error);
+  }
+};
+
+const reportResponse = (report, message) => ({
+  message,
+  _id: report._id,
+  reportId: report._id,
+  athleteName: report.athleteName,
+  age: report.age,
+  sport: report.sport,
+  dob: report.dob,
+  weight: report.weight,
+  academy: report.academy,
+  position: report.position,
+  trainingLevel: report.trainingLevel,
+  knownInjuries: report.knownInjuries,
+  testDate: report.testDate,
+  practitioner: report.practitioner,
+  reportContent: report.reportContent,
+  createdAt: report.createdAt
+});
+
+/**
+ * Regenerate for a football report: re-scores the stored entry with the
+ * current config (so new benchmarks apply) and rewrites the text.
+ */
+const regenerateFootballReport = async (existingReport, res) => {
+  const profile = {
+    name: existingReport.athleteName,
+    age: existingReport.footballSession.athlete.age,
+    position: existingReport.position,
+    testDate: existingReport.testDate
+  };
+  const { scored, payload, rawResponse, reportContent } =
+    await footballReport.runFootballPipeline(profile, existingReport.footballSession);
+
+  existingReport.reportContent = reportContent;
+  existingReport.rawAiResponse = rawResponse;
+  existingReport.scoring = scored;
+  existingReport.scoringPayload = payload;
+  existingReport.configVersion = scored.config_version;
+  await existingReport.save();
+  console.log(`Football report re-scored with ID: ${existingReport._id} (${scored.config_version})`);
+
+  res.json(reportResponse(existingReport, 'Report regenerated successfully'));
+};
+
+/**
  * GET /api/report/:id - Get report by ID
  */
 const getReport = async (req, res, next) => {
@@ -215,6 +323,10 @@ const regenerateReport = async (req, res, next) => {
       const err = new Error('Report not found');
       err.statusCode = 404;
       throw err;
+    }
+
+    if (existingReport.footballSession) {
+      return await regenerateFootballReport(existingReport, res);
     }
 
     const exercises = await Exercise.find().select('name targets');
@@ -362,6 +474,7 @@ const extractProfile = async (req, res, next) => {
 
 module.exports = {
   generateReport,
+  generateFootballReport,
   generateReportContent,
   getReport,
   exportReportPdf,

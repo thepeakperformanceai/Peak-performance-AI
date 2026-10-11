@@ -34,6 +34,31 @@ npm run seed
 - `GET /api/report/:id` - Retrieve report by ID
 - `GET /api/report/:id/export` - Get report data for PDF export
 
+- `POST /api/report/football` - Football report from manually entered test results (VALD PDFs optional, kept as reference)
+
+### Football scoring (Football OVR Scoring Spec v1)
+
+Football reports don't let the AI produce numbers. The flow:
+
+1. Tester enters results on the New report page (sport = Football).
+2. `scoring/scoring.js` scores every test, stat and the OVR, deterministically.
+   Benchmarks, weights and thresholds live in `scoring/football_v1.json`.
+3. `services/footballReport.service.js` sends the finished scores to Gemini
+   (always Gemini, whatever `AI_PROVIDER` says) and gets the text back.
+4. Any number in Gemini's text that isn't in the scores gets the answer
+   rejected and retried (3 attempts, then the report fails cleanly).
+5. The report stores the tester's entry, the engine output, the exact Gemini
+   payload and the config version. "Regenerate" re-scores with the current config.
+
+`scoring/scoring.js` is a JavaScript port of `../peakperformance_scoring/scoring.py`.
+Keep `scoring/football_v1.json` identical to `../peakperformance_scoring/football_v1.json`
+(a test checks this). Needs `GEMINI_API_KEY`.
+
+```bash
+npm test          # engine (the 14 spec checks + sample_output.json) and football pipeline
+npm run parity    # needs python3: scores 5000 random sessions with both engines, must be identical
+```
+
 ### Exercises
 - `GET /api/exercises` - Get all exercises
 - `POST /api/exercises` - Create new exercise
