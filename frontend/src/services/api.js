@@ -1,6 +1,8 @@
 import axios from 'axios'
 import html2pdf from 'html2pdf.js'
+import { jsPDF } from 'jspdf'
 import { clearAuthToken, getAuthToken } from '../utils/auth'
+import { footballCardHtml, ensureCardFonts } from '../components/footballCard'
 
 const api = axios.create({
   baseURL: import.meta.env.VITE_API_URL,
@@ -59,6 +61,45 @@ export const downloadReportPDF = async reportId => {
     const response = await api.get(`/report/${reportId}/export`)
     const { report } = response
     const rc = report?.reportContent || {}
+
+    // Football (engine-scored) reports: the one-page A4 player card.
+    if (rc.configVersion) {
+      await ensureCardFonts()
+      const card = document.createElement('div')
+      card.innerHTML = footballCardHtml(report)
+      const cardFile = `PeakPerformance_${(report.athleteName || 'Athlete').replace(/[^a-zA-Z0-9]/g, '_')}_${(report.testDate || '').replace(/[^a-zA-Z0-9]/g, '_')}.pdf`
+      // html2canvas finds each font's baseline by putting a tiny inline <img>
+      // next to sample text in a hidden <div> on <body>. Tailwind's base styles
+      // make every img display:block, which drops it a line and pushes all
+      // text down in the PDF. Undo that for the measuring div only, while drawing.
+      const BASELINE_FIX = 'body > div[style*="visibility: hidden"] > img { display: inline !important; }'
+      const addFix = (doc) => {
+        const el = doc.createElement('style')
+        el.textContent = BASELINE_FIX
+        doc.head.appendChild(el)
+        return el
+      }
+      const fix = addFix(document)
+      try {
+        // Render to one image and place it on exactly one A4 page (html2pdf's
+        // own paging pushes a full-height card onto a second page).
+        const canvas = await html2pdf().set({
+          margin: 0,
+          // Card fonts must also be ready inside html2canvas's cloned document.
+          html2canvas: {
+            scale: 2, useCORS: true, logging: false,
+            onclone: (doc) => { addFix(doc); return ensureCardFonts(doc) },
+          },
+          jsPDF: { orientation: 'portrait', unit: 'mm', format: 'a4' },
+        }).from(card.firstElementChild).toCanvas().get('canvas')
+        const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' })
+        pdf.addImage(canvas.toDataURL('image/jpeg', 0.95), 'JPEG', 0, 0, 210, 297)
+        pdf.save(cardFile)
+      } finally {
+        fix.remove()
+      }
+      return
+    }
 
     const ORANGE = '#ff4b12', INK = '#f2f4f7', MUTED = '#9aa7b4', FAINT = '#5b6b7c'
     const PANEL = '#0e0f11', BORDER = '#22242a', TRACK = '#1c1e22', TEAL = '#39d0c8', BG = '#0a0b0d'

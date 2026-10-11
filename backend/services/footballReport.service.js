@@ -449,6 +449,32 @@ const buildReportContent = (profile, scored, narrative) => {
     };
   });
 
+  // One row per test, in battery order, for the player card's results table.
+  // Raw values are exactly what the engine stored; units kept separate.
+  const testTable = scored.tests.map(t => {
+    const info = TEST_INFO[t.name];
+    const done = t.status === 'completed';
+    let result = '—';
+    if (done) {
+      if (t.raw_left !== undefined || t.raw_right !== undefined) {
+        result = `L ${t.raw_left ?? '—'} · R ${t.raw_right ?? '—'}`;
+      } else {
+        result = String(t.raw);
+      }
+    }
+    return {
+      test: info.label,
+      result,
+      unit: info.unit === 'composite score' ? 'score' : info.unit,
+      timing: t.timing || null,
+      score: t.score,
+      status: t.status,
+      partial: !!t.partial,
+      oneSideOnly: !!t.one_side_only,
+      feedsOvr: !!cfg.tests[t.name].stat
+    };
+  });
+
   const lsiTests = dynamoStrength.filter(d => d.lsi !== null);
   const lowest = lsiTests.sort((a, b) => a.lsi - b.lsi)[0];
 
@@ -476,6 +502,7 @@ const buildReportContent = (profile, scored, narrative) => {
     manualBattery,
     dynamoStrength,
     movementScreen,
+    testTable,
     flags: scored.flags.map((f, i) => ({
       level: f.level,
       test: TEST_INFO[f.test].label,

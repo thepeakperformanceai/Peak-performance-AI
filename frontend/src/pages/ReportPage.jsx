@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useReportStore } from '../store/reportStore'
 import toast from 'react-hot-toast'
 import { downloadReportPDF } from '../services/api'
+import { footballCardHtml, CARD_WIDTH } from '../components/footballCard'
 
 /* Athlete Test Battery Report — 4-page dark card (matches dashboard) */
 const ORANGE = '#ff4b12', INK = '#f2f4f7', MUTED = '#9aa7b4', FAINT = '#5b6b7c'
@@ -115,6 +116,27 @@ export default function ReportPage() {
     try { await downloadReportPDF(report._id); toast.success('PDF downloaded!') }
     catch (err) { toast.error(err.message || 'Download failed. Please try again.') }
     finally { setDownloading(false) }
+  }
+
+  // Football (engine-scored) reports: the one-page player card, identical to the PDF.
+  if (engineScored) {
+    return (
+      <div style={{ maxWidth: CARD_WIDTH, margin: '0 auto' }}>
+        <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 12 }}>
+          <button onClick={handleDownload} disabled={downloading}
+            style={{ background: ORANGE, color: '#0A0E13', border: 'none', borderRadius: 10, padding: '10px 16px', fontSize: 13, fontWeight: 700, cursor: downloading ? 'default' : 'pointer', opacity: downloading ? 0.6 : 1, fontFamily: "'IBM Plex Mono', monospace" }}>
+            {downloading ? '⏳ Generating…' : '⬇ Download PDF'}
+          </button>
+        </div>
+        <div style={{ overflowX: 'auto' }}>
+          <div
+            data-testid="football-card"
+            style={{ width: CARD_WIDTH, boxShadow: '0 12px 40px rgba(0,0,0,0.18)', borderRadius: 4 }}
+            dangerouslySetInnerHTML={{ __html: footballCardHtml(report) }}
+          />
+        </div>
+      </div>
+    )
   }
 
   return (

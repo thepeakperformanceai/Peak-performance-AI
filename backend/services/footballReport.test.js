@@ -181,4 +181,17 @@ test('full pipeline: sample session gives OVR 71 provisional on the card', async
   assert.equal(rc.fieldMeaning.stats.find(s => s.name === 'Agility').tag, 'NOT TESTED');
   assert.equal(rc.flags[0].note, 'Knee Extension: an area to work on.');
   assert.equal(rc.configVersion, 'football-v1.1');
+  assert.deepEqual(rc.testTable.map(r => [r.test, r.result, r.unit, r.score, r.status]), [
+    ['10m Sprint', '1.7', 's', 59.5, 'completed'],
+    ['30m Sprint', '4.21', 's', 62.2, 'completed'],
+    ['Ruler Drop', '14.5', 'cm', 74.5, 'completed'],
+    ['Beep Test', '—', 'level.shuttle', null, 'injured'],
+    ['Single Leg Stand (Eyes Closed)', 'L 18 · R 22', 's', 77.5, 'completed'],
+    ['Trunk Rotation', 'L 42 · R 40', '°', 71, 'completed'],
+    ['Overhead Squat', '68', 'score', 63, 'completed'],
+    ['Hip Extension', 'L 410 · R 395', 'N', 75.2, 'completed'],
+    ['Knee Extension', 'L 612 · R 533', 'N', 82.2, 'completed']
+  ]);
+  assert.equal(rc.testTable[0].timing, 'hand');
+  assert.equal(rc.testTable[6].partial, true);
 });
