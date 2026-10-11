@@ -1,0 +1,157 @@
+{
+  "athlete": {
+    "id": "PP-0142",
+    "age": 19,
+    "sex": "M",
+    "position": "MID"
+  },
+  "sport": "football",
+  "config_version": "football-v1.1",
+  "ovr": {
+    "value": 71,
+    "provisional": true,
+    "reasons": [
+      "beep_test: injured"
+    ]
+  },
+  "stats": {
+    "speed": {
+      "value": 61,
+      "partial": false
+    },
+    "power": {
+      "value": 79,
+      "partial": false
+    },
+    "agility": {
+      "value": null,
+      "status": "not_in_battery"
+    },
+    "endurance": {
+      "value": null,
+      "status": "not_tested"
+    },
+    "balance": {
+      "value": 78,
+      "partial": false
+    },
+    "reaction": {
+      "value": 74,
+      "partial": false
+    }
+  },
+  "tests": [
+    {
+      "name": "sprint_10m",
+      "status": "completed",
+      "score": 59.5,
+      "partial": false,
+      "benchmark": "research",
+      "raw": 1.7,
+      "timing": "hand"
+    },
+    {
+      "name": "sprint_30m",
+      "status": "completed",
+      "score": 62.2,
+      "partial": false,
+      "benchmark": "research",
+      "raw": 4.21,
+      "timing": "hand"
+    },
+    {
+      "name": "ruler_drop",
+      "status": "completed",
+      "score": 74.5,
+      "partial": false,
+      "benchmark": "research",
+      "raw": 14.5
+    },
+    {
+      "name": "beep_test",
+      "status": "injured",
+      "score": null,
+      "partial": false,
+      "benchmark": null
+    },
+    {
+      "name": "single_leg_stand",
+      "status": "completed",
+      "score": 77.5,
+      "partial": false,
+      "benchmark": "vald_age_sex",
+      "raw_left": 18,
+      "raw_right": 22,
+      "bands": [
+        3,
+        3
+      ],
+      "one_side_only": false,
+      "lsi": 81.8
+    },
+    {
+      "name": "trunk_rotation",
+      "status": "completed",
+      "score": 71.0,
+      "partial": false,
+      "benchmark": "vald_age_sex",
+      "raw_left": 42,
+      "raw_right": 40,
+      "bands": [
+        3,
+        2
+      ],
+      "one_side_only": false,
+      "lsi": 95.2
+    },
+    {
+      "name": "overhead_squat",
+      "status": "completed",
+      "score": 63.0,
+      "partial": true,
+      "benchmark": "vald_age_sex",
+      "raw": 68,
+      "bands": [
+        2
+      ]
+    },
+    {
+      "name": "hip_extension",
+      "status": "completed",
+      "score": 75.2,
+      "partial": false,
+      "benchmark": "vald_age_sex",
+      "raw_left": 410,
+      "raw_right": 395,
+      "bands": [
+        3,
+        3
+      ],
+      "one_side_only": false,
+      "lsi": 96.3
+    },
+    {
+      "name": "knee_extension",
+      "status": "completed",
+      "score": 82.2,
+      "partial": false,
+      "benchmark": "vald_age_sex",
+      "raw_left": 612,
+      "raw_right": 533,
+      "bands": [
+        4,
+        3
+      ],
+      "one_side_only": false,
+      "lsi": 87.1
+    }
+  ],
+  "flags": [
+    {
+      "type": "LSI",
+      "test": "knee_extension",
+      "value": 87.1,
+      "level": "amber"
+    }
+  ]
+}
