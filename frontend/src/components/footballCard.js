@@ -226,6 +226,28 @@ function flagsList(rc) {
   }).join('')
 }
 
+// ---------- padel look ----------
+// Top-down padel court (20 m x 10 m): walls, net, service lines and the centre
+// service line, drawn faintly behind the header. No text inside the SVG.
+function padelCourt(t) {
+  const W = 330, H = 165, k = W / 20         // 1 m = k px
+  const net = W / 2, svc = 6.95 * k
+  const line = (x1, y1, x2, y2, w = 2.5) =>
+    `<line x1="${x1.toFixed(1)}" y1="${y1.toFixed(1)}" x2="${x2.toFixed(1)}" y2="${y2.toFixed(1)}" stroke="${t.stripe}" stroke-width="${w}" stroke-linecap="round"/>`
+  return `<div style="position:absolute;left:150px;top:62px;width:${W}px;height:${H}px;transform:rotate(-14deg)">
+    <svg width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg" style="position:absolute;left:0;top:0">
+      <rect x="2" y="2" width="${W - 4}" height="${H - 4}" fill="${t.stripe}" fill-opacity="0.35" stroke="${t.stripe}" stroke-width="5" rx="3"/>
+      ${line(net, 0, net, H, 4)}
+      ${line(net - svc, 2, net - svc, H - 2)}
+      ${line(net + svc, 2, net + svc, H - 2)}
+      ${line(net - svc, H / 2, net + svc, H / 2)}
+    </svg>
+  </div>`
+}
+
+// Court-blue turf strip with a white line, under the padel header.
+const PADEL_TURF = `<div style="height:9px;background:#1f5f8f;border-top:2px solid #ffffff;border-bottom:2px solid #174a70"></div>`
+
 const sectionTitle = (txt, t, extra = '') =>
   `<div style="font-family:${DISPLAY};font-size:21px;letter-spacing:1px;color:${t.deep};line-height:1;margin-bottom:8px">${txt}${extra}</div>`
 
@@ -255,11 +277,14 @@ export function footballCardHtml(report) {
       ? chip('PROVISIONAL', '#ffffff', '#1c1f24', 'font-size:11px;letter-spacing:1.2px;padding:4px 9px 5px')
       : ''
 
+  // Padel gets its own look (court diagram + court-blue turf strip); football
+  // keeps its stripes. Tiers, layout and numbers are the same for both.
+  const padel = /padel/i.test(rc.sport || '')
   const header = `
   <div style="position:relative;height:238px;background:${t.band};overflow:hidden">
-    <div style="position:absolute;left:232px;top:-120px;width:90px;height:520px;background:${t.stripe};transform:rotate(-28deg)"></div>
+${padel ? padelCourt(t) : `    <div style="position:absolute;left:232px;top:-120px;width:90px;height:520px;background:${t.stripe};transform:rotate(-28deg)"></div>
     <div style="position:absolute;left:186px;top:-120px;width:26px;height:520px;background:${t.stripe};transform:rotate(-28deg)"></div>
-    <div style="position:absolute;left:142px;top:-120px;width:10px;height:520px;background:${t.stripe};transform:rotate(-28deg)"></div>
+    <div style="position:absolute;left:142px;top:-120px;width:10px;height:520px;background:${t.stripe};transform:rotate(-28deg)"></div>`}
 
     <div style="position:absolute;right:30px;top:20px;width:168px;text-align:center">
       <div style="font-family:${DISPLAY};font-size:${pending ? 104 : 118}px;line-height:0.86;color:${t.ink};letter-spacing:1px">${pending ? '—' : esc(rc.overallOVR)}</div>
@@ -275,7 +300,7 @@ export function footballCardHtml(report) {
 
     <div style="position:absolute;left:28px;right:248px;top:22px">
       <div style="display:flex;align-items:center;margin-left:150px">
-        <span style="font-family:${DISPLAY};font-size:18px;letter-spacing:2.5px;color:${t.ink};border:2px solid ${t.ink};border-radius:5px;padding:1px 8px 0">${t.label} CARD</span>
+        <span style="font-family:${DISPLAY};font-size:18px;letter-spacing:2.5px;color:${t.ink};border:2px solid ${t.ink};border-radius:5px;padding:1px 8px 0">${t.label} ${padel ? '· PADEL' : 'CARD'}</span>
       </div>
       <div style="font-family:${DISPLAY};font-size:${nameSize}px;line-height:0.95;color:${t.ink};letter-spacing:1px;margin-top:16px;margin-left:150px">${esc(name.toUpperCase())}</div>
       ${rc.fieldMeaning?.playerProfile ? `<div style="font-family:${TEXT};font-size:12.5px;font-style:italic;color:${t.soft};margin-top:6px;line-height:1.35">${esc(rc.fieldMeaning.playerProfile)}</div>` : ''}
@@ -327,6 +352,7 @@ export function footballCardHtml(report) {
   <div style="height:100%;box-sizing:border-box;padding:6px;border-radius:26px;background:${t.foil}">
     <div style="position:relative;height:100%;border-radius:21px;background:${BODY};overflow:hidden">
       ${header}
+      ${padel ? PADEL_TURF : ''}
       ${body}
       ${footer}
     </div>
