@@ -1,7 +1,7 @@
 import { useState, useCallback } from 'react'
 import { useDropzone } from 'react-dropzone'
 import toast from 'react-hot-toast'
-import { generateReport, generateFootballReport, generatePadelReport, extractProfile } from '../services/api'
+import { generateReport, generateFootballReport, generatePadelReport, generateCricketReport, extractProfile } from '../services/api'
 import { useReportStore } from '../store/reportStore'
 import { useParamStore } from '../store/paramStore'
 import { sanitizeInput } from '../utils/sanitize'
@@ -116,7 +116,7 @@ export default function UploadPage({ onReportGenerated }) {
     if (fbAge === null || fbAge < 5 || fbAge > 80) { toast.error('Please check the date of birth.'); return false }
     if (!fbProfile.sex)            { toast.error('Sex is required.'); return false }
     if (!scored.positions.some(p => p.value === fbProfile.position)) { toast.error(`${scored.positionLabel} is required.`); return false }
-    if (scored.key === 'padel' && !fbProfile.dominantHand) { toast.error('Dominant hand is required.'); return false }
+    if (scored.handLabel && !fbProfile.dominantHand) { toast.error(`${scored.handLabel} is required.`); return false }
     if (!fbProfile.bodyweight)     { toast.error('Bodyweight is required.'); return false }
     const bw = Number(fbProfile.bodyweight)
     if (bw < 30 || bw > 160)       { toast.error('Bodyweight must be 30–160 kg. Please re-check it.'); return false }
@@ -232,7 +232,9 @@ export default function UploadPage({ onReportGenerated }) {
         ? await generateFootballReport(files, scoredProfile, fbResults)
         : form.sport === 'Padel'
           ? await generatePadelReport(files, scoredProfile, fbResults)
-          : await generateReport(files, sanitizedForm)
+          : form.sport === 'Cricket'
+            ? await generateCricketReport(files, scoredProfile, fbResults)
+            : await generateReport(files, sanitizedForm)
       setReport(data)
       toast.success('Report generated!')
       onReportGenerated()
@@ -390,9 +392,9 @@ export default function UploadPage({ onReportGenerated }) {
 
           {isScored && (
             <>
-              {scored.key === 'padel' && (
+              {scored.handLabel && (
                 <div className="space-y-1">
-                  <label className="text-xs font-medium text-gray-500">Dominant hand *</label>
+                  <label className="text-xs font-medium text-gray-500">{scored.handLabel} *</label>
                   <select name="dominantHand" value={fbProfile.dominantHand} onChange={handleFbChange} className="inp">
                     <option value="">Select…</option>
                     <option value="R">Right</option>

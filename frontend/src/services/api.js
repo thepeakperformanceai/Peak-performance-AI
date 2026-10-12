@@ -67,6 +67,17 @@ export const generatePadelReport = async (files, athleteProfile, padelResults) =
   })
 }
 
+// Cricket: same engine-scored flow as football and padel.
+export const generateCricketReport = async (files, athleteProfile, cricketResults) => {
+  const formData = new FormData()
+  files.forEach(f => formData.append('files', f))
+  formData.append('profile', JSON.stringify(athleteProfile))
+  formData.append('results', JSON.stringify(cricketResults))
+  return api.post('/report/cricket', formData, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+  })
+}
+
 export const downloadReportPDF = async reportId => {
   try {
     const response = await api.get(`/report/${reportId}/export`)

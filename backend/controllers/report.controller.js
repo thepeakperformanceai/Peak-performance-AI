@@ -243,35 +243,38 @@ const reportResponse = (report, message) => ({
  * current config (so new benchmarks apply) and rewrites the text.
  */
 /**
- * POST /api/report/padel - Padel report from manually entered results.
- * Same pipeline as football (scoring engine for every number, Gemini for the
- * words, number check), with padel's tests, flags and dominant hand.
+ * POST /api/report/padel and /api/report/cricket - reports from manually
+ * entered results. Same pipeline as football (scoring engine for every
+ * number, Gemini for the words, number check), with each sport's tests,
+ * flags and dominant / bowling arm.
  */
-const generatePadelReport = async (req, res, next) => {
+const makeScoredReportHandler = (sportKey) => async (req, res, next) => {
   const uploadedFiles = req.files || [];
   try {
+    const pipeline = scoredReport.forSport(sportKey);
+    const displayName = pipeline.sport.displayName;
+
     let profileIn, resultsIn;
     try {
       profileIn = JSON.parse(req.body.profile || '{}');
       resultsIn = JSON.parse(req.body.results || '{}');
     } catch (e) {
-      const err = new Error('Invalid padel report JSON');
+      const err = new Error(`Invalid ${sportKey} report JSON`);
       err.statusCode = 400;
       throw err;
     }
 
-    const padel = scoredReport.forSport('padel');
-    const { profile, session } = padel.validateInput(profileIn, resultsIn);
+    const { profile, session } = pipeline.validateInput(profileIn, resultsIn);
 
     const pdfData = uploadedFiles.length ? await pdfExtractService.processPdfs(uploadedFiles) : [];
 
-    const { scored, payload, rawResponse, reportContent } = await padel.runPipeline(profile, session);
+    const { scored, payload, rawResponse, reportContent } = await pipeline.runPipeline(profile, session);
 
     const report = new Report({
       user: req.user._id,
       athleteName: profile.name,
       age: profile.age,
-      sport: 'Padel',
+      sport: displayName,
       dob: profile.dob,
       weight: `${profile.bodyweight} kg`,
       bodyweightKg: profile.bodyweight,
@@ -286,14 +289,14 @@ const generatePadelReport = async (req, res, next) => {
       reportContent,
       rawAiResponse: rawResponse,
       sourcePdfData: pdfData.map(p => ({ type: p.type, text: p.text })),
-      scoringSport: 'padel',
+      scoringSport: sportKey,
       scoringSession: session,
       scoring: scored,
       scoringPayload: payload,
       configVersion: scored.config_version
     });
     await report.save();
-    console.log(`Padel report saved with ID: ${report._id} (OVR ${scored.ovr.value ?? 'pending'}, ${scored.config_version})`);
+    console.log(`${displayName} report saved with ID: ${report._id} (OVR ${scored.ovr.value ?? 'pending'}, ${scored.config_version})`);
 
     if (uploadedFiles.length) pdfExtractService.cleanupTempFiles(uploadedFiles);
 
@@ -305,6 +308,9 @@ const generatePadelReport = async (req, res, next) => {
     next(error);
   }
 };
+
+const generatePadelReport = makeScoredReportHandler('padel');
+const generateCricketReport = makeScoredReportHandler('cricket');
 
 /**
  * Regenerate for an engine-scored report of a non-football sport (padel):
@@ -571,6 +577,7 @@ module.exports = {
   generateReport,
   generateFootballReport,
   generatePadelReport,
+  generateCricketReport,
   generateReportContent,
   getReport,
   exportReportPdf,

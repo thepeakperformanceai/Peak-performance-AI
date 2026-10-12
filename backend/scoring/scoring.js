@@ -27,7 +27,7 @@
 const STATUSES = new Set(['completed', 'not_done', 'injured', 'equipment_fault', 'invalid']);
 
 // One config per sport. Football's must stay identical to the Python engine's.
-const CONFIG_FILES = { football: './football_v1.json', padel: './padel_v1.json' };
+const CONFIG_FILES = { football: './football_v1.json', padel: './padel_v1.json', cricket: './cricket_v1.json' };
 const loadConfig = (sport = 'football') => {
   const file = CONFIG_FILES[sport];
   if (!file) throw new Error(`no scoring config for sport "${sport}"`);
@@ -137,6 +137,19 @@ const beepDecimal = (level, shuttle, cfg) => {
   return level + shuttle / perLevel;
 };
 
+// Yo-Yo IR1: level.shuttle -> cumulative metres (each shuttle is 2 x 20 m).
+// cfg.yoyo_shuttles_per_level lists the levels in order, e.g. {"5": 1, "9": 1, ...}.
+const yoyoDistance = (level, shuttle, cfg) => {
+  const table = cfg.yoyo_shuttles_per_level;
+  if (!table || table[String(level)] === undefined) throw new Error(`unknown Yo-Yo level ${level}`);
+  let shuttles = 0;
+  for (const [lvl, n] of Object.entries(table).sort((a, b) => Number(a[0]) - Number(b[0]))) {
+    if (Number(lvl) === Number(level)) return (shuttles + shuttle) * 40;
+    shuttles += n;
+  }
+  throw new Error(`unknown Yo-Yo level ${level}`);
+};
+
 const plausible = (value, rng) => rng == null || (rng[0] <= value && value <= rng[1]);
 
 const isSet = (v) => v !== undefined && v !== null;
@@ -176,6 +189,10 @@ const scoreTest = (name, testIn, tdef, cfg, timingMethod) => {
     if (name === 'beep_test') {
       raw = beepDecimal(testIn.level, testIn.shuttle, cfg);
       out.raw = `${testIn.level}.${testIn.shuttle}`;
+    } else if (name === 'yoyo_ir1') {
+      raw = yoyoDistance(testIn.level, testIn.shuttle, cfg);
+      out.raw = `${testIn.level}.${testIn.shuttle}`;
+      out.distance_m = raw;
     } else {
       raw = testIn.value;
       out.raw = raw;
@@ -188,6 +205,12 @@ const scoreTest = (name, testIn, tdef, cfg, timingMethod) => {
     if (name.startsWith('sprint_') && timingMethod === 'hand') {
       value = raw + cfg.hand_timing_offset_s;
       out.timing = 'hand';
+    }
+    // Measured but no agreed benchmark yet (config: benchmark_pending):
+    // keep the raw result, give no score. Never estimated.
+    if (tdef.benchmark_pending) {
+      out.benchmark = 'pending';
+      return out;
     }
     out.score = pyRound(scoreFromAnchors(value, cfg.manual_anchors[name],
       cfg.score_floor, cfg.score_cap), 1);
@@ -290,6 +313,19 @@ const buildFlags = (tests, cfg, athlete = {}) => {
       flags.push({ type: 'movement_quality', test: name, level: 'amber' });
     }
   }
+  // Throwing/bowling arm balance (config: arm_ratio), e.g. shoulder ER:IR on
+  // the dominant arm only.
+  const ar = cfg.arm_ratio;
+  if (ar && (athlete.dominant_hand === 'L' || athlete.dominant_hand === 'R')) {
+    const side = athlete.dominant_hand === 'L' ? 'raw_left' : 'raw_right';
+    const num = tests[ar.numerator];
+    const den = tests[ar.denominator];
+    if (num && den && num.status === 'completed' && den.status === 'completed' &&
+        isSet(num[side]) && isSet(den[side]) && den[side] > 0 && num[side] / den[side] < ar.amber_below) {
+      flags.push({ type: ar.type, test: ar.numerator, value: pyRound(num[side] / den[side] * 100, 1), level: 'amber' });
+    }
+  }
+
   // Hip adduction vs abduction (config: groin_ratio). Mean of the sides entered.
   const gr = cfg.groin_ratio;
   if (gr) {
@@ -334,7 +370,8 @@ const scoreSession = (session, cfg = loadConfig()) => {
       .filter(([n]) => tests[n].score !== null)
       .map(([n, d]) => [tests[n].score, d.stat_weight, tests[n].partial]);
     if (!got.length) {
-      stats[stat] = { value: null, status: 'not_tested' };
+      const pending = feeders.some(([n]) => tests[n].benchmark === 'pending');
+      stats[stat] = { value: null, status: pending ? 'benchmark_pending' : 'not_tested' };
       continue;
     }
     const wsum = got.reduce((a, [, w]) => a + w, 0);
@@ -361,6 +398,7 @@ const scoreSession = (session, cfg = loadConfig()) => {
   const reasons = [];
   for (const [name, t] of Object.entries(tests)) {
     if (t.status !== 'completed') reasons.push(`${name}: ${t.status}`);
+    else if (t.benchmark === 'pending') reasons.push(`${name}: benchmark_pending`);
   }
   if (cfg.provisional_sexes.includes(athlete.sex)) {
     reasons.push('benchmarks are adult male only');
@@ -400,6 +438,7 @@ module.exports = {
   scoreFromVald,
   valdBandIndex,
   beepDecimal,
+  yoyoDistance,
   scoreTest,
   buildFlags,
   scoreSession

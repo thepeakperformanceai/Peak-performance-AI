@@ -82,7 +82,9 @@ app.get('/api/health', (req, res) => {
     footballScoring: true,
     padelScoring: true,
     scoringConfig: scoringConfigVersion,
-    padelScoringConfig: require('./scoring/scoring').loadConfig('padel').config_version
+    padelScoringConfig: require('./scoring/scoring').loadConfig('padel').config_version,
+    cricketScoring: true,
+    cricketScoringConfig: require('./scoring/scoring').loadConfig('cricket').config_version
   });
 });
 

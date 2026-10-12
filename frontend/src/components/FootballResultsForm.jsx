@@ -15,10 +15,19 @@ export const PADEL_POSITIONS = [
   { value: 'BOTH', label: 'Both sides' },
 ]
 
+export const CRICKET_ROLES = [
+  { value: 'BAT', label: 'Batter (BAT)' },
+  { value: 'PACE', label: 'Pace bowler (PACE)' },
+  { value: 'SPIN', label: 'Spin bowler (SPIN)' },
+  { value: 'ALL', label: 'All-rounder (ALL)' },
+  { value: 'WK', label: 'Wicketkeeper (WK)' },
+]
+
 // Sports scored by the engine, with their position lists.
 export const SCORED_SPORTS = {
   Football: { key: 'football', positions: FOOTBALL_POSITIONS, positionLabel: 'Position', title: '⚽ Football test results' },
-  Padel: { key: 'padel', positions: PADEL_POSITIONS, positionLabel: 'Court side', title: '🎾 Padel test results' },
+  Padel: { key: 'padel', positions: PADEL_POSITIONS, positionLabel: 'Court side', handLabel: 'Dominant hand', title: '🎾 Padel test results' },
+  Cricket: { key: 'cricket', positions: CRICKET_ROLES, positionLabel: 'Role', handLabel: 'Bowling arm', title: '🏏 Cricket test results' },
 }
 
 const STATUSES = [
@@ -66,7 +75,25 @@ const PADEL_TESTS = [
   { key: 'hip_adduction', label: 'Hip Adduction', kind: 'bilateral', unit: 'N', range: [50, 3000], step: '1', group: 'Dynamo (from the VALD report)' },
 ]
 
-const TESTS_BY_SPORT = { football: FOOTBALL_TESTS, padel: PADEL_TESTS }
+// Yo-Yo IR1 levels and shuttles per level (each shuttle is 2 x 20 m).
+const YOYO_SHUTTLES = { 5: 1, 9: 1, 11: 2, 12: 3, 13: 4, 14: 8, 15: 8, 16: 8, 17: 8, 18: 8, 19: 8, 20: 8, 21: 8, 22: 8, 23: 8 }
+const PENDING_HINT = 'Recorded only: benchmarks pending, not scored yet'
+
+const CRICKET_TESTS = [
+  { key: 'sprint_10m', label: '10m Sprint (split)', kind: 'manual', unit: 's', range: [1.4, 3.5], step: '0.01', group: 'Manual tests', hint: '10 m split from the 20 m run' },
+  { key: 'sprint_20m', label: '20m Sprint', kind: 'manual', unit: 's', range: [2.4, 5.5], step: '0.01', group: 'Manual tests' },
+  { key: 'agility_505', label: '5-10-5 Pro Agility', kind: 'manual', unit: 's', range: [3.8, 8.0], step: '0.01', group: 'Manual tests', hint: PENDING_HINT },
+  { key: 'medicine_ball', label: 'Medicine Ball Throw (seated, 4 kg)', kind: 'manual', unit: 'm', range: [1.5, 12.0], step: '0.01', group: 'Manual tests', hint: PENDING_HINT },
+  { key: 'yoyo_ir1', label: 'Yo-Yo IR1', kind: 'yoyo', group: 'Manual tests', hint: 'Level.shuttle, e.g. 17.4. Stopped through injury = Injured' },
+  { key: 'ruler_drop', label: 'Ruler Drop', kind: 'manual', unit: 'cm', range: [0, 30], step: '0.1', group: 'Manual tests', hint: 'Ruler not caught = 30' },
+  { key: 'single_leg_stand', label: 'Single Leg Stand (eyes closed)', kind: 'bilateral', unit: 's', range: [0, 30], step: '0.1', group: 'HumanTrak (from the VALD report)' },
+  { key: 'shoulder_er', label: 'Shoulder External Rotation', kind: 'bilateral', unit: 'N', range: [20, 1500], step: '1', group: 'Dynamo (from the VALD report)' },
+  { key: 'shoulder_ir', label: 'Shoulder Internal Rotation', kind: 'bilateral', unit: 'N', range: [20, 1500], step: '1', group: 'Dynamo (from the VALD report)' },
+  { key: 'elbow_extension', label: 'Elbow Extension', kind: 'bilateral', unit: 'N', range: [20, 1500], step: '1', group: 'Dynamo (from the VALD report)' },
+  { key: 'hip_extension', label: 'Hip Extension', kind: 'bilateral', unit: 'N', range: [50, 3000], step: '1', group: 'Dynamo (from the VALD report)' },
+]
+
+const TESTS_BY_SPORT = { football: FOOTBALL_TESTS, padel: PADEL_TESTS, cricket: CRICKET_TESTS }
 const testsFor = (sportKey = 'football') => TESTS_BY_SPORT[sportKey]
 
 const emptyTest = () => ({
@@ -94,7 +121,7 @@ export function footballProblems(results, sportKey = 'football') {
     if (r.status !== 'completed') continue
     completed++
     if (t.kind === 'manual' && !filled(r.value)) problems.push(`${t.label}: enter a value or change the status.`)
-    if (t.kind === 'beep' && (!filled(r.level) || !filled(r.shuttle))) problems.push(`${t.label}: enter level and shuttle or change the status.`)
+    if ((t.kind === 'beep' || t.kind === 'yoyo') && (!filled(r.level) || !filled(r.shuttle))) problems.push(`${t.label}: enter level and shuttle or change the status.`)
     if (t.kind === 'single' && !filled(r.value)) problems.push(`${t.label}: enter a value or change the status.`)
     if (t.kind === 'bilateral' && !filled(r.left) && !filled(r.right)) problems.push(`${t.label}: enter at least one side or change the status.`)
     if (t.kind === 'bilateral' || t.kind === 'single') {
@@ -182,6 +209,21 @@ function TestRow({ test, r, set }) {
               <span className="text-xs text-gray-500">{test.unit}</span>
             </div>
             {outOfRange(r.value, test.range) && <Warn>Outside {test.range[0]}–{test.range[1]} {test.unit}: will be marked invalid. Re-check.</Warn>}
+          </div>
+        )}
+
+        {done && test.kind === 'yoyo' && (
+          <div>
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-gray-500">Level</span>
+              <NumberInput value={r.level} onChange={v => set({ level: v })} step="1" width="w-20" placeholder="e.g. 17" />
+              <span className="text-xs text-gray-500">Shuttle</span>
+              <NumberInput value={r.shuttle} onChange={v => set({ shuttle: v })} step="1" width="w-20" placeholder="e.g. 3" />
+            </div>
+            {filled(r.level) && !YOYO_SHUTTLES[Number(r.level)] && <Warn>Yo-Yo IR1 levels are {Object.keys(YOYO_SHUTTLES).join(', ')}.</Warn>}
+            {YOYO_SHUTTLES[Number(r.level)] && filled(r.shuttle) && (Number(r.shuttle) < 1 || Number(r.shuttle) > YOYO_SHUTTLES[Number(r.level)]) && (
+              <Warn>Level {r.level} has shuttles 1 to {YOYO_SHUTTLES[Number(r.level)]}.</Warn>
+            )}
           </div>
         )}
 

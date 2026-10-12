@@ -36,6 +36,7 @@ npm run seed
 
 - `POST /api/report/football` - Football report from manually entered test results (VALD PDFs optional, kept as reference)
 - `POST /api/report/padel` - Padel report, same flow (`scoring/padel_v1.json`; dominant hand required)
+- `POST /api/report/cricket` - Cricket report, same flow (`scoring/cricket_v1.json`; bowling arm required)
 
 ### Football scoring (Football OVR Scoring Spec v1)
 
@@ -56,6 +57,13 @@ sports; `footballReport.service.js` keeps football's original names). Padel adds
 flags: hip adduction below 80% of abduction (amber "groin risk"), and a Shoulder ER
 gap where the dominant arm is weaker is "monitor" (never red, no Power cap).
 Padel's manual-test anchors are interim and approximate (adult male).
+
+Cricket (`cricket_v1.json`) cites a source for every anchor in its `sources` block.
+5-10-5 and the seated 4 kg medicine ball throw are `benchmark_pending`: recorded
+on the card but not scored (and the OVR is Provisional) until sourced benchmarks
+are added to the config. Yo-Yo IR1 is entered as level.shuttle and scored on
+cumulative metres. Bowling-arm ER below 66% of IR is an amber "shoulder balance"
+flag; a bowling-arm-weaker gap is "monitor".
 
 `scoring/scoring.js` is a JavaScript port of `../peakperformance_scoring/scoring.py`.
 Keep `scoring/football_v1.json` identical to `../peakperformance_scoring/football_v1.json`

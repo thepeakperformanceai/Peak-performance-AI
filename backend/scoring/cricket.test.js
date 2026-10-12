@@ -1,0 +1,224 @@
+// Run: npm test   (from backend/)
+// Cricket scoring (cricket_v1): the football spec checks mirrored for
+// cricket's battery, plus cricket's rules (Yo-Yo IR1, benchmark-pending
+// tests, bowling-arm flags).
+
+const test = require('node:test');
+const assert = require('node:assert/strict');
+const { loadConfig, scoreFromAnchors, scoreFromVald, scoreSession, yoyoDistance } = require('./scoring');
+
+const cfg = loadConfig('cricket');
+const A = cfg.manual_anchors;
+const FULL = {
+  athlete: { id: 'C-1', age: 24, sex: 'M', position: 'PACE', dominant_hand: 'R' },
+  timing_method: 'electronic',
+  tests: {
+    sprint_10m: { status: 'completed', value: 1.84 },
+    sprint_20m: { status: 'completed', value: 3.13 },
+    agility_505: { status: 'completed', value: 4.6 },
+    medicine_ball: { status: 'completed', value: 7.4 },
+    yoyo_ir1: { status: 'completed', level: 18, shuttle: 3 },
+    ruler_drop: { status: 'completed', value: 11.0 },
+    single_leg_stand: { status: 'completed', left: 20, right: 22, cutoffs: [3, 8, 15, 25] },
+    shoulder_er: { status: 'completed', left: 150, right: 145, cutoffs: [60, 100, 150, 220] },
+    shoulder_ir: { status: 'completed', left: 200, right: 205, cutoffs: [80, 140, 200, 280] },
+    elbow_extension: { status: 'completed', left: 180, right: 184, cutoffs: [70, 120, 170, 240] },
+    hip_extension: { status: 'completed', left: 400, right: 390, cutoffs: [150, 250, 350, 500] }
+  }
+};
+
+const copy = (s) => structuredClone(s);
+const close = (a, b, tol = 0.15) => Math.abs(a - b) <= tol;
+const findTest = (out, name) => out.tests.find(t => t.name === name);
+
+// ---------- config ----------
+
+test('cricket config: battery, weights, cited anchors', () => {
+  assert.equal(cfg.config_version, 'cricket-v1.0');
+  assert.deepEqual(Object.keys(cfg.tests), ['sprint_10m', 'sprint_20m', 'agility_505', 'medicine_ball', 'yoyo_ir1',
+    'ruler_drop', 'single_leg_stand', 'shoulder_er', 'shoulder_ir', 'elbow_extension', 'hip_extension']);
+  assert.deepEqual(cfg.stat_weights, { speed: 20, agility: 20, power: 20, endurance: 15, reaction: 15, balance: 10 });
+  assert.equal(Object.values(cfg.stat_weights).reduce((a, b) => a + b, 0), 100);
+  assert.deepEqual(A.ruler_drop, loadConfig('football').manual_anchors.ruler_drop);
+  assert.ok(cfg.tests.agility_505.benchmark_pending && cfg.tests.medicine_ball.benchmark_pending);
+  assert.equal(A.agility_505, undefined);
+  assert.equal(A.medicine_ball, undefined);
+  for (const k of ['sprint_10m', 'sprint_20m', 'yoyo_ir1', 'ruler_drop', 'agility_505', 'medicine_ball', 'arm_ratio']) {
+    assert.ok(cfg.sources[k], `source for ${k}`);
+  }
+  // Power: medicine ball half, the four Dynamo tests share the other half.
+  const power = Object.entries(cfg.tests).filter(([, d]) => d.stat === 'power');
+  assert.equal(power.reduce((a, [, d]) => a + d.stat_weight, 0), 1);
+});
+
+test('Yo-Yo IR1 level.shuttle converts to cumulative metres', () => {
+  assert.equal(yoyoDistance(5, 1, cfg), 40);
+  assert.equal(yoyoDistance(15, 4, cfg), 920);
+  assert.equal(yoyoDistance(16, 4, cfg), 1240);
+  assert.equal(yoyoDistance(17, 4, cfg), 1560);
+  assert.equal(yoyoDistance(18, 3, cfg), 1840);
+  assert.equal(yoyoDistance(20, 1, cfg), 2400);
+  assert.equal(yoyoDistance(23, 8, cfg), 3640);
+  assert.throws(() => yoyoDistance(10, 1, cfg), /unknown Yo-Yo level/);
+});
+
+// ---------- the football spec checks, for cricket ----------
+
+test('anchor points exact (international means score 85)', () => {
+  assert.ok(close(scoreFromAnchors(1.84, A.sprint_10m), 85));
+  assert.ok(close(scoreFromAnchors(3.13, A.sprint_20m), 85));
+  assert.ok(close(scoreFromAnchors(2.96, A.sprint_20m), 95));
+  assert.ok(close(scoreFromAnchors(1560, A.yoyo_ir1), 70));     // 17.4
+  assert.ok(close(scoreFromAnchors(1840, A.yoyo_ir1), 85));     // 18.3
+  assert.ok(close(scoreFromAnchors(11.0, A.ruler_drop), 85));
+});
+
+test('anchor interpolation and limits', () => {
+  assert.ok(close(scoreFromAnchors(3.19, A.sprint_20m), 77.5));  // halfway 3.25 -> 3.13
+  assert.ok(close(scoreFromAnchors(1400, A.yoyo_ir1), 62.5));    // halfway 1240 -> 1560
+  assert.equal(scoreFromAnchors(1.50, A.sprint_10m), 99);         // capped
+  assert.equal(scoreFromAnchors(4.50, A.sprint_20m), 25);         // floored
+});
+
+test('hand timing correction on both sprints', () => {
+  const s = copy(FULL);
+  s.timing_method = 'hand';
+  s.tests.sprint_20m.value = 2.91;                                // +0.22 = 3.13 -> 85
+  s.tests.sprint_10m.value = 1.62;                                // +0.22 = 1.84 -> 85
+  const out = scoreSession(s, cfg);
+  assert.ok(close(findTest(out, 'sprint_20m').score, 85));
+  assert.ok(close(findTest(out, 'sprint_10m').score, 85));
+  assert.equal(findTest(out, 'sprint_20m').timing, 'hand');
+});
+
+test('vald band scoring', () => {
+  assert.ok(close(scoreFromVald(37.2, [14.4, 23.1, 35.7, 49.3], cfg), 71.7));
+});
+
+test('vald label only is midpoint and partial', () => {
+  const s = copy(FULL);
+  s.tests.single_leg_stand = { status: 'completed', left: 20, right: 22, band: 'within_normal' };
+  const t = findTest(scoreSession(s, cfg), 'single_leg_stand');
+  assert.ok(t.score === 63 && t.partial);
+});
+
+test('full session: pending tests keep raw values, are not scored, and make OVR provisional', () => {
+  const out = scoreSession(FULL, cfg);
+  const agility = findTest(out, 'agility_505');
+  assert.deepEqual([agility.status, agility.score, agility.raw, agility.benchmark], ['completed', null, 4.6, 'pending']);
+  const mb = findTest(out, 'medicine_ball');
+  assert.deepEqual([mb.score, mb.raw, mb.benchmark], [null, 7.4, 'pending']);
+  assert.deepEqual(out.stats.agility, { value: null, status: 'benchmark_pending' });
+  assert.ok(out.stats.power.partial);                             // Dynamo only for now
+  assert.equal(findTest(out, 'yoyo_ir1').distance_m, 1840);
+  assert.deepEqual(
+    Object.fromEntries(Object.entries(out.stats).map(([k, v]) => [k, v.value])),
+    { speed: 85, agility: null, power: 72, endurance: 85, reaction: 85, balance: 79 });
+  // (20*85 + 20*71.7 + 15*85 + 15*85 + 10*79) / 80 = 81.0 (agility's 20% left out)
+  assert.equal(out.ovr.value, 81);
+  assert.equal(out.ovr.provisional, true);
+  assert.deepEqual(out.ovr.reasons, ['agility_505: benchmark_pending', 'medicine_ball: benchmark_pending']);
+});
+
+test('missing Yo-Yo injured', () => {
+  const s = copy(FULL);
+  s.tests.yoyo_ir1 = { status: 'injured' };
+  const out = scoreSession(s, cfg);
+  assert.equal(out.stats.endurance.status, 'not_tested');
+  assert.ok(out.ovr.reasons.includes('yoyo_ir1: injured'));
+});
+
+test('one sprint missing makes speed partial', () => {
+  const s = copy(FULL);
+  s.tests.sprint_10m = { status: 'not_done' };
+  const out = scoreSession(s, cfg);
+  assert.ok(out.stats.speed.partial);
+  assert.equal(out.stats.speed.value, 85);
+});
+
+test('power cap on red LSI (hip extension)', () => {
+  const s = copy(FULL);
+  s.tests.hip_extension = { status: 'completed', left: 560, right: 420, cutoffs: [150, 250, 350, 500] }; // LSI 75%
+  for (const n of ['shoulder_er', 'shoulder_ir', 'elbow_extension']) {
+    s.tests[n] = { ...s.tests[n], left: 300, right: 300 };
+  }
+  const out = scoreSession(s, cfg);
+  assert.ok(out.flags.some(f => f.type === 'LSI' && f.test === 'hip_extension' && f.level === 'red'));
+  assert.ok(out.stats.power.value === 75 && out.stats.power.capped);
+});
+
+test('OVR pending when too few stats', () => {
+  const s = { athlete: { age: 20, sex: 'M', dominant_hand: 'R' }, tests: {
+    ruler_drop: { status: 'completed', value: 15 },
+    single_leg_stand: { status: 'completed', left: 20, right: 20, cutoffs: [3, 8, 15, 25] },
+    agility_505: { status: 'completed', value: 4.6 }
+  } };
+  const out = scoreSession(s, cfg);
+  assert.ok(out.ovr.value === null && out.ovr.status === 'pending');
+});
+
+test('implausible value is invalid, including pending tests', () => {
+  const s = copy(FULL);
+  s.tests.sprint_20m.value = 1.9;
+  s.tests.medicine_ball.value = 20;
+  const out = scoreSession(s, cfg);
+  assert.equal(findTest(out, 'sprint_20m').status, 'invalid');
+  assert.equal(findTest(out, 'medicine_ball').status, 'invalid');
+});
+
+test('female and youth provisional', () => {
+  let s = copy(FULL);
+  s.athlete.sex = 'F';
+  assert.ok(scoreSession(s, cfg).ovr.reasons.includes('benchmarks are adult male only'));
+  s = copy(FULL);
+  s.athlete.age = 16;
+  assert.ok(scoreSession(s, cfg).ovr.reasons.includes('benchmarks are adult only'));
+});
+
+test('one side only flag', () => {
+  const s = copy(FULL);
+  s.tests.elbow_extension = { status: 'completed', left: 180, cutoffs: [70, 120, 170, 240] };
+  assert.ok(scoreSession(s, cfg).flags.some(f => f.type === 'one_side_only' && f.test === 'elbow_extension'));
+});
+
+test('deterministic', () => {
+  assert.deepStrictEqual(scoreSession(FULL, cfg), scoreSession(FULL, cfg));
+});
+
+// ---------- cricket rules ----------
+
+test('shoulder balance: bowling-arm ER below 66% of IR is amber', () => {
+  const s = copy(FULL);                                            // bowling arm R
+  s.tests.shoulder_er = { status: 'completed', left: 150, right: 120, cutoffs: [60, 100, 150, 220] };
+  s.tests.shoulder_ir = { status: 'completed', left: 200, right: 200, cutoffs: [80, 140, 200, 280] };
+  const flag = scoreSession(s, cfg).flags.find(f => f.type === 'shoulder_balance');
+  assert.deepEqual(flag, { type: 'shoulder_balance', test: 'shoulder_er', value: 60, level: 'amber' }); // 120/200
+});
+
+test('shoulder balance: uses the bowling arm only; exactly 66% not flagged', () => {
+  let s = copy(FULL);
+  s.athlete.dominant_hand = 'L';                                  // L: 150/200 = 75%, fine
+  s.tests.shoulder_er = { status: 'completed', left: 150, right: 120, cutoffs: [60, 100, 150, 220] };
+  s.tests.shoulder_ir = { status: 'completed', left: 200, right: 200, cutoffs: [80, 140, 200, 280] };
+  assert.equal(scoreSession(s, cfg).flags.some(f => f.type === 'shoulder_balance'), false);
+  s = copy(FULL);
+  s.tests.shoulder_er = { status: 'completed', left: 150, right: 132, cutoffs: [60, 100, 150, 220] };
+  s.tests.shoulder_ir = { status: 'completed', left: 200, right: 200, cutoffs: [80, 140, 200, 280] };
+  assert.equal(scoreSession(s, cfg).flags.some(f => f.type === 'shoulder_balance'), false);
+});
+
+test('bowling arm weaker (shoulder IR / elbow) is "monitor", never red, no power cap', () => {
+  const s = copy(FULL);                                            // bowling arm R
+  s.tests.elbow_extension = { status: 'completed', left: 260, right: 190, cutoffs: [70, 120, 170, 240] }; // R weaker, LSI 73.1
+  const out = scoreSession(s, cfg);
+  const f = out.flags.find(x => x.test === 'elbow_extension' && x.type === 'LSI');
+  assert.deepEqual(f, { type: 'LSI', test: 'elbow_extension', value: 73.1, level: 'monitor', dominant_side_weaker: true });
+  assert.equal(out.stats.power.capped, undefined);
+});
+
+test('non-bowling arm weaker gets the usual red LSI', () => {
+  const s = copy(FULL);
+  s.athlete.dominant_hand = 'L';
+  s.tests.elbow_extension = { status: 'completed', left: 260, right: 190, cutoffs: [70, 120, 170, 240] };
+  assert.ok(scoreSession(s, cfg).flags.some(f => f.test === 'elbow_extension' && f.level === 'red'));
+});

@@ -25,7 +25,13 @@ const ALL_TEST_INFO = {
   knee_extension:   { label: 'Knee Extension',          unit: 'N' },
   shoulder_er:      { label: 'Shoulder External Rotation', unit: 'N' },
   hip_abduction:    { label: 'Hip Abduction',           unit: 'N' },
-  hip_adduction:    { label: 'Hip Adduction',           unit: 'N' }
+  hip_adduction:    { label: 'Hip Adduction',           unit: 'N' },
+  sprint_20m:       { label: '20m Sprint',              unit: 's' },
+  agility_505:      { label: '5-10-5 Pro Agility',      unit: 's' },
+  medicine_ball:    { label: 'Medicine Ball Throw (seated, 4 kg)', unit: 'm' },
+  yoyo_ir1:         { label: 'Yo-Yo IR1',               unit: 'level.shuttle' },
+  shoulder_ir:      { label: 'Shoulder Internal Rotation', unit: 'N' },
+  elbow_extension:  { label: 'Elbow Extension',         unit: 'N' }
 };
 
 // Per-sport wording and fields. Football's strings are exactly what the
@@ -53,6 +59,7 @@ const SPORT_PROFILES = {
     positions: ['LEFT', 'RIGHT', 'BOTH'],
     positionError: 'Court side is required (LEFT, RIGHT or BOTH)',
     needsDominantHand: true,
+    handError: 'Dominant hand is required (L or R)',
     athleteNoun: 'padel athlete',
     coachLine: 'a padel coach and the athlete: plain English, specific to padel',
     comparedWith: 'padel players',
@@ -61,6 +68,27 @@ const SPORT_PROFILES = {
     extraRules: [
       'A flag with level "monitor" and dominant_side_weaker true (Shoulder External Rotation) means the dominant arm is the weaker side. This is common in racket players: describe it as something to monitor, never as a problem or a red flag.',
       'A "groin_risk" flag means hip adduction strength is low relative to hip abduction (its value is adduction as a percentage of abduction). Describe it as an area to strengthen, never as an injury or injury prediction.'
+    ]
+  },
+  cricket: {
+    key: 'cricket',
+    displayName: 'Cricket',
+    batteryLabel: 'Cricket Battery v1',
+    // Role: batter, pace bowler, spin bowler, all-rounder, wicketkeeper.
+    positions: ['BAT', 'PACE', 'SPIN', 'ALL', 'WK'],
+    positionError: 'Role is required (BAT, PACE, SPIN, ALL or WK)',
+    needsDominantHand: true,
+    handError: 'Bowling arm is required (L or R)',
+    athleteNoun: 'cricketer',
+    coachLine: 'a cricket coach and the athlete: plain English, specific to cricket',
+    comparedWith: 'cricketers',
+    profileWhere: 'on the field',
+    symmetryTests: 'Shoulder External and Internal Rotation, Elbow Extension and Hip Extension',
+    extraRules: [
+      'A test with benchmark "pending" was measured but has no agreed benchmark yet, so it has no score. You may mention its raw result, but never rate it, score it or compare it with any norm. A stat with status "benchmark_pending" is "not scored yet: benchmarks pending", never estimated.',
+      'A flag with level "monitor" and dominant_side_weaker true means the bowling arm is the weaker side. This is common in cricketers: describe it as something to monitor, never as a problem or a red flag.',
+      'A "shoulder_balance" flag means external rotation strength on the bowling arm is low relative to internal rotation (its value is external as a percentage of internal). Describe it as an area to strengthen, never as an injury or injury prediction.',
+      'Yo-Yo IR1 results are written as level.shuttle (for example 17.4) and also given in metres (distance_m).'
     ]
   }
 };
@@ -249,6 +277,21 @@ const forSport = (sportKey) => {
       return { status, level, shuttle };
     }
 
+    if (name === 'yoyo_ir1') {
+      const level = toNum(raw.level, `${label} level`);
+      const shuttle = toNum(raw.shuttle, `${label} shuttle`);
+      if (level === undefined || shuttle === undefined) throw badRequest(`${label}: enter level and shuttle, or change the status`);
+      const table = cfg.yoyo_shuttles_per_level;
+      if (!Number.isInteger(level) || table[String(level)] === undefined) {
+        throw badRequest(`${label}: level must be one of ${Object.keys(table).join(', ')}`);
+      }
+      const maxShuttle = table[String(level)];
+      if (!Number.isInteger(shuttle) || shuttle < 1 || shuttle > maxShuttle) {
+        throw badRequest(`${label}: shuttle must be a whole number from 1 to ${maxShuttle} at level ${level}`);
+      }
+      return { status, level, shuttle };
+    }
+
     if (tdef.source === 'manual') {
       const value = toNum(raw.value, label);
       if (value === undefined) throw badRequest(`${label}: enter a value, or change the status`);
@@ -309,7 +352,7 @@ const forSport = (sportKey) => {
     if (!SEXES.includes(profileIn.sex)) throw badRequest('Sex is required (M or F)');
     if (!sp.positions.includes(profileIn.position)) throw badRequest(sp.positionError);
     if (sp.needsDominantHand && !HANDS.includes(profileIn.dominantHand)) {
-      throw badRequest('Dominant hand is required (L or R)');
+      throw badRequest(sp.handError);
     }
     const bodyweight = toNum(profileIn.bodyweight, 'Bodyweight');
     if (bodyweight === undefined) throw badRequest('Bodyweight is required');
@@ -357,6 +400,7 @@ const forSport = (sportKey) => {
 
   const reasonText = (reason) => {
     const m = /^(\w+): (\w+)$/.exec(reason);
+    if (m && TEST_INFO[m[1]] && m[2] === 'benchmark_pending') return `${TEST_INFO[m[1]].label}: benchmarks pending`;
     if (m && TEST_INFO[m[1]]) return `${TEST_INFO[m[1]].label} not completed: ${STATUS_LABELS[m[2]] || m[2]}`;
     return reason;
   };
@@ -378,6 +422,11 @@ const forSport = (sportKey) => {
       if (t.name === 'beep_test') {
         out.level = session.tests.beep_test.level;
         out.shuttle = session.tests.beep_test.shuttle;
+      }
+      if (t.name === 'yoyo_ir1') {
+        out.level = session.tests.yoyo_ir1.level;
+        out.shuttle = session.tests.yoyo_ir1.shuttle;
+        out.distance_m = t.distance_m;
       }
       out.unit = info.unit;
       if (t.timing) out.timing = t.timing;
@@ -470,12 +519,13 @@ const forSport = (sportKey) => {
       const t = byName[n];
       const info = TEST_INFO[n];
       const done = t.status === 'completed';
-      let raw = done ? (n === 'beep_test' ? `Level ${t.raw}` : fmt(t.raw, info.unit)) : '—';
+      let raw = done ? (n === 'beep_test' || n === 'yoyo_ir1' ? `Level ${t.raw}` : fmt(t.raw, info.unit)) : '—';
       if (done && t.timing === 'hand') raw += ' (hand)';
+      const pending = t.benchmark === 'pending';
       return {
         test: info.label,
         raw,
-        avg: done ? 'vs published international norms' : notTestedText(t.status),
+        avg: done ? (pending ? 'benchmarks pending' : 'vs published international norms') : notTestedText(t.status),
         score: t.score,
         status: t.status
       };
@@ -531,6 +581,7 @@ const forSport = (sportKey) => {
         } else {
           result = String(t.raw);
         }
+        if (t.distance_m !== undefined) result += ` (${t.distance_m} m)`;
       }
       return {
         test: info.label,
@@ -541,7 +592,8 @@ const forSport = (sportKey) => {
         status: t.status,
         partial: !!t.partial,
         oneSideOnly: !!t.one_side_only,
-        feedsOvr: !!cfg.tests[t.name].stat
+        feedsOvr: !!cfg.tests[t.name].stat,
+        ...(t.benchmark === 'pending' && done ? { benchmarkPending: true } : {})
       };
     });
 
@@ -594,7 +646,7 @@ const forSport = (sportKey) => {
         stats: ['speed', 'agility', 'endurance', 'power', 'balance', 'reaction'].map(k => ({
           name: STAT_LABELS[k],
           score: scored.stats[k].value,
-          tag: tags[k] || 'NOT TESTED',
+          tag: tags[k] || (scored.stats[k].status === 'benchmark_pending' ? 'PENDING' : 'NOT TESTED'),
           body: narrative.stats[k]
         }))
       },

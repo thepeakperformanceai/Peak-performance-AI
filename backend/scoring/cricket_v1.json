@@ -1,0 +1,60 @@
+{
+  "config_version": "cricket-v1.0",
+  "sport": "cricket",
+  "notes": "Interim. Anchors are adult male. Sprint and Yo-Yo anchors are derived from published cricket data (see sources); figures were taken from search excerpts and should be checked against the full papers. 5-10-5 and the medicine ball throw have no agreed benchmarks yet: they are recorded but not scored (benchmark_pending). VALD tests use VALD's age-and-sex bands.",
+  "sources": {
+    "sprint_10m": "Weldon et al. 2021, IJSPP (PMID 34937959): 19 male international cricketers, 10 m 1.84 +/- 0.08 s. Anchors: 85 = international mean; 95 = mean - 1.25 SD; 70/55/40 = mean + 1/2/3 SD.",
+    "sprint_20m": "Weldon et al. 2021: 20 m 3.13 +/- 0.12 s (85 = mean; 70/55/40 = mean + 1/2/3 SD). 95 = 2.96 s, mean of 15 professional fast bowlers (Relationship between physical fitness and the physical demands of 50-over cricket in fast bowlers, Univ. of Salford repository).",
+    "yoyo_ir1": "Anchors in level.shuttle, scored on cumulative metres: 85 = 18.3 (Weldon et al. 2021 international mean, level 18.34); 70 = 17.4 (reported PCB pass score, unofficial source); 95 = 20.1 (2400 m, close to the fast-bowler mean 2419 m, Salford study); 55 = 16.4 and 40 = 15.4 extrapolated one level apart.",
+    "ruler_drop": "Davis (2000) rating bands (16-19 years, general population), via brianmac.co.uk; same as football.",
+    "agility_505": "Benchmarks pending: no retrievable 5-10-5 norms for cricketers (Haff & Triplett 2015 and Forster et al. 2022 to be checked).",
+    "medicine_ball": "Benchmarks pending: seated 4 kg chest throw; no cricket or matching-protocol norms found.",
+    "arm_ratio": "Shoulder ER:IR below 0.66 on the bowling arm: guideline cited for fast bowlers (Shoulder injuries in provincial male fast bowlers, SA J Sports Med); evidence is isokinetic, Dynamo is isometric."
+  },
+  "hand_timing_offset_s": 0.22,
+  "score_floor": 25,
+  "score_cap": 99,
+
+  "manual_anchors": {
+    "sprint_10m": [[2.08, 40], [2.00, 55], [1.92, 70], [1.84, 85], [1.74, 95]],
+    "sprint_20m": [[3.49, 40], [3.37, 55], [3.25, 70], [3.13, 85], [2.96, 95]],
+    "yoyo_ir1":   [[920, 40], [1240, 55], [1560, 70], [1840, 85], [2400, 95]],
+    "ruler_drop": [[28.0, 40], [20.4, 55], [16.0, 70], [11.0, 85], [7.5, 95]]
+  },
+
+  "vald_band_labels": ["well_below", "below", "within_normal", "slightly_above", "well_above"],
+  "vald_band_edge_scores": [25, 40, 55, 70, 85, 99],
+  "vald_band_midpoints": [33, 48, 63, 78, 92],
+
+  "yoyo_shuttles_per_level": {
+    "5": 1, "9": 1, "11": 2, "12": 3, "13": 4, "14": 8, "15": 8, "16": 8, "17": 8,
+    "18": 8, "19": 8, "20": 8, "21": 8, "22": 8, "23": 8
+  },
+
+  "tests": {
+    "sprint_10m":      {"source": "manual", "stat": "speed",     "stat_weight": 0.5, "plausible": [1.40, 3.50]},
+    "sprint_20m":      {"source": "manual", "stat": "speed",     "stat_weight": 0.5, "plausible": [2.40, 5.50]},
+    "agility_505":     {"source": "manual", "stat": "agility",   "stat_weight": 1.0, "plausible": [3.80, 8.00], "benchmark_pending": true},
+    "medicine_ball":   {"source": "manual", "stat": "power",     "stat_weight": 0.5, "plausible": [1.5, 12.0], "benchmark_pending": true},
+    "yoyo_ir1":        {"source": "manual", "stat": "endurance", "stat_weight": 1.0, "plausible": [40, 3640]},
+    "ruler_drop":      {"source": "manual", "stat": "reaction",  "stat_weight": 1.0, "plausible": [0, 30]},
+    "single_leg_stand":{"source": "vald", "bilateral": true, "stat": "balance", "stat_weight": 1.0, "plausible": [0, 30]},
+    "shoulder_er":     {"source": "vald", "bilateral": true, "dynamo": true, "stat": "power", "stat_weight": 0.125, "plausible": [20, 1500]},
+    "shoulder_ir":     {"source": "vald", "bilateral": true, "dynamo": true, "stat": "power", "stat_weight": 0.125, "plausible": [20, 1500]},
+    "elbow_extension": {"source": "vald", "bilateral": true, "dynamo": true, "stat": "power", "stat_weight": 0.125, "plausible": [20, 1500]},
+    "hip_extension":   {"source": "vald", "bilateral": true, "dynamo": true, "stat": "power", "stat_weight": 0.125, "plausible": [50, 3000]}
+  },
+
+  "stat_weights": {"speed": 20, "agility": 20, "power": 20, "endurance": 15, "reaction": 15, "balance": 10},
+  "stats_not_in_battery": [],
+
+  "lsi": {"amber_below": 90, "red_below": 85, "power_cap": 75},
+  "flags": {"sls_side_diff_s": 10, "trunk_rotation_min_deg": 40, "trunk_rotation_side_diff_deg": 10},
+  "dominant_arm_tests": ["shoulder_er", "shoulder_ir", "elbow_extension"],
+  "arm_ratio": {"numerator": "shoulder_er", "denominator": "shoulder_ir", "amber_below": 0.66, "type": "shoulder_balance"},
+
+  "ovr_min_stats": 3,
+  "ovr_min_weight_share": 0.5,
+  "provisional_under_age": 18,
+  "provisional_sexes": ["F"]
+}
