@@ -8,6 +8,7 @@ const { protect } = require('./middleware/auth.middleware');
 const authRoutes = require('./routes/auth.routes');
 const reportRoutes = require('./routes/report.routes');
 const exerciseRoutes = require('./routes/exercise.routes');
+const valdRoutes = require('./routes/vald.routes');
 const Exercise = require('./models/Exercise.model');
 const exercises = require('./seed/exercises.json');
 const seedAdminUser = require('./seed/seedAdmin');
@@ -101,6 +102,7 @@ app.post('/api/report/generate-content',
 app.use('/api', protect);
 app.use('/api/report', reportRoutes);
 app.use('/api/exercises', exerciseRoutes);
+app.use('/api/vald', valdRoutes);
 
 // Error handling middleware (must be last)
 app.use(errorHandler);

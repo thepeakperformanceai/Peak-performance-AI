@@ -75,6 +75,29 @@ npm test          # engine (the 14 spec checks + sample_output.json) and footbal
 npm run parity    # needs python3: scores 5000 random sessions with both engines, must be identical
 ```
 
+### VALD auto-fill (HumanTrak + Dynamo)
+
+The test form's "Pull from VALD" finds the athlete in VALD and fills their
+latest HumanTrak and Dynamo results (raw values only; testers still enter the
+VALD cut-offs or band). Credentials stay on the backend.
+
+- `GET /api/vald/status` - configured / connected (never returns credentials)
+- `GET /api/vald/profiles?q=name` - find the athlete
+- `GET /api/vald/latest?profileId=...&sport=football|padel|cricket` - form fills
+- `GET /api/vald/raw?profileId=...` - admins only: raw latest tests, for checking the field mapping
+
+Environment variables:
+
+| Variable | Required | Value |
+|---|---|---|
+| `VALD_CLIENT_ID` | yes | client ID from VALD |
+| `VALD_CLIENT_SECRET` | yes | client secret from VALD |
+| `VALD_REGION` | yes | `aue` (Australia East), `use` (US East) or `euw` (Europe West) |
+| `VALD_TENANT_ID` | no | your VALD tenant ID; if unset, the first tenant VALD returns is used |
+| `VALD_LOOKBACK_DAYS` | no | how far back to look for tests (default 365) |
+| `VALD_AUTH_URL`, `VALD_AUDIENCE` | no | override login (defaults `https://auth.prd.vald.com/oauth/token`, `vald-api-external`) |
+| `VALD_TENANTS_URL`, `VALD_PROFILES_URL`, `VALD_DYNAMO_URL`, `VALD_HUMANTRAK_URL` | no | override a service host (default `https://prd-{region}-api-{service}.valdperformance.com`) |
+
 ### Exercises
 - `GET /api/exercises` - Get all exercises
 - `POST /api/exercises` - Create new exercise

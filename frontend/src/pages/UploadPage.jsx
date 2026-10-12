@@ -454,7 +454,7 @@ export default function UploadPage({ onReportGenerated }) {
         </div>
       </div>
 
-      {isScored && <FootballResultsForm key={form.sport} sport={form.sport} results={fbResults} onChange={setFbResults} />}
+      {isScored && <FootballResultsForm key={form.sport} sport={form.sport} results={fbResults} onChange={setFbResults} athleteName={form.name} />}
 
       {/* Actions */}
       <div className="flex items-center justify-end gap-3">

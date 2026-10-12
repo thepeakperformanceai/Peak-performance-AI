@@ -1,3 +1,4 @@
+import ValdPullPanel from './ValdPullPanel'
 // Test results — manual entry for the scoring engine (football and padel).
 // Ranges here only power the on-screen warnings; the backend's scoring
 // configs (backend/scoring/football_v1.json, padel_v1.json) are the authority.
@@ -196,6 +197,9 @@ function TestRow({ test, r, set }) {
       <div className="flex flex-wrap items-start gap-3">
         <div className="w-48 pt-2">
           <div className="text-sm font-medium text-gray-800">{test.label}</div>
+          {r.vald && r.status === 'completed' && (
+            <div className="text-[11px] text-blue-700">From VALD {r.vald.device} · {String(r.vald.date || '').slice(0, 10)}</div>
+          )}
           {test.hint && <div className="text-[11px] text-gray-400">{test.hint}</div>}
         </div>
         <select className="inp w-44" value={r.status} onChange={e => set({ status: e.target.value })}>
@@ -263,7 +267,7 @@ function TestRow({ test, r, set }) {
   )
 }
 
-export default function FootballResultsForm({ results, onChange, sport = 'Football' }) {
+export default function FootballResultsForm({ results, onChange, sport = 'Football', athleteName = '' }) {
   const { key: sportKey, title } = SCORED_SPORTS[sport] || SCORED_SPORTS.Football
   const TESTS = testsFor(sportKey)
   const setTest = (key) => (patch) =>
@@ -279,6 +283,8 @@ export default function FootballResultsForm({ results, onChange, sport = 'Footba
         Every score is calculated from these numbers. Nothing missing is ever estimated: a test that wasn't done shows
         as “Not tested” and the OVR is marked Provisional.
       </p>
+
+      <ValdPullPanel sportKey={sportKey} athleteName={athleteName} results={results} onChange={onChange} />
 
       <div className="flex flex-wrap items-center gap-3 mb-2">
         <span className="text-xs font-medium text-gray-500">Sprint timing *</span>

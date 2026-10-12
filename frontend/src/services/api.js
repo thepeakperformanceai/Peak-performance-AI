@@ -78,6 +78,11 @@ export const generateCricketReport = async (files, athleteProfile, cricketResult
   })
 }
 
+// VALD auto-fill (credentials stay on the backend).
+export const valdStatus = () => api.get('/vald/status')
+export const valdProfiles = (q) => api.get('/vald/profiles', { params: { q } })
+export const valdLatest = (profileId, sport) => api.get('/vald/latest', { params: { profileId, sport } })
+
 export const downloadReportPDF = async reportId => {
   try {
     const response = await api.get(`/report/${reportId}/export`)
