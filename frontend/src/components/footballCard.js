@@ -137,7 +137,7 @@ function hexagon(rc, t) {
 }
 
 // ---------- stat bars ----------
-function statBars(rc, t) {
+function statBars(rc, t, captions = {}) {
   return STATS.map(({ name, short }) => {
     const s = (rc.ovrScores || []).find(x => x.name === name) || {}
     const missing = s.score == null
@@ -152,7 +152,7 @@ function statBars(rc, t) {
     return `<div style="display:flex;align-items:center;gap:12px;height:34px">
       <div style="flex:0 0 92px;line-height:1;white-space:nowrap">
         <div style="font-family:${DISPLAY};font-size:27px;letter-spacing:0.5px;color:${missing ? FAINT : TXT}">${short}</div>
-        <div style="font-family:${TEXT};font-size:8.5px;font-weight:600;letter-spacing:0.4px;color:${FAINT};text-transform:uppercase">${name}${s.partial ? ' · partial' : ''}</div>
+        <div style="font-family:${TEXT};font-size:8.5px;font-weight:600;letter-spacing:0.4px;color:${FAINT};text-transform:uppercase">${captions[name] || name}${s.partial ? ' · partial' : ''}</div>
       </div>
       ${bar}
       <div style="flex:0 0 44px;text-align:right;font-family:${DISPLAY};font-size:32px;line-height:1;color:${missing ? FAINT : TXT}">${missing ? '—' : esc(s.score)}</div>
@@ -230,20 +230,52 @@ function flagsList(rc) {
 // Top-down padel court (20 m x 10 m): walls, net, service lines and the centre
 // service line, drawn faintly behind the header. No text inside the SVG.
 function padelCourt(t) {
-  const W = 330, H = 165, k = W / 20         // 1 m = k px
-  const net = W / 2, svc = 6.95 * k
-  const line = (x1, y1, x2, y2, w = 2.5) =>
-    `<line x1="${x1.toFixed(1)}" y1="${y1.toFixed(1)}" x2="${x2.toFixed(1)}" y2="${y2.toFixed(1)}" stroke="${t.stripe}" stroke-width="${w}" stroke-linecap="round"/>`
-  return `<div style="position:absolute;left:150px;top:62px;width:${W}px;height:${H}px;transform:rotate(-14deg)">
+  const W = 340, H = 170, k = W / 20         // 1 m = k px
+  const net = W / 2, svc = 6.95 * k, glass = 4 * k
+  const ink = 'rgba(255,255,255,0.62)'
+  const line = (x1, y1, x2, y2, w = 3) =>
+    `<line x1="${x1.toFixed(1)}" y1="${y1.toFixed(1)}" x2="${x2.toFixed(1)}" y2="${y2.toFixed(1)}" stroke="${ink}" stroke-width="${w}" stroke-linecap="round"/>`
+  return `<div style="position:absolute;left:140px;top:56px;width:${W}px;height:${H}px;transform:rotate(-14deg)">
     <svg width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg" style="position:absolute;left:0;top:0">
-      <rect x="2" y="2" width="${W - 4}" height="${H - 4}" fill="${t.stripe}" fill-opacity="0.35" stroke="${t.stripe}" stroke-width="5" rx="3"/>
-      ${line(net, 0, net, H, 4)}
-      ${line(net - svc, 2, net - svc, H - 2)}
-      ${line(net + svc, 2, net + svc, H - 2)}
+      <rect x="3" y="3" width="${W - 6}" height="${H - 6}" fill="#ffffff" fill-opacity="0.16" stroke="${ink}" stroke-width="4" rx="3"/>
+      ${line(3, 3, 3, H - 3, 9)}${line(W - 3, 3, W - 3, H - 3, 9)}
+      ${line(3, 3, glass, 3, 9)}${line(3, H - 3, glass, H - 3, 9)}
+      ${line(W - glass, 3, W - 3, 3, 9)}${line(W - glass, H - 3, W - 3, H - 3, 9)}
+      ${line(net, -6, net, H + 6, 5)}
+      ${line(net - svc, 3, net - svc, H - 3)}
+      ${line(net + svc, 3, net + svc, H - 3)}
       ${line(net - svc, H / 2, net + svc, H / 2)}
     </svg>
   </div>`
 }
+
+// Padel stat captions (the short labels and scores are the same as football).
+const PADEL_CAPTIONS = {
+  Speed: 'Court speed', Power: 'Smash power', Endurance: 'Rally endurance',
+  Balance: 'Balance', Reaction: 'Net reactions', Agility: 'Agility',
+}
+
+// Original padel racket + optic-yellow ball, beside the "· PADEL" badge.
+// Wrapped in a fixed box with the SVG positioned inside it, like the hexagon:
+// html2canvas clips an SVG that is a direct flex item.
+const padelIcon = (t) => `<div style="position:relative;width:62px;height:46px;margin-left:10px;flex:0 0 62px"><svg width="62" height="46" viewBox="0 0 46 34" xmlns="http://www.w3.org/2000/svg" style="position:absolute;left:0;top:0">
+  <g transform="rotate(-35 14 15)">
+    <ellipse cx="14" cy="11" rx="10" ry="11" fill="none" stroke="${t.ink}" stroke-width="2.6"/>
+    ${[[10, 7], [18, 7], [14, 11], [10, 15], [18, 15]].map(([x, y]) => `<circle cx="${x}" cy="${y}" r="1.4" fill="${t.ink}"/>`).join('')}
+    <rect x="12" y="21.5" width="4" height="11" rx="1.6" fill="${t.ink}"/>
+  </g>
+  <circle cx="36" cy="22" r="7.5" fill="#d9ef3a" stroke="${t.ink}" stroke-width="1.6"/>
+  <path d="M30.2 18.5 C 34 21, 34 23, 30.2 25.8 M41.8 18.5 C 38 21, 38 23, 41.8 25.8" fill="none" stroke="#ffffff" stroke-width="1.4"/>
+</svg></div>`
+
+// Court-blue page behind a padel card, with court lines in the margin.
+const PADEL_PAGE_LINES = `<svg width="${CARD_WIDTH}" height="${CARD_HEIGHT}" viewBox="0 0 ${CARD_WIDTH} ${CARD_HEIGHT}" xmlns="http://www.w3.org/2000/svg" style="position:absolute;left:0;top:0">
+  <rect x="9" y="9" width="${CARD_WIDTH - 18}" height="${CARD_HEIGHT - 18}" fill="none" stroke="#ffffff" stroke-opacity="0.85" stroke-width="3"/>
+  <line x1="0" y1="${CARD_HEIGHT / 2}" x2="${CARD_WIDTH}" y2="${CARD_HEIGHT / 2}" stroke="#ffffff" stroke-opacity="0.9" stroke-width="4"/>
+  <line x1="0" y1="${CARD_HEIGHT / 2 - 386}" x2="${CARD_WIDTH}" y2="${CARD_HEIGHT / 2 - 386}" stroke="#ffffff" stroke-opacity="0.85" stroke-width="3"/>
+  <line x1="0" y1="${CARD_HEIGHT / 2 + 386}" x2="${CARD_WIDTH}" y2="${CARD_HEIGHT / 2 + 386}" stroke="#ffffff" stroke-opacity="0.85" stroke-width="3"/>
+  <line x1="${CARD_WIDTH / 2}" y1="0" x2="${CARD_WIDTH / 2}" y2="${CARD_HEIGHT}" stroke="#ffffff" stroke-opacity="0.85" stroke-width="3"/>
+</svg>`
 
 // Court-blue turf strip with a white line, under the padel header.
 const PADEL_TURF = `<div style="height:9px;background:#1f5f8f;border-top:2px solid #ffffff;border-bottom:2px solid #174a70"></div>`
@@ -300,7 +332,7 @@ ${padel ? padelCourt(t) : `    <div style="position:absolute;left:232px;top:-120
 
     <div style="position:absolute;left:28px;right:248px;top:22px">
       <div style="display:flex;align-items:center;margin-left:150px">
-        <span style="font-family:${DISPLAY};font-size:18px;letter-spacing:2.5px;color:${t.ink};border:2px solid ${t.ink};border-radius:5px;padding:1px 8px 0">${t.label} ${padel ? '· PADEL' : 'CARD'}</span>
+        <span style="font-family:${DISPLAY};font-size:18px;letter-spacing:2.5px;color:${t.ink};border:2px solid ${t.ink};border-radius:5px;padding:1px 8px 0">${t.label} ${padel ? '· PADEL' : 'CARD'}</span>${padel ? padelIcon(t) : ''}
       </div>
       <div style="font-family:${DISPLAY};font-size:${nameSize}px;line-height:0.95;color:${t.ink};letter-spacing:1px;margin-top:16px;margin-left:150px">${esc(name.toUpperCase())}</div>
       ${rc.fieldMeaning?.playerProfile ? `<div style="font-family:${TEXT};font-size:12.5px;font-style:italic;color:${t.soft};margin-top:6px;line-height:1.35">${esc(rc.fieldMeaning.playerProfile)}</div>` : ''}
@@ -324,7 +356,7 @@ ${padel ? padelCourt(t) : `    <div style="position:absolute;left:232px;top:-120
   <div style="padding:16px 26px 0">
     <div style="display:flex;align-items:center;gap:26px">
       ${hexagon(rc, t)}
-      <div style="flex:1">${statBars(rc, t)}</div>
+      <div style="flex:1">${statBars(rc, t, padel ? PADEL_CAPTIONS : {})}</div>
     </div>
 
     <div style="margin-top:10px">
@@ -348,8 +380,8 @@ ${padel ? padelCourt(t) : `    <div style="position:absolute;left:232px;top:-120
   </div>`
 
   return `
-<div style="width:${CARD_WIDTH}px;height:${CARD_HEIGHT}px;box-sizing:border-box;padding:20px;background:${t.page};font-family:${TEXT}">
-  <div style="height:100%;box-sizing:border-box;padding:6px;border-radius:26px;background:${t.foil}">
+<div style="width:${CARD_WIDTH}px;height:${CARD_HEIGHT}px;box-sizing:border-box;padding:20px;background:${padel ? '#1f5f8f' : t.page};font-family:${TEXT}${padel ? ';position:relative' : ''}">${padel ? PADEL_PAGE_LINES : ''}
+  <div style="height:100%;box-sizing:border-box;padding:6px;border-radius:26px;background:${t.foil}${padel ? ';position:relative' : ''}">
     <div style="position:relative;height:100%;border-radius:21px;background:${BODY};overflow:hidden">
       ${header}
       ${padel ? PADEL_TURF : ''}
