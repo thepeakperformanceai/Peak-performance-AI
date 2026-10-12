@@ -82,7 +82,8 @@ latest HumanTrak and Dynamo results (raw values only; testers still enter the
 VALD cut-offs or band). Credentials stay on the backend.
 
 - `GET /api/vald/status` - configured / connected (never returns credentials)
-- `GET /api/vald/profiles?q=name` - find the athlete
+- `GET /api/vald/profiles?q=name` - find the athlete. Forgiving: ignores case, accents and extra spaces; matches part of the first name, last name or both; returns every match with date of birth and last Dynamo/HumanTrak test date, plus close spellings when nothing matches
+- `GET /api/vald/link?name=...`, `PUT /api/vald/link` - the VALD profile remembered for an athlete name (saved when a tester picks the athlete; stored in the `valdlinks` collection)
 - `GET /api/vald/latest?profileId=...&sport=football|padel|cricket` - form fills
 - `GET /api/vald/raw?profileId=...` - admins only: raw latest tests, for checking the field mapping
 - `GET /api/vald/diagnose` - step-by-step check of every VALD call (login, tenants in each region, profiles, Dynamo, HumanTrak) with HTTP status and advice; no secrets. Also the "Run VALD check" button on the form.

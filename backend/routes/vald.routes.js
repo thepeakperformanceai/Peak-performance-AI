@@ -16,6 +16,10 @@ router.get('/diagnose', valdController.diagnose);
 // GET athlete profiles by name
 router.get('/profiles', valdController.searchProfiles);
 
+// GET / PUT the VALD profile saved for an athlete (found automatically next time)
+router.get('/link', valdController.getLink);
+router.put('/link', valdController.saveLink);
+
 // GET latest HumanTrak + Dynamo results mapped to a sport's test form
 router.get('/latest', valdController.getLatest);
 

@@ -1,9 +1,11 @@
 // "Pull from VALD": finds the athlete in VALD and fills their latest
 // HumanTrak and Dynamo results into the test form. Only raw results are
 // filled; the tester still enters the VALD cut-offs or band for each test.
+// Once picked, the athlete's VALD profile is remembered, so next time the
+// same name is found automatically.
 
 import { useEffect, useState } from 'react'
-import { valdStatus, valdProfiles, valdLatest, valdDiagnose } from '../services/api'
+import { valdStatus, valdProfiles, valdLatest, valdDiagnose, valdGetLink, valdSaveLink } from '../services/api'
 
 const LABELS = {
   single_leg_stand: 'Single Leg Stand', trunk_rotation: 'Trunk Rotation', overhead_squat: 'Overhead Squat',
@@ -43,11 +45,24 @@ function ValdCheck() {
   )
 }
 
+// One VALD athlete: name, date of birth, last test.
+function ProfileLine({ p }) {
+  return (
+    <>
+      <span className="font-medium text-gray-900">{p.name || 'Unnamed'}</span>
+      <span className="text-xs text-gray-500">
+        {' · '}{p.dateOfBirth ? `born ${day(p.dateOfBirth)}` : 'no date of birth in VALD'}
+        {' · '}{p.lastTest ? `last test ${day(p.lastTest.date)} (${p.lastTest.device})` : 'no Dynamo or HumanTrak test in the last year'}
+      </span>
+    </>
+  )
+}
+
 export default function ValdPullPanel({ sportKey, athleteName, results, onChange }) {
   const [status, setStatus] = useState(null)        // null = checking
   const [query, setQuery] = useState(athleteName || '')
-  const [profiles, setProfiles] = useState(null)
-  const [counts, setCounts] = useState(null)        // { matches, total }
+  const [found, setFound] = useState(null)          // { profiles, suggestions, matches, total }
+  const [link, setLink] = useState(null)            // saved VALD athlete for this name
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
   const [summary, setSummary] = useState(null)
@@ -62,8 +77,20 @@ export default function ValdPullPanel({ sportKey, athleteName, results, onChange
 
   useEffect(() => { if (athleteName && !query) setQuery(athleteName) }, [athleteName])
 
+  // Saved link for the athlete named on the form (checked after typing stops).
+  const ready = status?.configured && status.connected !== false
+  useEffect(() => {
+    setLink(null)
+    if (!ready || !athleteName?.trim()) return
+    let cancelled = false
+    const t = setTimeout(() => {
+      valdGetLink(athleteName).then(r => { if (!cancelled) setLink(r.link) }).catch(() => {})
+    }, 600)
+    return () => { cancelled = true; clearTimeout(t) }
+  }, [athleteName, ready])
+
   if (!status) return <p className="text-xs text-gray-400 mb-3">Checking VALD connection…</p>
-  if (!status.configured || status.connected === false) {
+  if (!ready) {
     return (
       <div className="mb-3">
         <p className="text-xs text-gray-400">
@@ -77,9 +104,7 @@ export default function ValdPullPanel({ sportKey, athleteName, results, onChange
   const search = async () => {
     setBusy(true); setError(''); setSummary(null)
     try {
-      const { profiles, matches, total } = await valdProfiles(query)
-      setProfiles(profiles)
-      setCounts({ matches, total })
+      setFound(await valdProfiles(query))
     } catch (e) { setError(e.message) } finally { setBusy(false) }
   }
 
@@ -102,16 +127,40 @@ export default function ValdPullPanel({ sportKey, athleteName, results, onChange
       }
       onChange({ ...results, tests })
       setSummary({ name: profile.name, ...out })
-      setProfiles(null)
+      setFound(null)
+      // Remember the pick for the athlete named on the form.
+      const name = (athleteName || '').trim()
+      if (name) {
+        valdSaveLink(name, profile.profileId)
+          .then(() => setLink({ ...profile, athleteName: name }))
+          .catch(() => {})
+      }
     } catch (e) { setError(e.message) } finally { setBusy(false) }
   }
 
+  const list = (profiles) => profiles.map(p => (
+    <button
+      key={p.profileId} type="button" onClick={() => pull(p)} disabled={busy}
+      className="block w-full text-left text-sm px-3 py-1.5 rounded-md bg-white border border-gray-100 hover:border-blue-300"
+    >
+      <ProfileLine p={p} />
+    </button>
+  ))
+
   return (
     <div className="mb-4 rounded-lg border border-blue-100 bg-blue-50/50 p-3">
+      {link && !summary && (
+        <div className="mb-2 flex flex-wrap items-center gap-2 text-sm">
+          <span className="text-xs font-semibold text-blue-900">Linked VALD athlete:</span>
+          <ProfileLine p={link} />
+          <button type="button" className="btn text-xs" onClick={() => pull(link)} disabled={busy}>{busy ? 'Working…' : 'Pull results'}</button>
+        </div>
+      )}
+
       <div className="flex flex-wrap items-center gap-2">
-        <span className="text-xs font-semibold text-blue-900">Pull from VALD</span>
+        <span className="text-xs font-semibold text-blue-900">{link ? 'Or find another VALD athlete' : 'Pull from VALD'}</span>
         <input
-          className="inp w-56" value={query} placeholder="Athlete name in VALD"
+          className="inp w-56" value={query} placeholder="First name, last name or both"
           onChange={e => setQuery(e.target.value)}
           onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); search() } }}
         />
@@ -122,32 +171,34 @@ export default function ValdPullPanel({ sportKey, athleteName, results, onChange
       {error && <p className="text-xs text-red-600 mt-2">{error}</p>}
       {error && <ValdCheck />}
 
-      {profiles && (
+      {found && (
         <div className="mt-2 space-y-1">
-          {profiles.length === 0 && (
+          {found.profiles.length > 0 && (
             <>
-              <p className="text-xs text-gray-500">
-                No match for “{query}” among {counts?.total ?? 0} VALD athletes. Try their surname, or clear the box and press Find athlete to browse A–Z.
+              <p className="text-[11px] text-gray-500">
+                {query.trim() ? `${found.matches} athlete(s) match “${query.trim()}”` : 'All athletes, A–Z'} · pick the right person
+                {found.matches > found.profiles.length ? ` · showing the first ${found.profiles.length}, type more of the name to narrow` : ''}
               </p>
-              {!counts?.total && <ValdCheck />}
+              {list(found.profiles)}
             </>
           )}
-          {profiles.length > 0 && counts && (
-            <p className="text-[11px] text-gray-500">
-              {query.trim() ? `${counts.matches} match(es)` : 'All athletes, A–Z'} · {counts.total} in VALD{counts.matches > profiles.length ? ` · showing first ${profiles.length}, type more of the name to narrow` : ''}
-            </p>
+          {found.profiles.length === 0 && (
+            <>
+              <p className="text-sm text-amber-800">
+                No athlete in VALD matches “{query.trim()}” ({found.total} athletes searched).
+                Check how the name is spelt in VALD Hub (Profiles), then search again with that spelling.
+              </p>
+              {found.suggestions?.length > 0 && (
+                <>
+                  <p className="text-[11px] text-gray-500">Closest names in VALD:</p>
+                  {list(found.suggestions)}
+                </>
+              )}
+              {!found.total && <ValdCheck />}
+            </>
           )}
-          {profiles.map(p => (
-            <button
-              key={p.profileId} type="button" onClick={() => pull(p)} disabled={busy}
-              className="block w-full text-left text-sm px-3 py-1.5 rounded-md bg-white border border-gray-100 hover:border-blue-300"
-            >
-              {p.name || 'Unnamed'} {p.dateOfBirth && <span className="text-xs text-gray-400">· born {day(p.dateOfBirth)}</span>}
-            </button>
-          ))}
         </div>
       )}
-
       {summary && (
         <div className="mt-2 text-xs text-gray-700 space-y-1">
           <p>

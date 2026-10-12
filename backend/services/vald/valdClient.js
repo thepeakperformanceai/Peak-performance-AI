@@ -19,6 +19,7 @@
 // valdr never calls /tenants; it needs the tenant ID (VALD Hub Organization ID).
 
 const axios = require('axios');
+const { searchProfiles: searchByName } = require('./valdSearch');
 
 const REGIONS = ['aue', 'use', 'euw'];
 const GUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -95,21 +96,10 @@ const tokenFacts = (jwt, tenantId) => {
   }
 };
 
-// Name search. Matches the start of the full name or of any word in it
-// ("ali" finds "Ali Khan", not "Sara Malik"), or the external ID. Only if
-// nothing matches that way does it fall back to "contains" (spelling in VALD
-// may differ, e.g. "Faraz" inside "Mohammad-Faraz").
-const matchProfiles = (profiles, query = '') => {
-  const q = String(query).trim().toLowerCase().replace(/\s+/g, ' ');
-  if (!q) return profiles;
-  const words = (p) => p.name.toLowerCase().split(/[\s\-'.]+/);
-  const strict = profiles.filter(p => {
-    const name = p.name.toLowerCase();
-    return name.startsWith(q) || words(p).some(w => w.startsWith(q)) || String(p.externalId || '').toLowerCase() === q;
-  });
-  if (strict.length) return strict;
-  return profiles.filter(p => p.name.toLowerCase().replace(/\s+/g, ' ').includes(q));
-};
+// Name search (kept for callers that only want the matches).
+const matchProfiles = (profiles, query = '') => searchByName(profiles, query).matches;
+
+const testDate = (t) => t.startTimeUTC || t.testDateUtc || t.startDateUtc || t.recordedDateUtc || t.modifiedDateUtc || null;
 
 /**
  * createValdClient({ env, http }) — http defaults to axios; tests inject a fake.
@@ -244,6 +234,29 @@ const createValdClient = ({ env = process.env, http = axios, now = () => Date.no
   // Athlete profiles, optionally filtered by name (see matchProfiles).
   const searchProfiles = async (query = '') => matchProfiles(await listProfiles(), query);
 
+  // Latest Dynamo / HumanTrak test date per profile, across the tenant, for
+  // the search list. One paged pass per device; cached for 10 minutes.
+  let lastTests = null;    // { at, map }
+  const lastTestDates = async () => {
+    if (lastTests && now() - lastTests.at < 10 * 60_000) return lastTests.map;
+    const [dynamo, humantrak] = await Promise.all([
+      testsSince(`${cfg.dynamoUrl}/v1/test/tests-by-modified-date`, since(), ['tests', 'items']),
+      testsSince(`${cfg.humantrakUrl}/v2/tests-by-modified-date`, since(), ['testResults', 'tests', 'items'])
+    ]);
+    const map = new Map();
+    const add = (t, device) => {
+      const id = t.profileId || t.athleteId;
+      const date = testDate(t);
+      if (!id || !date) return;
+      const cur = map.get(id);
+      if (!cur || String(date) > String(cur.date)) map.set(id, { date, device });
+    };
+    dynamo.forEach(t => add(t, 'Dynamo'));
+    humantrak.forEach(t => add(t, 'HumanTrak'));
+    lastTests = { at: now(), map };
+    return map;
+  };
+
   // Dynamo tests for one profile, newest first.
   const dynamoTests = async (profileId) => {
     const all = await testsSince(`${cfg.dynamoUrl}/v1/test/tests-by-modified-date`, since(), ['tests', 'items']);
@@ -372,7 +385,7 @@ const createValdClient = ({ env = process.env, http = axios, now = () => Date.no
     return { steps, advice };
   };
 
-  return { cfg, getToken, getTenantId, listProfiles, searchProfiles, dynamoTests, humantrakTests, status, diagnose };
+  return { cfg, getToken, getTenantId, listProfiles, searchProfiles, lastTestDates, dynamoTests, humantrakTests, status, diagnose };
 };
 
 module.exports = { createValdClient, readConfig, configProblems, matchProfiles };

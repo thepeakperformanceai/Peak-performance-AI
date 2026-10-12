@@ -305,3 +305,50 @@ test('diagnose: names the organisation athletes are read from', async () => {
   const other = await createValdClient({ env: { ...ENV, VALD_TENANT_ID: 'T2' }, http: fakeVald(routes()).http, now: () => NOW }).diagnose();
   assert.match(other.steps.find(x => x.step === 'Organisation used').detail, /T2 from VALD_TENANT_ID; not in the tenant list above \(listed: PeakPerformance = T1 in aue;/);
 });
+
+// ---------- forgiving athlete search ----------
+
+const { searchProfiles: searchByName, normalize } = require('./valdSearch');
+
+const SQUAD = [
+  { profileId: 'a', name: 'Faraz Khawaja', externalId: null },
+  { profileId: 'b', name: 'Arhum Latif', externalId: null },
+  { profileId: 'c', name: 'José Muñoz', externalId: null },
+  { profileId: 'd', name: "Sean O'Brien", externalId: 'PP-12' },
+  { profileId: 'e', name: 'Faraz Ahmed', externalId: null },
+  { profileId: 'f', name: 'Ali Khan', externalId: null },
+  { profileId: 'g', name: 'Sara Malik', externalId: null }];
+const ids = (q) => searchByName(SQUAD, q).matches.map(p => p.profileId);
+
+test('search: case, extra spaces and accents are ignored', () => {
+  assert.equal(normalize('  Fáraz   KHAWAJA '), 'faraz khawaja');
+  assert.deepEqual(ids('faraz khawaja'), ['a']);
+  assert.deepEqual(ids('  FARAZ    khawaja  '), ['a']);
+  assert.deepEqual(ids('jose munoz'), ['c']);
+  assert.deepEqual(ids('obrien'), ['d']);
+});
+
+test('search: first name, last name, both, or parts of them', () => {
+  assert.deepEqual(ids('Arhum'), ['b']);
+  assert.deepEqual(ids('Latif'), ['b']);
+  assert.deepEqual(ids('latif arhum'), ['b']);        // either order
+  assert.deepEqual(ids('arh lat'), ['b']);            // partial words
+  assert.deepEqual(ids('faraz'), ['e', 'a']);         // every match listed, A–Z
+  assert.deepEqual(ids('ali'), ['f']);                // word start beats "Malik"
+  assert.deepEqual(ids('pp-12'), ['d']);              // external ID
+});
+
+test('search: nothing matches -> empty list plus close spellings', () => {
+  const out = searchByName(SQUAD, 'faraz kwaja');
+  assert.deepEqual(out.matches, []);
+  assert.equal(out.suggestions[0].profileId, 'a');
+  assert.deepEqual(searchByName(SQUAD, 'zzzzzz'), { matches: [], suggestions: [] });
+});
+
+test('last test date per athlete, newest across Dynamo and HumanTrak', async () => {
+  const { http } = fakeVald(routes());
+  const c = createValdClient({ env: { ...ENV, VALD_TENANT_ID: 'T1' }, http, now: () => NOW });
+  const dates = await c.lastTestDates();
+  assert.deepEqual(dates.get('P1'), { date: '2026-10-01T09:10:00Z', device: 'Dynamo' });   // Dynamo 09:10 beats HumanTrak 08:20
+  assert.deepEqual(dates.get('OTHER'), { date: '2026-10-05T09:00:00Z', device: 'Dynamo' });
+});
