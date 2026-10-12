@@ -118,10 +118,16 @@ export default function ValdPullPanel({ sportKey, athleteName, results, onChange
       </div>
 
       {error && <p className="text-xs text-red-600 mt-2">{error}</p>}
+      {error && <ValdCheck />}
 
       {profiles && (
         <div className="mt-2 space-y-1">
-          {profiles.length === 0 && <p className="text-xs text-gray-500">No VALD athlete matches “{query}”.</p>}
+          {profiles.length === 0 && (
+            <>
+              <p className="text-xs text-gray-500">No VALD athlete matches “{query}”.</p>
+              <ValdCheck />
+            </>
+          )}
           {profiles.map(p => (
             <button
               key={p.profileId} type="button" onClick={() => pull(p)} disabled={busy}

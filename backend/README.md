@@ -94,10 +94,15 @@ Environment variables:
 | `VALD_CLIENT_ID` | yes | client ID from VALD |
 | `VALD_CLIENT_SECRET` | yes | client secret from VALD |
 | `VALD_REGION` | yes | `aue` (Australia East), `use` (US East) or `euw` (Europe West) |
-| `VALD_TENANT_ID` | no | your VALD tenant ID; if unset, the first tenant VALD returns is used |
+| `VALD_TENANT_ID` | recommended | your VALD Hub Organization ID (Management > Organization), the same value valdr uses. If unset, the app lists tenants, which many VALD clients are not allowed to do (403) |
 | `VALD_LOOKBACK_DAYS` | no | how far back to look for tests (default 365) |
 | `VALD_AUTH_URL`, `VALD_AUDIENCE` | no | override login (defaults `https://auth.prd.vald.com/oauth/token`, `vald-api-external`) |
 | `VALD_TENANTS_URL`, `VALD_PROFILES_URL`, `VALD_DYNAMO_URL`, `VALD_HUMANTRAK_URL` | no | override a service host (default `https://prd-{region}-api-{service}.valdperformance.com`) |
+
+The calls, parameter names and headers match VALD's own R package (valdr):
+`/profiles?tenantId=`, Dynamo `/v1/test/tests-by-modified-date?TenantId=&ModifiedFromUtc=`,
+HumanTrak `/v2/tests-by-modified-date?TenantId=&ModifiedFromUtc=`. The "Duende ID" on
+VALD's credentials page belongs to VALD's old login service and is not used.
 
 ### Exercises
 - `GET /api/exercises` - Get all exercises

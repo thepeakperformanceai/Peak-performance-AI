@@ -31,7 +31,7 @@ const fakeVald = (routes) => {
   return { http, calls };
 };
 
-const DYNAMO_TESTS = { items: [
+const DYNAMO_TESTS = { tests: [
   { id: 'd1', athleteId: 'P1', movement: 'HipExtension', laterality: 'LeftThenRight', startTimeUTC: '2026-10-01T09:00:00Z',
     repetitionTypeSummaries: [
       { movement: 'HipExtension', laterality: 'LeftSide', repCount: 3, maxForceNewtons: 410.24 },
@@ -57,14 +57,15 @@ const HT_PAGE = [
 
 const routes = () => {
   let htCalls = 0;
+  let dyCalls = 0;
   return {
     token: () => ({ data: { access_token: 'tok-1', expires_in: 7200 } }),
     '/tenants': () => ({ status: 200, data: { tenants: [{ id: 'T1', name: 'PeakPerformance' }] } }),
     '/profiles': () => ({ status: 200, data: { profiles: [
       { profileId: 'P1', givenName: 'Ali', familyName: 'Khan', dateOfBirth: '2007-03-02' },
       { profileId: 'P2', givenName: 'Sara', familyName: 'Malik' }] } }),
-    '/v2022q2/teams/T1/tests': () => ({ status: 200, data: DYNAMO_TESTS }),
-    '/v2/tests-by-modified-date': () => (++htCalls === 1 ? { status: 200, data: { tests: HT_PAGE } } : { status: 204, data: '' })
+    '/v1/test/tests-by-modified-date': () => (++dyCalls === 1 ? { status: 200, data: DYNAMO_TESTS } : { status: 204, data: '' }),
+    '/v2/tests-by-modified-date': () => (++htCalls === 1 ? { status: 200, data: { testResults: HT_PAGE } } : { status: 204, data: '' })
   };
 };
 
@@ -122,7 +123,8 @@ test('profiles: bearer token, tenant param, name search', async () => {
   assert.deepEqual(found, [{ profileId: 'P1', name: 'Ali Khan', dateOfBirth: '2007-03-02', externalId: null }]);
   const call = calls.find(x => x.url.endsWith('/profiles'));
   assert.equal(call.headers.Authorization, 'Bearer tok-1');
-  assert.deepEqual(call.params, { TenantId: 'T1' });
+  assert.equal(call.headers['Client-Name'], 'PeakPerformance');      // valdr sends Client-Name too
+  assert.deepEqual(call.params, { tenantId: 'T1' });                 // camelCase, as valdr sends it
 });
 
 test('dynamo and humantrak: only this athlete, newest first; humantrak pages until 204', async () => {
@@ -132,10 +134,14 @@ test('dynamo and humantrak: only this athlete, newest first; humantrak pages unt
   assert.deepEqual(d.map(t => t.id), ['d3', 'd2', 'd1', 'd0']);
   const h = await c.humantrakTests('P1');
   assert.deepEqual(h.map(t => t.testId), ['h3', 'h2', 'h1']);
-  const htCalls = calls.filter(x => x.url.includes('tests-by-modified-date'));
+  const htCalls = calls.filter(x => x.url.includes('humantrak'));
   assert.equal(htCalls.length, 2);
   assert.equal(htCalls[1].params.ModifiedFromUtc, '2026-10-01T08:50:00.5Z');   // exact, not rounded
-  assert.equal(htCalls[0].params.ProfileId, 'P1');
+  // Same call valdr makes: tenant + start date (UTC, no milliseconds), no profile filter.
+  assert.deepEqual(htCalls[0].params, { TenantId: 'T1', ModifiedFromUtc: '2025-10-12T10:00:00Z' });
+  const dyCall = calls.find(x => x.url.includes('extdynamo'));
+  assert.equal(dyCall.url, 'https://prd-aue-api-extdynamo.valdperformance.com/v1/test/tests-by-modified-date');
+  assert.deepEqual(dyCall.params, { TenantId: 'T1', ModifiedFromUtc: '2025-10-12T10:00:00Z' });
 });
 
 test('mapping (football): latest Dynamo max force per side; HumanTrak by test type', async () => {
@@ -210,7 +216,7 @@ test('diagnose: login ok, tenants 403 in all regions -> advice to set VALD_TENAN
   assert.equal(by['Tenants (aue, configured)'].status, 403);
   assert.equal(by['Tenants (use)'].status, 403);
   assert.equal(by['Profiles / Dynamo / HumanTrak'].ok, false);
-  assert.match(out.advice, /tenant ID and set VALD_TENANT_ID/);
+  assert.match(out.advice, /Set VALD_TENANT_ID to your VALD Hub Organization ID/);
   const text = JSON.stringify(out);
   assert.equal(text.includes('secret-456'), false);
   assert.equal(text.includes('tok-1'), false);
@@ -226,7 +232,40 @@ test('diagnose: with VALD_TENANT_ID, reports profiles / Dynamo / HumanTrak calls
   assert.equal(by.Profiles.detail, '2 athlete profile(s)');
   assert.equal(by['Dynamo tests (last 30 days)'].ok, true);
   assert.equal(by['HumanTrak tests (last 30 days)'].ok, true);
-  assert.match(out.advice, /calls failed: Tenants/);              // only the tenants listing fails
+  assert.match(out.advice, /Everything the app needs works/);     // only the tenants listing fails, and it isn't needed
+});
+
+test('humantrak: other athletes in the tenant are filtered out', async () => {
+  const { http } = fakeVald({ ...routes(), '/v2/tests-by-modified-date': () => ({ status: 200, data: { testResults: [
+    { testId: 'mine', profileId: 'P1', modifiedDateUtc: '2026-10-01T08:00:00Z' },
+    { testId: 'theirs', profileId: 'P2', modifiedDateUtc: '2026-10-01T09:00:00Z' }] } }) });
+  const c = createValdClient({ env: { ...ENV, VALD_TENANT_ID: 'T1' }, http, now: () => NOW });
+  assert.deepEqual((await c.humantrakTests('P1')).map(t => t.testId), ['mine']);
+});
+
+test('tenant ID pasted with quotes or spaces is cleaned', () => {
+  const id = '0a1b2c3d-1111-2222-3333-444455556666';
+  assert.equal(readConfig({ ...ENV, VALD_TENANT_ID: ` "${id}" ` }).tenantId, id);
+  assert.equal(readConfig({ ...ENV, VALD_TENANT_ID: `{${id}}` }).tenantId, id);
+});
+
+test('diagnose: 403 on profiles shows VALD\'s reason and tenant advice; token facts hold no secrets', async () => {
+  const id = '0a1b2c3d-1111-2222-3333-444455556666';
+  const jwt = ['x', Buffer.from(JSON.stringify({ iss: 'https://auth.prd.vald.com/', aud: 'vald-api-external', azp: 'id-123', tenants: [id] })).toString('base64url'), 'sig'].join('.');
+  const { http } = fakeVald(forbidTenants({
+    token: () => ({ data: { access_token: jwt, expires_in: 3600 } }),
+    '/profiles': () => ({ status: 403, data: { message: 'Tenant access denied' }, headers: {} })
+  }));
+  const out = await createValdClient({ env: { ...ENV, VALD_TENANT_ID: id }, http, now: () => NOW }).diagnose();
+  const by = Object.fromEntries(out.steps.map(x => [x.step, x]));
+  assert.equal(by.Profiles.status, 403);
+  assert.equal(by.Profiles.detail, 'Tenant access denied');
+  assert.match(out.advice, /VALD Hub Organization ID/);
+  assert.equal(by['Login (token)'].detail.tenantInToken, 'yes');
+  assert.equal(by['Login (token)'].detail.audience, 'vald-api-external');
+  const text = JSON.stringify(out);
+  assert.equal(text.includes('id-123'), false);       // client ID claim value never shown
+  assert.equal(text.includes(jwt), false);
 });
 
 test('diagnose: tenant found in another region -> advice names the right VALD_REGION', async () => {

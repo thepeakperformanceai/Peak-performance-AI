@@ -10,10 +10,24 @@
 //
 // Auth (VALD, March 2026): OAuth2 client credentials at
 // https://auth.prd.vald.com/oauth/token with audience "vald-api-external".
+//
+// Calls, parameter names and headers match VALD's own R package (valdr 3.x):
+//   Profiles   GET {profile}/profiles?tenantId=
+//   Dynamo     GET {dynamo}/v1/test/tests-by-modified-date?TenantId=&ModifiedFromUtc=
+//   HumanTrak  GET {humantrak}/v2/tests-by-modified-date?TenantId=&ModifiedFromUtc=
+// Both test lists page forward by the last test's modifiedDateUtc until 204.
+// valdr never calls /tenants; it needs the tenant ID (VALD Hub Organization ID).
 
 const axios = require('axios');
 
 const REGIONS = ['aue', 'use', 'euw'];
+const GUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+// Tolerate a tenant ID pasted with quotes, braces or spaces.
+const cleanId = (v) => String(v || '').trim().replace(/^["'{\s]+|["'}\s]+$/g, '');
+
+// VALD wants UTC timestamps without milliseconds (2026-10-01T00:00:00Z).
+const utc = (ms) => new Date(ms).toISOString().replace(/\.\d{3}Z$/, 'Z');
 
 const readConfig = (env = process.env) => {
   const region = (env.VALD_REGION || '').trim().toLowerCase();
@@ -22,7 +36,7 @@ const readConfig = (env = process.env) => {
     clientId: (env.VALD_CLIENT_ID || '').trim(),
     clientSecret: (env.VALD_CLIENT_SECRET || '').trim(),
     region,
-    tenantId: (env.VALD_TENANT_ID || '').trim() || null,
+    tenantId: cleanId(env.VALD_TENANT_ID) || null,
     authUrl: env.VALD_AUTH_URL || 'https://auth.prd.vald.com/oauth/token',
     audience: env.VALD_AUDIENCE || 'vald-api-external',
     tenantsUrl: env.VALD_TENANTS_URL || host('externaltenants'),
@@ -54,6 +68,31 @@ const asList = (data, ...keys) => {
   if (Array.isArray(data)) return data;
   for (const k of keys) if (Array.isArray(data[k])) return data[k];
   return [];
+};
+
+// Short, readable reason from a VALD error response (body text or the
+// WWW-Authenticate header). VALD error bodies hold no credentials.
+const reason = (res) => {
+  if (!res) return '';
+  const auth = res.headers?.['www-authenticate'];
+  let body = res.data;
+  if (body && typeof body === 'object') body = body.message || body.title || body.detail || body.error_description || body.error || JSON.stringify(body);
+  body = String(body || '').replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
+  return [auth && `WWW-Authenticate: ${auth}`, body].filter(Boolean).join(' · ').slice(0, 200);
+};
+
+// Non-secret facts about the access token, to see what VALD granted it.
+// Never returns the token, the client ID or any claim values except
+// issuer and audience.
+const tokenFacts = (jwt, tenantId) => {
+  try {
+    const claims = JSON.parse(Buffer.from(String(jwt).split('.')[1], 'base64url').toString('utf8'));
+    const facts = { issuer: claims.iss || null, audience: claims.aud || null, claims: Object.keys(claims).join(', ') };
+    if (tenantId) facts.tenantInToken = JSON.stringify(claims).toLowerCase().includes(tenantId.toLowerCase()) ? 'yes' : 'no';
+    return facts;
+  } catch {
+    return { note: 'token is not a readable JWT' };
+  }
 };
 
 /**
@@ -96,12 +135,21 @@ const createValdClient = ({ env = process.env, http = axios, now = () => Date.no
     return value;
   };
 
+  // Same headers valdr sends (it identifies itself with Client-Name/-Version).
+  const headers = (bearer) => ({
+    Authorization: `Bearer ${bearer}`,
+    Accept: 'application/json',
+    'Client-Name': 'PeakPerformance',
+    'Client-Version': '1.0',
+    'User-Agent': 'PeakPerformance/1.0'
+  });
+
   const get = async (url, params) => {
     const bearer = await getToken();
     try {
       const res = await http.get(url, {
         params,
-        headers: { Authorization: `Bearer ${bearer}`, Accept: 'application/json' },
+        headers: headers(bearer),
         timeout: 30000,
         validateStatus: (s) => (s >= 200 && s < 300)
       });
@@ -109,10 +157,35 @@ const createValdClient = ({ env = process.env, http = axios, now = () => Date.no
     } catch (e) {
       const status = e.response?.status;
       if (status === 404) return null;
-      const err = valdError(`VALD request failed (${status || e.code || e.message}) for ${new URL(url).pathname}.`);
+      const why = reason(e.response);
+      const err = valdError(`VALD request failed (${status || e.code || e.message}) for ${new URL(url).pathname}${why ? `: ${why}` : ''}.`);
       err.valdStatus = status || null;
       throw err;
     }
+  };
+
+  // Pages a tests-by-modified-date list forward until VALD answers 204.
+  const testsSince = async (url, fromMs, listKeys) => {
+    const TenantId = await getTenantId();
+    let from = utc(fromMs);
+    const all = [];
+    for (let page = 0; page < 20; page++) {
+      const tests = asList(await get(url, { TenantId, ModifiedFromUtc: from }), ...listKeys);
+      if (!tests.length) break;
+      all.push(...tests);
+      const last = tests[tests.length - 1].modifiedDateUtc;
+      if (!last || last === from) break;
+      from = last;                                   // exact value, never rounded (per VALD guide)
+    }
+    // The cursor date can be inclusive, so the same test may come back twice.
+    const seen = new Set();
+    return all.filter(t => {
+      const id = t.testId || t.id;
+      if (!id) return true;
+      if (seen.has(id)) return false;
+      seen.add(id);
+      return true;
+    });
   };
 
   // The tenant (organisation) your credentials can read. Uses VALD_TENANT_ID
@@ -135,12 +208,12 @@ const createValdClient = ({ env = process.env, http = axios, now = () => Date.no
     return tenantId;
   };
 
-  const sinceIso = () => new Date(now() - cfg.lookbackDays * 86400000).toISOString();
+  const since = () => now() - cfg.lookbackDays * 86400000;
 
   // Athlete profiles, optionally filtered by name.
   const searchProfiles = async (query = '') => {
-    const TenantId = await getTenantId();
-    const data = await get(`${cfg.profilesUrl}/profiles`, { TenantId });
+    const tenantId = await getTenantId();
+    const data = await get(`${cfg.profilesUrl}/profiles`, { tenantId });
     const q = query.trim().toLowerCase();
     return asList(data, 'profiles', 'items')
       .map(p => ({
@@ -161,30 +234,19 @@ const createValdClient = ({ env = process.env, http = axios, now = () => Date.no
 
   // Dynamo tests for one profile, newest first.
   const dynamoTests = async (profileId) => {
-    const teamId = await getTenantId();
-    const data = await get(`${cfg.dynamoUrl}/v2022q2/teams/${teamId}/tests`, { modifiedFromUtc: sinceIso() });
-    return asList(data, 'items', 'tests')
+    const all = await testsSince(`${cfg.dynamoUrl}/v1/test/tests-by-modified-date`, since(), ['tests', 'items']);
+    return all
       .filter(t => (t.athleteId || t.profileId) === profileId)
       .sort((a, b) => String(b.startTimeUTC || b.testDateUtc || b.startDateUtc || '').localeCompare(
         String(a.startTimeUTC || a.testDateUtc || a.startDateUtc || '')));
   };
 
-  // HumanTrak tests for one profile (pages forward by modifiedDateUtc until 204), newest first.
+  // HumanTrak tests for one profile, newest first. VALD has no profile
+  // filter on this call, so the tenant's tests are filtered here.
   const humantrakTests = async (profileId) => {
-    const TenantId = await getTenantId();
-    let from = sinceIso();
-    const all = [];
-    for (let page = 0; page < 20; page++) {
-      const data = await get(`${cfg.humantrakUrl}/v2/tests-by-modified-date`, { TenantId, ModifiedFromUtc: from, ProfileId: profileId });
-      const tests = asList(data, 'tests', 'items');
-      if (!tests.length) break;
-      all.push(...tests);
-      const last = tests[tests.length - 1].modifiedDateUtc;
-      if (!last || last === from) break;
-      from = last;                                   // exact value, never rounded (per VALD guide)
-    }
+    const all = await testsSince(`${cfg.humantrakUrl}/v2/tests-by-modified-date`, since(), ['testResults', 'tests', 'items']);
     return all
-      .filter(t => !t.profileId || t.profileId === profileId)
+      .filter(t => (t.profileId || t.athleteId) === profileId)
       .sort((a, b) => String(b.startDateUtc || b.testDateUtc || '').localeCompare(String(a.startDateUtc || a.testDateUtc || '')));
   };
 
@@ -211,7 +273,7 @@ const createValdClient = ({ env = process.env, http = axios, now = () => Date.no
         VALD_CLIENT_ID: cfg.clientId ? 'set' : 'missing',
         VALD_CLIENT_SECRET: cfg.clientSecret ? 'set' : 'missing',
         VALD_REGION: cfg.region || 'missing',
-        VALD_TENANT_ID: cfg.tenantId ? 'set' : 'not set'
+        VALD_TENANT_ID: !cfg.tenantId ? 'not set' : GUID.test(cfg.tenantId) ? 'set' : 'set, but not a GUID (check the value)'
       }
     });
     if (!cfg.clientId || !cfg.clientSecret) return { steps, advice: 'Set VALD_CLIENT_ID and VALD_CLIENT_SECRET on the backend.' };
@@ -222,7 +284,7 @@ const createValdClient = ({ env = process.env, http = axios, now = () => Date.no
     try {
       bearer = await getToken();
       steps.push({ step: 'Login (token)', call: where(cfg.authUrl), ok: true, status: 200,
-        detail: `token received, valid ${Math.round((token.expiresAt - now()) / 60000)} min` });
+        detail: { result: `token received, valid ${Math.round((token.expiresAt - now()) / 60000)} min`, ...tokenFacts(bearer, cfg.tenantId) } });
     } catch (e) {
       steps.push({ step: 'Login (token)', call: where(cfg.authUrl), ok: false, detail: e.message });
       return { steps, advice: 'Login failed: check VALD_CLIENT_ID / VALD_CLIENT_SECRET (or VALD_AUTH_URL if VALD gave you a different login address).' };
@@ -232,10 +294,11 @@ const createValdClient = ({ env = process.env, http = axios, now = () => Date.no
       try {
         const res = await http.get(url, {
           params, timeout: 30000, validateStatus: () => true,
-          headers: { Authorization: `Bearer ${bearer}`, Accept: 'application/json' }
+          headers: headers(bearer)
         });
         const ok = res.status >= 200 && res.status < 300;
         const out = { step, call: where(url), ok, status: res.status };
+        if (!ok && reason(res)) out.detail = reason(res);
         steps.push(out);
         return { ok, status: res.status, data: res.status === 204 ? null : res.data, out };
       } catch (e) {
@@ -244,7 +307,8 @@ const createValdClient = ({ env = process.env, http = axios, now = () => Date.no
       }
     };
 
-    // 2. Tenants in every region (configured region first).
+    // 2. Tenants in every region (configured region first). Only needed to
+    // find the tenant ID; valdr never calls it.
     const regions = [cfg.region, ...REGIONS.filter(r => r !== cfg.region)].filter(r => REGIONS.includes(r));
     const tenantsByRegion = {};
     for (const r of regions) {
@@ -259,14 +323,14 @@ const createValdClient = ({ env = process.env, http = axios, now = () => Date.no
 
     // 3-5. Profiles, Dynamo, HumanTrak with the tenant we would use.
     const tid = cfg.tenantId || (tenantsByRegion[cfg.region] || [])[0]?.id || null;
-    const since = new Date(now() - 30 * 86400000).toISOString();
+    const from = utc(now() - 30 * 86400000);
     if (tid) {
-      const p = await probe('Profiles', `${cfg.profilesUrl}/profiles`, { TenantId: tid });
+      const p = await probe('Profiles', `${cfg.profilesUrl}/profiles`, { tenantId: tid });
       if (p.ok) p.out.detail = `${asList(p.data, 'profiles', 'items').length} athlete profile(s)`;
-      const d = await probe('Dynamo tests (last 30 days)', `${cfg.dynamoUrl}/v2022q2/teams/${tid}/tests`, { modifiedFromUtc: since });
-      if (d.ok) d.out.detail = d.status === 204 ? 'no tests in the last 30 days' : `${asList(d.data, 'items', 'tests').length} test(s)`;
-      const h = await probe('HumanTrak tests (last 30 days)', `${cfg.humantrakUrl}/v2/tests-by-modified-date`, { TenantId: tid, ModifiedFromUtc: since });
-      if (h.ok) h.out.detail = h.status === 204 ? 'no tests in the last 30 days' : `${asList(h.data, 'tests', 'items').length} test(s)`;
+      const d = await probe('Dynamo tests (last 30 days)', `${cfg.dynamoUrl}/v1/test/tests-by-modified-date`, { TenantId: tid, ModifiedFromUtc: from });
+      if (d.ok) d.out.detail = d.status === 204 ? 'no tests in the last 30 days' : `${asList(d.data, 'tests', 'items').length} test(s) on the first page`;
+      const h = await probe('HumanTrak tests (last 30 days)', `${cfg.humantrakUrl}/v2/tests-by-modified-date`, { TenantId: tid, ModifiedFromUtc: from });
+      if (h.ok) h.out.detail = h.status === 204 ? 'no tests in the last 30 days' : `${asList(h.data, 'testResults', 'tests', 'items').length} test(s) on the first page`;
     } else {
       steps.push({ step: 'Profiles / Dynamo / HumanTrak', ok: false, detail: 'skipped: no tenant ID (set VALD_TENANT_ID)' });
     }
@@ -274,11 +338,15 @@ const createValdClient = ({ env = process.env, http = axios, now = () => Date.no
     // Advice in plain words.
     const tenantOk = steps.find(s => s.step.startsWith(`Tenants (${cfg.region}`))?.ok;
     const otherRegion = Object.keys(tenantsByRegion).find(r => r !== cfg.region && tenantsByRegion[r].length);
-    const failing = steps.filter(s => s.ok === false).map(s => s.step);
+    // With VALD_TENANT_ID set the app never lists tenants, so those rows don't count.
+    const failing = steps.filter(s => s.ok === false && !(cfg.tenantId && s.step.startsWith('Tenants'))).map(s => s.step);
+    const profilesRefused = steps.find(s => s.step === 'Profiles')?.status === 403;
     let advice;
-    if (!failing.length) advice = 'Everything works.';
+    if (!failing.length) advice = cfg.tenantId && !tenantOk ? 'Everything the app needs works (listing tenants is refused, but the app does not need it because VALD_TENANT_ID is set).' : 'Everything works.';
     else if (!tenantOk && otherRegion) advice = `Your tenant is in region "${otherRegion}": set VALD_REGION=${otherRegion}.`;
-    else if (!tenantOk && !cfg.tenantId) advice = 'Login works, but these credentials cannot list tenants. Ask VALD (support@vald.com) for your tenant ID and set VALD_TENANT_ID; the app then skips /tenants.';
+    else if (!tenantOk && !cfg.tenantId) advice = 'Login works, but these credentials cannot list tenants. Set VALD_TENANT_ID to your VALD Hub Organization ID (Management > Organization); the app then skips /tenants.';
+    else if (profilesRefused) advice = 'VALD refused the profiles call for this tenant. Check that VALD_TENANT_ID is exactly the VALD Hub Organization ID (Management > Organization) that valdr uses, with no quotes or spaces, and that VALD_REGION matches it. ' +
+      `These calls failed: ${failing.join(', ')}.`;
     else advice = `These calls failed: ${failing.join(', ')}. A 403 means the credentials are not allowed to use that API; ask VALD to enable it for your client.`;
     return { steps, advice };
   };
