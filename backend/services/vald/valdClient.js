@@ -337,6 +337,15 @@ const createValdClient = ({ env = process.env, http = axios, now = () => Date.no
     const tid = cfg.tenantId || (tenantsByRegion[cfg.region] || [])[0]?.id || null;
     const from = utc(now() - 30 * 86400000);
     if (tid) {
+      // Which VALD organisation the app reads athletes from (IDs and names are not secret).
+      const listed = Object.entries(tenantsByRegion).flatMap(([r, list]) => list.map(t => ({ ...t, r })));
+      const used = listed.find(t => String(t.id).toLowerCase() === String(tid).toLowerCase());
+      steps.push({
+        step: 'Organisation used', ok: true,
+        detail: used
+          ? `${used.name || 'unnamed'} (${used.id}, region ${used.r})${cfg.tenantId ? ' = VALD_TENANT_ID' : ''}`
+          : `${tid}${cfg.tenantId ? ' from VALD_TENANT_ID' : ''}; not in the tenant list above${listed.length ? ` (listed: ${listed.map(t => `${t.name || 'unnamed'} = ${t.id} in ${t.r}`).join('; ')})` : ''}`
+      });
       const p = await probe('Profiles', `${cfg.profilesUrl}/profiles`, { tenantId: tid });
       if (p.ok) p.out.detail = `${asList(p.data, 'profiles', 'items').length} athlete profile(s)`;
       const d = await probe('Dynamo tests (last 30 days)', `${cfg.dynamoUrl}/v1/test/tests-by-modified-date`, { TenantId: tid, ModifiedFromUtc: from });
