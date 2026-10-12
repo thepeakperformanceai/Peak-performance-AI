@@ -26,6 +26,15 @@ const getStatus = async (req, res, next) => {
   }
 };
 
+/** GET /api/vald/diagnose — which VALD calls succeed or fail (no secrets). */
+const diagnose = async (req, res, next) => {
+  try {
+    res.json(await vald().diagnose());
+  } catch (e) {
+    next(e);
+  }
+};
+
 /** GET /api/vald/profiles?q=name — find the athlete in VALD. */
 const searchProfiles = async (req, res, next) => {
   try {
@@ -71,4 +80,4 @@ const getRaw = async (req, res, next) => {
   }
 };
 
-module.exports = { getStatus, searchProfiles, getLatest, getRaw };
+module.exports = { getStatus, diagnose, searchProfiles, getLatest, getRaw };

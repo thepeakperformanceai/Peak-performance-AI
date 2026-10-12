@@ -18,10 +18,14 @@ const fakeVald = (routes) => {
     post: async (url, body, opts) => { calls.push({ method: 'POST', url, body, opts }); return routes.token(url, body); },
     get: async (url, opts) => {
       calls.push({ method: 'GET', url, params: opts.params, headers: opts.headers });
+      let res = { status: 404, data: null };
       for (const [pattern, handler] of Object.entries(routes)) {
-        if (pattern !== 'token' && url.includes(pattern)) return handler(opts.params);
+        if (pattern !== 'token' && url.includes(pattern)) { res = handler(opts.params, url); break; }
       }
-      const e = new Error('not found'); e.response = { status: 404 }; throw e;
+      // Behave like axios: throw unless validateStatus accepts the status.
+      const accept = opts.validateStatus || ((st) => st >= 200 && st < 300);
+      if (!accept(res.status)) { const e = new Error(`HTTP ${res.status}`); e.response = res; throw e; }
+      return res;
     }
   };
   return { http, calls };
@@ -173,4 +177,71 @@ test('mapping: one side only is kept; no cut-offs are ever invented', () => {
   assert.deepEqual(out.fills.hip_abduction, { left: 260 });
   assert.equal(JSON.stringify(out.fills).includes('cutoff'), false);
   assert.equal(JSON.stringify(out.fills).includes('band'), false);
+});
+
+// ---------- diagnosing a 403 on /tenants (as seen on staging) ----------
+
+const forbidTenants = (overrides = {}) => ({
+  ...routes(),
+  '/tenants': () => ({ status: 403, data: { message: 'Forbidden' } }),
+  ...overrides
+});
+
+test('403 on /tenants: clear message pointing to VALD_TENANT_ID', async () => {
+  const { http } = fakeVald(forbidTenants());
+  const c = createValdClient({ env: ENV, http, now: () => NOW });
+  await assert.rejects(c.status(), /login worked.*not allowed to list tenants.*VALD_TENANT_ID/);
+});
+
+test('VALD_TENANT_ID set: status connects without calling /tenants', async () => {
+  const { http, calls } = fakeVald(forbidTenants());
+  const c = createValdClient({ env: { ...ENV, VALD_TENANT_ID: 'T1' }, http, now: () => NOW });
+  assert.deepEqual(await c.status(), { configured: true, connected: true, region: 'aue', tenantId: 'T1' });
+  assert.equal(calls.some(x => x.url.includes('/tenants')), false);
+  const found = await c.searchProfiles('ali');
+  assert.equal(found[0].profileId, 'P1');
+});
+
+test('diagnose: login ok, tenants 403 in all regions -> advice to set VALD_TENANT_ID; no secrets', async () => {
+  const { http } = fakeVald(forbidTenants());
+  const out = await createValdClient({ env: ENV, http, now: () => NOW }).diagnose();
+  const by = Object.fromEntries(out.steps.map(x => [x.step, x]));
+  assert.equal(by['Login (token)'].ok, true);
+  assert.equal(by['Tenants (aue, configured)'].status, 403);
+  assert.equal(by['Tenants (use)'].status, 403);
+  assert.equal(by['Profiles / Dynamo / HumanTrak'].ok, false);
+  assert.match(out.advice, /tenant ID and set VALD_TENANT_ID/);
+  const text = JSON.stringify(out);
+  assert.equal(text.includes('secret-456'), false);
+  assert.equal(text.includes('tok-1'), false);
+  assert.equal(text.includes('id-123'), false);
+  assert.deepEqual(by.Configuration.detail, { VALD_CLIENT_ID: 'set', VALD_CLIENT_SECRET: 'set', VALD_REGION: 'aue', VALD_TENANT_ID: 'not set' });
+});
+
+test('diagnose: with VALD_TENANT_ID, reports profiles / Dynamo / HumanTrak calls', async () => {
+  const { http } = fakeVald(forbidTenants());
+  const out = await createValdClient({ env: { ...ENV, VALD_TENANT_ID: 'T1' }, http, now: () => NOW }).diagnose();
+  const by = Object.fromEntries(out.steps.map(x => [x.step, x]));
+  assert.equal(by.Profiles.ok, true);
+  assert.equal(by.Profiles.detail, '2 athlete profile(s)');
+  assert.equal(by['Dynamo tests (last 30 days)'].ok, true);
+  assert.equal(by['HumanTrak tests (last 30 days)'].ok, true);
+  assert.match(out.advice, /calls failed: Tenants/);              // only the tenants listing fails
+});
+
+test('diagnose: tenant found in another region -> advice names the right VALD_REGION', async () => {
+  const { http } = fakeVald(forbidTenants({
+    '/tenants': (p, url) => (url.includes('prd-euw-') ? { status: 200, data: { tenants: [{ id: 'T9', name: 'PeakPerformance' }] } } : { status: 403, data: null })
+  }));
+  const out = await createValdClient({ env: ENV, http, now: () => NOW }).diagnose();
+  assert.match(out.advice, /set VALD_REGION=euw/);
+  assert.match(out.steps.find(x => x.step === 'Tenants (euw)').detail, /PeakPerformance = T9/);
+});
+
+test('diagnose: rejected credentials stop at login', async () => {
+  const http = { post: async () => { const e = new Error('x'); e.response = { status: 401 }; throw e; }, get: async () => { throw new Error('should not be called'); } };
+  const out = await createValdClient({ env: ENV, http, now: () => NOW }).diagnose();
+  assert.equal(out.steps.at(-1).step, 'Login (token)');
+  assert.equal(out.steps.at(-1).ok, false);
+  assert.match(out.advice, /Login failed/);
 });

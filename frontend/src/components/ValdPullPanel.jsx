@@ -3,7 +3,7 @@
 // filled; the tester still enters the VALD cut-offs or band for each test.
 
 import { useEffect, useState } from 'react'
-import { valdStatus, valdProfiles, valdLatest } from '../services/api'
+import { valdStatus, valdProfiles, valdLatest, valdDiagnose } from '../services/api'
 
 const LABELS = {
   single_leg_stand: 'Single Leg Stand', trunk_rotation: 'Trunk Rotation', overhead_squat: 'Overhead Squat',
@@ -12,6 +12,36 @@ const LABELS = {
 }
 
 const day = (iso) => (iso ? String(iso).slice(0, 10) : '')
+
+// Result of /vald/diagnose: one line per VALD call, pass or fail, no secrets.
+function ValdCheck() {
+  const [result, setResult] = useState(null)
+  const [busy, setBusy] = useState(false)
+  const run = async () => {
+    setBusy(true)
+    try { setResult(await valdDiagnose()) } catch (e) { setResult({ steps: [], advice: e.message }) } finally { setBusy(false) }
+  }
+  return (
+    <div className="mt-2">
+      <button type="button" className="btn text-xs" onClick={run} disabled={busy}>{busy ? 'Checking VALD…' : 'Run VALD check'}</button>
+      {result && (
+        <div className="mt-2 rounded-md border border-gray-100 bg-white p-2 text-xs">
+          {result.steps.map((st, i) => (
+            <div key={i} className="flex gap-2 py-0.5">
+              <span className={st.ok ? 'text-green-700' : 'text-red-600'}>{st.ok ? '✓' : '✗'}</span>
+              <span className="font-medium text-gray-800 w-56">{st.step}</span>
+              <span className="text-gray-500">
+                {st.status ? `HTTP ${st.status}` : ''}{st.call ? ` · ${st.call}` : ''}
+                {st.detail ? ` · ${typeof st.detail === 'string' ? st.detail : Object.entries(st.detail).map(([k, v]) => `${k}: ${v}`).join(', ')}` : ''}
+              </span>
+            </div>
+          ))}
+          <p className="mt-1 font-medium text-gray-800">{result.advice}</p>
+        </div>
+      )}
+    </div>
+  )
+}
 
 export default function ValdPullPanel({ sportKey, athleteName, results, onChange }) {
   const [status, setStatus] = useState(null)        // null = checking
@@ -34,9 +64,12 @@ export default function ValdPullPanel({ sportKey, athleteName, results, onChange
   if (!status) return <p className="text-xs text-gray-400 mb-3">Checking VALD connection…</p>
   if (!status.configured || status.connected === false) {
     return (
-      <p className="text-xs text-gray-400 mb-3">
-        VALD auto-fill unavailable: {status.error || (status.problems || []).join('; ') || 'not connected'}. Enter HumanTrak and Dynamo results by hand.
-      </p>
+      <div className="mb-3">
+        <p className="text-xs text-gray-400">
+          VALD auto-fill unavailable: {String(status.error || (status.problems || []).join('; ') || 'not connected').replace(/\.$/, '')}. Enter HumanTrak and Dynamo results by hand.
+        </p>
+        <ValdCheck />
+      </div>
     )
   }
 

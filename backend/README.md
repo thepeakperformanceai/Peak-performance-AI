@@ -85,6 +85,7 @@ VALD cut-offs or band). Credentials stay on the backend.
 - `GET /api/vald/profiles?q=name` - find the athlete
 - `GET /api/vald/latest?profileId=...&sport=football|padel|cricket` - form fills
 - `GET /api/vald/raw?profileId=...` - admins only: raw latest tests, for checking the field mapping
+- `GET /api/vald/diagnose` - step-by-step check of every VALD call (login, tenants in each region, profiles, Dynamo, HumanTrak) with HTTP status and advice; no secrets. Also the "Run VALD check" button on the form.
 
 Environment variables:
 

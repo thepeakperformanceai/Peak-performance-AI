@@ -80,6 +80,7 @@ export const generateCricketReport = async (files, athleteProfile, cricketResult
 
 // VALD auto-fill (credentials stay on the backend).
 export const valdStatus = () => api.get('/vald/status')
+export const valdDiagnose = () => api.get('/vald/diagnose', { timeout: 120000 })
 export const valdProfiles = (q) => api.get('/vald/profiles', { params: { q } })
 export const valdLatest = (profileId, sport) => api.get('/vald/latest', { params: { profileId, sport } })
 

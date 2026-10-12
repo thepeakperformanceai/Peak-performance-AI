@@ -10,6 +10,9 @@ const { adminOnly } = require('../middleware/auth.middleware');
 // GET whether VALD is configured and reachable
 router.get('/status', valdController.getStatus);
 
+// GET step-by-step check of every VALD call (no secrets)
+router.get('/diagnose', valdController.diagnose);
+
 // GET athlete profiles by name
 router.get('/profiles', valdController.searchProfiles);
 
