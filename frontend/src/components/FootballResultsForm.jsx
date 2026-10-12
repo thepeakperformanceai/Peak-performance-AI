@@ -1,6 +1,6 @@
-// Football test results — manual entry for the scoring engine.
+// Test results — manual entry for the scoring engine (football and padel).
 // Ranges here only power the on-screen warnings; the backend's scoring
-// config (backend/scoring/football_v1.json) is the authority.
+// configs (backend/scoring/football_v1.json, padel_v1.json) are the authority.
 
 export const FOOTBALL_POSITIONS = [
   { value: 'GK', label: 'Goalkeeper (GK)' },
@@ -8,6 +8,18 @@ export const FOOTBALL_POSITIONS = [
   { value: 'MID', label: 'Midfielder (MID)' },
   { value: 'FWD', label: 'Forward (FWD)' },
 ]
+
+export const PADEL_POSITIONS = [
+  { value: 'LEFT', label: 'Left side (revés)' },
+  { value: 'RIGHT', label: 'Right side (drive)' },
+  { value: 'BOTH', label: 'Both sides' },
+]
+
+// Sports scored by the engine, with their position lists.
+export const SCORED_SPORTS = {
+  Football: { key: 'football', positions: FOOTBALL_POSITIONS, positionLabel: 'Position', title: '⚽ Football test results' },
+  Padel: { key: 'padel', positions: PADEL_POSITIONS, positionLabel: 'Court side', title: '🎾 Padel test results' },
+}
 
 const STATUSES = [
   { value: 'completed', label: 'Completed' },
@@ -30,7 +42,7 @@ const BEEP_SHUTTLES = {
   11: 12, 12: 12, 13: 13, 14: 13, 15: 13, 16: 14, 17: 14, 18: 15, 19: 15, 20: 16, 21: 16,
 }
 
-const TESTS = [
+const FOOTBALL_TESTS = [
   { key: 'sprint_10m', label: '10m Sprint', kind: 'manual', unit: 's', range: [1.4, 3.5], step: '0.01', group: 'Manual tests' },
   { key: 'sprint_30m', label: '30m Sprint', kind: 'manual', unit: 's', range: [3.5, 8.0], step: '0.01', group: 'Manual tests' },
   { key: 'ruler_drop', label: 'Ruler Drop', kind: 'manual', unit: 'cm', range: [0, 30], step: '0.1', group: 'Manual tests', hint: 'Ruler not caught = 30' },
@@ -42,26 +54,42 @@ const TESTS = [
   { key: 'knee_extension', label: 'Knee Extension', kind: 'bilateral', unit: 'N', range: [50, 3000], step: '1', group: 'Dynamo (from the VALD report)' },
 ]
 
+const PADEL_TESTS = [
+  { key: 'sprint_10m', label: '10m Sprint', kind: 'manual', unit: 's', range: [1.4, 3.5], step: '0.01', group: 'Manual tests' },
+  { key: 'ruler_drop', label: 'Ruler Drop', kind: 'manual', unit: 'cm', range: [0, 30], step: '0.1', group: 'Manual tests', hint: 'Ruler not caught = 30' },
+  { key: 'beep_test', label: 'Beep Test', kind: 'beep', group: 'Manual tests', hint: 'Stopped early through injury = Injured, never a low score' },
+  { key: 'single_leg_stand', label: 'Single Leg Stand (eyes closed)', kind: 'bilateral', unit: 's', range: [0, 30], step: '0.1', group: 'HumanTrak (from the VALD report)' },
+  { key: 'trunk_rotation', label: 'Trunk Rotation', kind: 'bilateral', unit: '°', range: [0, 90], step: '1', group: 'HumanTrak (from the VALD report)' },
+  { key: 'overhead_squat', label: 'Overhead Squat', kind: 'single', unit: 'composite', range: null, step: '1', group: 'HumanTrak (from the VALD report)' },
+  { key: 'shoulder_er', label: 'Shoulder External Rotation', kind: 'bilateral', unit: 'N', range: [20, 1500], step: '1', group: 'Dynamo (from the VALD report)' },
+  { key: 'hip_abduction', label: 'Hip Abduction', kind: 'bilateral', unit: 'N', range: [50, 3000], step: '1', group: 'Dynamo (from the VALD report)' },
+  { key: 'hip_adduction', label: 'Hip Adduction', kind: 'bilateral', unit: 'N', range: [50, 3000], step: '1', group: 'Dynamo (from the VALD report)' },
+]
+
+const TESTS_BY_SPORT = { football: FOOTBALL_TESTS, padel: PADEL_TESTS }
+const testsFor = (sportKey = 'football') => TESTS_BY_SPORT[sportKey]
+
 const emptyTest = () => ({
   status: 'completed', value: '', left: '', right: '', level: '', shuttle: '',
   cutoffs: ['', '', '', ''], band: '', band_left: '', band_right: '',
 })
 
-export const emptyFootballResults = () => ({
+export const emptyResults = (sportKey = 'football') => ({
   timingMethod: '',
-  tests: Object.fromEntries(TESTS.map(t => [t.key, emptyTest()])),
+  tests: Object.fromEntries(testsFor(sportKey).map(t => [t.key, emptyTest()])),
 })
+export const emptyFootballResults = () => emptyResults('football')
 
 const filled = (v) => v !== '' && v !== null && v !== undefined
 const outOfRange = (v, range) => filled(v) && range && (Number(v) < range[0] || Number(v) > range[1])
 
 // Returns a list of problems that block submitting (missing values).
 // Out-of-range values only warn: the engine marks them invalid.
-export function footballProblems(results) {
+export function footballProblems(results, sportKey = 'football') {
   const problems = []
   if (!results.timingMethod) problems.push('Choose the sprint timing method.')
   let completed = 0
-  for (const t of TESTS) {
+  for (const t of testsFor(sportKey)) {
     const r = results.tests[t.key]
     if (r.status !== 'completed') continue
     completed++
@@ -193,7 +221,9 @@ function TestRow({ test, r, set }) {
   )
 }
 
-export default function FootballResultsForm({ results, onChange }) {
+export default function FootballResultsForm({ results, onChange, sport = 'Football' }) {
+  const { key: sportKey, title } = SCORED_SPORTS[sport] || SCORED_SPORTS.Football
+  const TESTS = testsFor(sportKey)
   const setTest = (key) => (patch) =>
     onChange({ ...results, tests: { ...results.tests, [key]: { ...results.tests[key], ...patch } } })
 
@@ -201,7 +231,7 @@ export default function FootballResultsForm({ results, onChange }) {
   return (
     <div className="card">
       <h2 className="text-sm font-medium text-gray-900 mb-1 flex items-center gap-2">
-        ⚽ Football test results
+        {title}
       </h2>
       <p className="text-xs text-gray-500 mb-4">
         Every score is calculated from these numbers. Nothing missing is ever estimated: a test that wasn't done shows

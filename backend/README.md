@@ -35,6 +35,7 @@ npm run seed
 - `GET /api/report/:id/export` - Get report data for PDF export
 
 - `POST /api/report/football` - Football report from manually entered test results (VALD PDFs optional, kept as reference)
+- `POST /api/report/padel` - Padel report, same flow (`scoring/padel_v1.json`; dominant hand required)
 
 ### Football scoring (Football OVR Scoring Spec v1)
 
@@ -49,6 +50,12 @@ Football reports don't let the AI produce numbers. The flow:
    rejected and retried (3 attempts, then the report fails cleanly).
 5. The report stores the tester's entry, the engine output, the exact Gemini
    payload and the config version. "Regenerate" re-scores with the current config.
+
+Padel uses the same engine and pipeline (`services/scoredReport.service.js` holds both
+sports; `footballReport.service.js` keeps football's original names). Padel adds two
+flags: hip adduction below 80% of abduction (amber "groin risk"), and a Shoulder ER
+gap where the dominant arm is weaker is "monitor" (never red, no Power cap).
+Padel's manual-test anchors are interim and approximate (adult male).
 
 `scoring/scoring.js` is a JavaScript port of `../peakperformance_scoring/scoring.py`.
 Keep `scoring/football_v1.json` identical to `../peakperformance_scoring/football_v1.json`

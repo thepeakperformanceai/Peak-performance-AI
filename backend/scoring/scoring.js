@@ -26,7 +26,13 @@
 
 const STATUSES = new Set(['completed', 'not_done', 'injured', 'equipment_fault', 'invalid']);
 
-const loadConfig = () => require('./football_v1.json');
+// One config per sport. Football's must stay identical to the Python engine's.
+const CONFIG_FILES = { football: './football_v1.json', padel: './padel_v1.json' };
+const loadConfig = (sport = 'football') => {
+  const file = CONFIG_FILES[sport];
+  if (!file) throw new Error(`no scoring config for sport "${sport}"`);
+  return require(file);
+};
 
 // ---------- Python-compatible rounding ----------
 
@@ -243,7 +249,7 @@ const scoreTest = (name, testIn, tdef, cfg, timingMethod) => {
 
 // ---------- flags ----------
 
-const buildFlags = (tests, cfg) => {
+const buildFlags = (tests, cfg, athlete = {}) => {
   const flags = [];
   const lsiCfg = cfg.lsi;
   const fcfg = cfg.flags;
@@ -254,7 +260,15 @@ const buildFlags = (tests, cfg) => {
       flags.push({ type: 'one_side_only', test: name, level: 'amber' });
     }
     if (tdef.dynamo && 'lsi' in t) {
-      if (t.lsi < lsiCfg.red_below) {
+      // Racket sports (config: dominant_arm_tests): a gap where the weaker side
+      // is the dominant arm is common and only flagged to monitor (never red,
+      // so it never triggers the Power cap). Football has no such tests.
+      const weaker = t.raw_left < t.raw_right ? 'L' : t.raw_right < t.raw_left ? 'R' : null;
+      const dominantWeaker = (cfg.dominant_arm_tests || []).includes(name) &&
+        weaker !== null && weaker === athlete.dominant_hand;
+      if (dominantWeaker && t.lsi < lsiCfg.amber_below) {
+        flags.push({ type: 'LSI', test: name, value: t.lsi, level: 'monitor', dominant_side_weaker: true });
+      } else if (t.lsi < lsiCfg.red_below) {
         flags.push({ type: 'LSI', test: name, value: t.lsi, level: 'red' });
       } else if (t.lsi < lsiCfg.amber_below) {
         flags.push({ type: 'LSI', test: name, value: t.lsi, level: 'amber' });
@@ -274,6 +288,23 @@ const buildFlags = (tests, cfg) => {
     }
     if (name === 'overhead_squat' && t.bands && isSet(t.bands[0]) && t.bands[0] < 2) {
       flags.push({ type: 'movement_quality', test: name, level: 'amber' });
+    }
+  }
+  // Hip adduction vs abduction (config: groin_ratio). Mean of the sides entered.
+  const gr = cfg.groin_ratio;
+  if (gr) {
+    const add = tests[gr.numerator];
+    const abd = tests[gr.denominator];
+    const sideMean = (t) => {
+      const sides = [t.raw_left, t.raw_right].filter(isSet);
+      return sides.length ? sides.reduce((a, b) => a + b, 0) / sides.length : null;
+    };
+    if (add && abd && add.status === 'completed' && abd.status === 'completed') {
+      const a = sideMean(add);
+      const b = sideMean(abd);
+      if (a !== null && b !== null && b > 0 && a / b < gr.amber_below) {
+        flags.push({ type: 'groin_risk', test: gr.numerator, value: pyRound(a / b * 100, 1), level: 'amber' });
+      }
     }
   }
   return flags;
@@ -313,7 +344,7 @@ const scoreSession = (session, cfg = loadConfig()) => {
   }
 
   // power cap for strong-side masking
-  const flags = buildFlags(tests, cfg);
+  const flags = buildFlags(tests, cfg, athlete);
   if (stats.power && stats.power.value !== null) {
     if (flags.some(f => f.type === 'LSI' && f.level === 'red')) {
       if (stats.power.value > cfg.lsi.power_cap) {

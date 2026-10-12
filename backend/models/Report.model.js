@@ -104,6 +104,20 @@ const reportSchema = new mongoose.Schema({
     type: String,
     default: undefined
   },
+  // ── Engine-scored sports other than football (padel) ──
+  // scoringSport: which config scored it; scoringSession: the tester's entry.
+  scoringSport: {
+    type: String,
+    default: undefined
+  },
+  scoringSession: {
+    type: mongoose.Schema.Types.Mixed,
+    default: undefined
+  },
+  dominantHand: {
+    type: String,
+    default: undefined
+  },
   bodyweightKg: {
     type: Number,
     default: undefined

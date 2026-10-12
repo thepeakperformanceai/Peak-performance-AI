@@ -1,0 +1,49 @@
+{
+  "config_version": "padel-v1.0",
+  "sport": "padel",
+  "notes": "Interim. Manual-test anchors are approximate, adult male, research-based; replace with sourced or local data. VALD tests use VALD's age-and-sex bands.",
+  "hand_timing_offset_s": 0.22,
+  "score_floor": 25,
+  "score_cap": 99,
+
+  "manual_anchors": {
+    "sprint_10m": [[2.25, 40], [2.10, 55], [1.97, 70], [1.85, 85], [1.78, 95]],
+    "ruler_drop": [[28.0, 40], [20.4, 55], [16.0, 70], [11.0, 85], [7.5, 95]],
+    "beep_test":  [[7.0, 40], [8.5, 55], [10.0, 70], [11.5, 85], [12.5, 95]]
+  },
+
+  "vald_band_labels": ["well_below", "below", "within_normal", "slightly_above", "well_above"],
+  "vald_band_edge_scores": [25, 40, 55, 70, 85, 99],
+  "vald_band_midpoints": [33, 48, 63, 78, 92],
+
+  "beep_shuttles_per_level": {
+    "1": 7, "2": 8, "3": 8, "4": 9, "5": 9, "6": 10, "7": 10, "8": 11, "9": 11, "10": 11,
+    "11": 12, "12": 12, "13": 13, "14": 13, "15": 13, "16": 14, "17": 14, "18": 15,
+    "19": 15, "20": 16, "21": 16
+  },
+
+  "tests": {
+    "sprint_10m":       {"source": "manual", "stat": "speed",     "stat_weight": 1.0, "plausible": [1.40, 3.50]},
+    "ruler_drop":       {"source": "manual", "stat": "reaction",  "stat_weight": 1.0, "plausible": [0, 30]},
+    "beep_test":        {"source": "manual", "stat": "endurance", "stat_weight": 1.0, "plausible": [1.1, 21.0]},
+    "single_leg_stand": {"source": "vald", "bilateral": true,  "stat": "balance", "stat_weight": 1.0, "plausible": [0, 30]},
+    "trunk_rotation":   {"source": "vald", "bilateral": true,  "stat": null, "plausible": [0, 90]},
+    "overhead_squat":   {"source": "vald", "bilateral": false, "stat": null, "plausible": null},
+    "shoulder_er":      {"source": "vald", "bilateral": true,  "dynamo": true, "stat": "power", "stat_weight": 1.0, "plausible": [20, 1500]},
+    "hip_abduction":    {"source": "vald", "bilateral": true,  "dynamo": true, "stat": "power", "stat_weight": 1.0, "plausible": [50, 3000]},
+    "hip_adduction":    {"source": "vald", "bilateral": true,  "dynamo": true, "stat": "power", "stat_weight": 1.0, "plausible": [50, 3000]}
+  },
+
+  "stat_weights": {"reaction": 20, "speed": 20, "agility": 25, "power": 15, "balance": 10, "endurance": 10},
+  "stats_not_in_battery": ["agility"],
+
+  "lsi": {"amber_below": 90, "red_below": 85, "power_cap": 75},
+  "flags": {"sls_side_diff_s": 10, "trunk_rotation_min_deg": 40, "trunk_rotation_side_diff_deg": 10},
+  "dominant_arm_tests": ["shoulder_er"],
+  "groin_ratio": {"numerator": "hip_adduction", "denominator": "hip_abduction", "amber_below": 0.8},
+
+  "ovr_min_stats": 3,
+  "ovr_min_weight_share": 0.5,
+  "provisional_under_age": 18,
+  "provisional_sexes": ["F"]
+}

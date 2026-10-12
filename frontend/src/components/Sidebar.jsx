@@ -19,9 +19,10 @@ function BuildStamp() {
       .then(r => r.json())
       .then(h => {
         if (cancelled) return
-        setApi(h.footballScoring
-          ? { text: `API ${h.commit} · football scoring ✓` }
-          : { text: 'API has no football scoring', warn: true })
+        const sports = [h.footballScoring && 'football', h.padelScoring && 'padel'].filter(Boolean)
+        setApi(sports.length
+          ? { text: `API ${h.commit} · ${sports.join(' + ')} scoring ✓`, warn: !h.padelScoring }
+          : { text: 'API has no engine scoring', warn: true })
       })
       .catch(() => { if (!cancelled) setApi({ text: 'API unreachable', warn: true }) })
     return () => { cancelled = true }

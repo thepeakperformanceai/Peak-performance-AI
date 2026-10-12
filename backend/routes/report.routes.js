@@ -16,6 +16,9 @@ router.post('/generate', upload.array('files', 10), reportController.generateRep
 // POST football report from manually entered results (VALD PDFs optional)
 router.post('/football', upload.array('files', 10), reportController.generateFootballReport);
 
+// POST padel report from manually entered results (VALD PDFs optional)
+router.post('/padel', upload.array('files', 10), reportController.generatePadelReport);
+
 // POST extract athlete profile from PDFs (autofill)
 router.post('/extract', upload.array('files', 10), reportController.extractProfile);
 

@@ -8,6 +8,7 @@ const profileParser = require('../services/profileParser.service');
 const { ownerFilter } = require('../middleware/auth.middleware');
 const { extractDashboardMetrics } = require('../services/metricExtract.service');
 const footballReport = require('../services/footballReport.service');
+const scoredReport = require('../services/scoredReport.service');
 
 
 /**
@@ -241,6 +242,97 @@ const reportResponse = (report, message) => ({
  * Regenerate for a football report: re-scores the stored entry with the
  * current config (so new benchmarks apply) and rewrites the text.
  */
+/**
+ * POST /api/report/padel - Padel report from manually entered results.
+ * Same pipeline as football (scoring engine for every number, Gemini for the
+ * words, number check), with padel's tests, flags and dominant hand.
+ */
+const generatePadelReport = async (req, res, next) => {
+  const uploadedFiles = req.files || [];
+  try {
+    let profileIn, resultsIn;
+    try {
+      profileIn = JSON.parse(req.body.profile || '{}');
+      resultsIn = JSON.parse(req.body.results || '{}');
+    } catch (e) {
+      const err = new Error('Invalid padel report JSON');
+      err.statusCode = 400;
+      throw err;
+    }
+
+    const padel = scoredReport.forSport('padel');
+    const { profile, session } = padel.validateInput(profileIn, resultsIn);
+
+    const pdfData = uploadedFiles.length ? await pdfExtractService.processPdfs(uploadedFiles) : [];
+
+    const { scored, payload, rawResponse, reportContent } = await padel.runPipeline(profile, session);
+
+    const report = new Report({
+      user: req.user._id,
+      athleteName: profile.name,
+      age: profile.age,
+      sport: 'Padel',
+      dob: profile.dob,
+      weight: `${profile.bodyweight} kg`,
+      bodyweightKg: profile.bodyweight,
+      sex: profile.sex,
+      position: profile.position,
+      dominantHand: profile.dominantHand,
+      trainingLevel: profile.trainingLevel,
+      knownInjuries: profile.knownInjuries,
+      customParams: profile.customParams,
+      testDate: profile.testDate,
+      practitioner: profile.practitioner,
+      reportContent,
+      rawAiResponse: rawResponse,
+      sourcePdfData: pdfData.map(p => ({ type: p.type, text: p.text })),
+      scoringSport: 'padel',
+      scoringSession: session,
+      scoring: scored,
+      scoringPayload: payload,
+      configVersion: scored.config_version
+    });
+    await report.save();
+    console.log(`Padel report saved with ID: ${report._id} (OVR ${scored.ovr.value ?? 'pending'}, ${scored.config_version})`);
+
+    if (uploadedFiles.length) pdfExtractService.cleanupTempFiles(uploadedFiles);
+
+    res.status(201).json(reportResponse(report, 'Report generated successfully'));
+  } catch (error) {
+    if (uploadedFiles.length) {
+      try { pdfExtractService.cleanupTempFiles(uploadedFiles); } catch (_) {}
+    }
+    next(error);
+  }
+};
+
+/**
+ * Regenerate for an engine-scored report of a non-football sport (padel):
+ * re-scores the stored entry with the current config and rewrites the text.
+ */
+const regenerateScoredReport = async (existingReport, res) => {
+  const pipeline = scoredReport.forSport(existingReport.scoringSport);
+  const session = existingReport.scoringSession;
+  const profile = {
+    name: existingReport.athleteName,
+    age: session.athlete.age,
+    position: existingReport.position,
+    dominantHand: existingReport.dominantHand,
+    testDate: existingReport.testDate
+  };
+  const { scored, payload, rawResponse, reportContent } = await pipeline.runPipeline(profile, session);
+
+  existingReport.reportContent = reportContent;
+  existingReport.rawAiResponse = rawResponse;
+  existingReport.scoring = scored;
+  existingReport.scoringPayload = payload;
+  existingReport.configVersion = scored.config_version;
+  await existingReport.save();
+  console.log(`${existingReport.scoringSport} report re-scored with ID: ${existingReport._id} (${scored.config_version})`);
+
+  res.json(reportResponse(existingReport, 'Report regenerated successfully'));
+};
+
 const regenerateFootballReport = async (existingReport, res) => {
   const profile = {
     name: existingReport.athleteName,
@@ -327,6 +419,9 @@ const regenerateReport = async (req, res, next) => {
 
     if (existingReport.footballSession) {
       return await regenerateFootballReport(existingReport, res);
+    }
+    if (existingReport.scoringSession && existingReport.scoringSport) {
+      return await regenerateScoredReport(existingReport, res);
     }
 
     const exercises = await Exercise.find().select('name targets');
@@ -475,6 +570,7 @@ const extractProfile = async (req, res, next) => {
 module.exports = {
   generateReport,
   generateFootballReport,
+  generatePadelReport,
   generateReportContent,
   getReport,
   exportReportPdf,

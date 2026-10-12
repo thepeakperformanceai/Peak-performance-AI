@@ -80,7 +80,9 @@ app.get('/api/health', (req, res) => {
     status: 'ok',
     commit: (process.env.RENDER_GIT_COMMIT || '').slice(0, 7) || 'local',
     footballScoring: true,
-    scoringConfig: scoringConfigVersion
+    padelScoring: true,
+    scoringConfig: scoringConfigVersion,
+    padelScoringConfig: require('./scoring/scoring').loadConfig('padel').config_version
   });
 });
 

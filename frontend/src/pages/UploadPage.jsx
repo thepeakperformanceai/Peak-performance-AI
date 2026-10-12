@@ -1,11 +1,11 @@
 import { useState, useCallback } from 'react'
 import { useDropzone } from 'react-dropzone'
 import toast from 'react-hot-toast'
-import { generateReport, generateFootballReport, extractProfile } from '../services/api'
+import { generateReport, generateFootballReport, generatePadelReport, extractProfile } from '../services/api'
 import { useReportStore } from '../store/reportStore'
 import { useParamStore } from '../store/paramStore'
 import { sanitizeInput } from '../utils/sanitize'
-import FootballResultsForm, { FOOTBALL_POSITIONS, emptyFootballResults, footballProblems } from '../components/FootballResultsForm'
+import FootballResultsForm, { SCORED_SPORTS, emptyResults, footballProblems } from '../components/FootballResultsForm'
 
 
 const SPORTS = ['Football', 'Cricket', 'Padel']
@@ -18,7 +18,10 @@ const STEPS = [
 
 const todayISO = () => new Date().toISOString().slice(0, 10)
 
-const emptyFootballProfile = () => ({ dob: '', sex: '', bodyweight: '', position: '', testDate: todayISO() })
+const emptyFootballProfile = () => ({ dob: '', sex: '', bodyweight: '', position: '', dominantHand: '', testDate: todayISO() })
+
+// Test results kept per engine-scored sport, so switching sport doesn't mix tests.
+const emptyResultsBySport = () => Object.fromEntries(Object.entries(SCORED_SPORTS).map(([name, s]) => [name, emptyResults(s.key)]))
 
 // Whole years on the test date, for display; the backend recalculates it.
 function ageFromDob(dob, onDate) {
@@ -68,8 +71,13 @@ export default function UploadPage({ onReportGenerated }) {
 
   // Football only: extra required profile fields + the test results.
   const [fbProfile, setFbProfile] = useState(emptyFootballProfile)
-  const [fbResults, setFbResults] = useState(emptyFootballResults)
-  const isFootball = form.sport === 'Football'
+  const [resultsBySport, setResultsBySport] = useState(emptyResultsBySport)
+  // Sports scored by the engine (Football, Padel) use the results form;
+  // the others keep the PDF upload flow unchanged.
+  const scored = SCORED_SPORTS[form.sport]
+  const isScored = !!scored
+  const fbResults = resultsBySport[form.sport]
+  const setFbResults = r => setResultsBySport(prev => ({ ...prev, [form.sport]: r }))
   const fbAge = ageFromDob(fbProfile.dob, fbProfile.testDate)
   const handleFbChange = e =>
     setFbProfile(prev => ({ ...prev, [e.target.name]: e.target.value }))
@@ -107,7 +115,8 @@ export default function UploadPage({ onReportGenerated }) {
     if (!fbProfile.dob)            { toast.error('Date of birth is required.'); return false }
     if (fbAge === null || fbAge < 5 || fbAge > 80) { toast.error('Please check the date of birth.'); return false }
     if (!fbProfile.sex)            { toast.error('Sex is required.'); return false }
-    if (!fbProfile.position)       { toast.error('Position is required.'); return false }
+    if (!scored.positions.some(p => p.value === fbProfile.position)) { toast.error(`${scored.positionLabel} is required.`); return false }
+    if (scored.key === 'padel' && !fbProfile.dominantHand) { toast.error('Dominant hand is required.'); return false }
     if (!fbProfile.bodyweight)     { toast.error('Bodyweight is required.'); return false }
     const bw = Number(fbProfile.bodyweight)
     if (bw < 30 || bw > 160)       { toast.error('Bodyweight must be 30–160 kg. Please re-check it.'); return false }
@@ -117,13 +126,13 @@ export default function UploadPage({ onReportGenerated }) {
         return false
       }
     }
-    const problems = footballProblems(fbResults)
+    const problems = footballProblems(fbResults, scored.key)
     if (problems.length) { toast.error(problems[0]); return false }
     return true
   }
 
   const validate = () => {
-    if (isFootball) return validateFootball()
+    if (isScored) return validateFootball()
     if (files.length === 0) { toast.error('Please upload at least one file.'); return false }
     if (!form.name.trim())  { toast.error('Athlete name is required.'); return false }
     if (!form.age)          { toast.error('Age is required.'); return false }
@@ -196,7 +205,7 @@ export default function UploadPage({ onReportGenerated }) {
     if (!validate()) return
     setLoading(true)
 
-    const messages = isFootball
+    const messages = isScored
       ? ['Scoring test results…', 'Writing the report…', 'Checking every number…', 'Almost done…']
       : [
       'Extracting VALD data…',
@@ -218,19 +227,18 @@ export default function UploadPage({ onReportGenerated }) {
         knownInjuries: sanitizeInput(form.knownInjuries),
         position:      sanitizeInput(form.position),
       }
-      const data = isFootball
-        ? await generateFootballReport(files, {
-            ...sanitizedForm,
-            ...fbProfile,
-            age: fbAge,
-          }, fbResults)
-        : await generateReport(files, sanitizedForm)
+      const scoredProfile = { ...sanitizedForm, ...fbProfile, age: fbAge }
+      const data = form.sport === 'Football'
+        ? await generateFootballReport(files, scoredProfile, fbResults)
+        : form.sport === 'Padel'
+          ? await generatePadelReport(files, scoredProfile, fbResults)
+          : await generateReport(files, sanitizedForm)
       setReport(data)
       toast.success('Report generated!')
       onReportGenerated()
     } catch (err) {
-      if (isFootball && /route not found/i.test(err.message || '')) {
-        toast.error('The backend this site uses has no football scoring yet. Redeploy it from the football branch.', { duration: 8000 })
+      if (isScored && /route not found/i.test(err.message || '')) {
+        toast.error(`The backend this site uses has no ${form.sport.toLowerCase()} scoring yet. Redeploy it from the scoring branch.`, { duration: 8000 })
         return
       }
       toast.error(err.message || 'Report generation failed. Please try again.')
@@ -278,7 +286,7 @@ export default function UploadPage({ onReportGenerated }) {
         <h2 className="text-sm font-medium text-gray-900 mb-4 flex items-center gap-2">
           📁 Upload VALD files
           <span className="text-xs text-gray-400 font-normal">
-            {isFootball ? '(optional for football: kept with the report as reference)' : '(up to 3 files)'}
+            {isScored ? `(optional for ${form.sport.toLowerCase()}: kept with the report as reference)` : '(up to 3 files)'}
           </span>
         </h2>
 
@@ -338,7 +346,7 @@ export default function UploadPage({ onReportGenerated }) {
             />
           </div>
 
-          {isFootball ? (
+          {isScored ? (
             <div className="space-y-1">
               <label className="text-xs font-medium text-gray-500">
                 Date of birth * {fbAge !== null && <span className="text-gray-400">(age {fbAge} on test day)</span>}
@@ -362,12 +370,12 @@ export default function UploadPage({ onReportGenerated }) {
             </select>
           </div>
 
-          {isFootball ? (
+          {isScored ? (
             <div className="space-y-1">
-              <label className="text-xs font-medium text-gray-500">Position *</label>
-              <select name="position" value={fbProfile.position} onChange={handleFbChange} className="inp">
+              <label className="text-xs font-medium text-gray-500">{scored.positionLabel} *</label>
+              <select name="position" value={scored.positions.some(p => p.value === fbProfile.position) ? fbProfile.position : ''} onChange={handleFbChange} className="inp">
                 <option value="">Select…</option>
-                {FOOTBALL_POSITIONS.map(p => <option key={p.value} value={p.value}>{p.label}</option>)}
+                {scored.positions.map(p => <option key={p.value} value={p.value}>{p.label}</option>)}
               </select>
             </div>
           ) : (
@@ -380,8 +388,18 @@ export default function UploadPage({ onReportGenerated }) {
           </div>
           )}
 
-          {isFootball && (
+          {isScored && (
             <>
+              {scored.key === 'padel' && (
+                <div className="space-y-1">
+                  <label className="text-xs font-medium text-gray-500">Dominant hand *</label>
+                  <select name="dominantHand" value={fbProfile.dominantHand} onChange={handleFbChange} className="inp">
+                    <option value="">Select…</option>
+                    <option value="R">Right</option>
+                    <option value="L">Left</option>
+                  </select>
+                </div>
+              )}
               <div className="space-y-1">
                 <label className="text-xs font-medium text-gray-500">Sex *</label>
                 <select name="sex" value={fbProfile.sex} onChange={handleFbChange} className="inp">
@@ -434,7 +452,7 @@ export default function UploadPage({ onReportGenerated }) {
         </div>
       </div>
 
-      {isFootball && <FootballResultsForm results={fbResults} onChange={setFbResults} />}
+      {isScored && <FootballResultsForm key={form.sport} sport={form.sport} results={fbResults} onChange={setFbResults} />}
 
       {/* Actions */}
       <div className="flex items-center justify-end gap-3">
@@ -446,7 +464,7 @@ export default function UploadPage({ onReportGenerated }) {
             // while reports silently went through the non-football pipeline.
             setForm({ name:'', age:'', sport:'Football', position:'', trainingLevel:'Semi-Professional', knownInjuries:'' })
             setFbProfile(emptyFootballProfile())
-            setFbResults(emptyFootballResults())
+            setResultsBySport(emptyResultsBySport())
             setStep(1)
           }}
         >

@@ -61,6 +61,7 @@ export const tierFor = (ovr) =>
 const BODY = '#fffdf9', TXT = '#1c1f24', MUTED = '#5c636e', FAINT = '#8d949e', RULE = '#e7e2d9'
 const AMBER_TXT = '#8a5a00', AMBER_BG = '#fdf0d2', AMBER_DOT = '#e0a21a'
 const RED_TXT = '#9f1d14', RED_BG = '#fde6e3', RED_DOT = '#d83a2c'
+const MON_TXT = '#2f4a66', MON_BG = '#e3ecf5'
 
 const esc = (v) => String(v ?? '')
   .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
@@ -87,6 +88,7 @@ const FLAG_TEXT = {
   asymmetry: 'Left/right balance gap',
   mobility: 'Rotation range',
   movement_quality: 'Movement quality',
+  groin_risk: 'Groin risk',
 }
 
 const chip = (text, fg, bg, extra = '') =>
@@ -210,10 +212,16 @@ function flagsList(rc) {
   const compact = flags.length > 3
   return flags.map(f => {
     const red = f.level === 'red'
-    const what = FLAG_TEXT[f.type] || f.type
-    const value = f.value != null ? (f.type === 'LSI' ? ` (LSI ${f.value}%)` : ` (${f.value})`) : ''
+    // Padel: dominant-arm shoulder gap is common in racket players — monitor only.
+    const monitor = f.level === 'monitor'
+    const what = monitor ? 'Dominant arm weaker · common in racket players, monitor' : (FLAG_TEXT[f.type] || f.type)
+    const value = f.value == null ? ''
+      : f.type === 'LSI' ? ` (LSI ${f.value}%)`
+        : f.type === 'groin_risk' ? ` (adduction ${f.value}% of abduction)`
+          : ` (${f.value})`
+    const [label, fg, bg] = red ? ['RED', RED_TXT, RED_BG] : monitor ? ['MONITOR', MON_TXT, MON_BG] : ['AMBER', AMBER_TXT, AMBER_BG]
     return `<div style="font-family:${TEXT};font-size:${compact ? 10.5 : 11}px;line-height:1.45;color:${TXT};margin-bottom:${compact ? 5 : 8}px">
-      ${chip(red ? 'RED' : 'AMBER', red ? RED_TXT : AMBER_TXT, red ? RED_BG : AMBER_BG, 'font-size:8.5px;padding:1px 5px 2px;margin-right:6px')}<b>${esc(f.test)}</b> · ${esc(what)}${esc(value)}${f.note && !compact ? `<div style="color:${MUTED}">${esc(f.note)}</div>` : ''}
+      ${chip(label, fg, bg, 'font-size:8.5px;padding:1px 5px 2px;margin-right:6px')}<b>${esc(f.test)}</b> · ${esc(what)}${esc(value)}${f.note && !compact ? `<div style="color:${MUTED}">${esc(f.note)}</div>` : ''}
     </div>`
   }).join('')
 }
@@ -238,6 +246,7 @@ export function footballCardHtml(report) {
     ['SPORT', rc.sport || 'Football'],
     ['AGE', rc.age],
     ['SESSION', rc.testDate],
+    ['HAND', rc.dominantHand === 'R' ? 'Right' : rc.dominantHand === 'L' ? 'Left' : null],
   ].filter(([, v]) => v != null && v !== '')
 
   const statusBadge = pending
