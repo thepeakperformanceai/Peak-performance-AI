@@ -303,5 +303,5 @@ test('diagnose: names the organisation athletes are read from', async () => {
   const out = await createValdClient({ env: { ...ENV, VALD_TENANT_ID: 't1' }, http, now: () => NOW }).diagnose();
   assert.equal(out.steps.find(x => x.step === 'Organisation used').detail, 'PeakPerformance (T1, region aue) = VALD_TENANT_ID');
   const other = await createValdClient({ env: { ...ENV, VALD_TENANT_ID: 'T2' }, http: fakeVald(routes()).http, now: () => NOW }).diagnose();
-  assert.match(other.steps.find(x => x.step === 'Organisation used').detail, /T2 from VALD_TENANT_ID; not in the tenant list above \(listed: PeakPerformance = T1\)/);
+  assert.match(other.steps.find(x => x.step === 'Organisation used').detail, /T2 from VALD_TENANT_ID; not in the tenant list above \(listed: PeakPerformance = T1 in aue;/);
 });
