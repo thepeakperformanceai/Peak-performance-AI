@@ -59,9 +59,10 @@ gap where the dominant arm is weaker is "monitor" (never red, no Power cap).
 Padel's manual-test anchors are interim and approximate (adult male).
 
 Cricket (`cricket_v1.json`) cites a source for every anchor in its `sources` block.
-5-10-5 and the seated 4 kg medicine ball throw are `benchmark_pending`: recorded
-on the card but not scored (and the OVR is Provisional) until sourced benchmarks
-are added to the config. Yo-Yo IR1 is entered as level.shuttle and scored on
+Agility uses the 505 test (devised for cricket), anchored on published male
+cricketer data. The seated 4 kg medicine ball throw is `benchmark_pending`:
+recorded on the card but not scored (and the OVR is Provisional) until sourced
+benchmarks are added to the config. Yo-Yo IR1 is entered as level.shuttle and scored on
 cumulative metres. Bowling-arm ER below 66% of IR is an amber "shoulder balance"
 flag; a bowling-arm-weaker gap is "monitor".
 

@@ -82,7 +82,7 @@ const PENDING_HINT = 'Recorded only: benchmarks pending, not scored yet'
 const CRICKET_TESTS = [
   { key: 'sprint_10m', label: '10m Sprint (split)', kind: 'manual', unit: 's', range: [1.4, 3.5], step: '0.01', group: 'Manual tests', hint: '10 m split from the 20 m run' },
   { key: 'sprint_20m', label: '20m Sprint', kind: 'manual', unit: 's', range: [2.4, 5.5], step: '0.01', group: 'Manual tests' },
-  { key: 'agility_505', label: '5-10-5 Pro Agility', kind: 'manual', unit: 's', range: [3.8, 8.0], step: '0.01', group: 'Manual tests', hint: PENDING_HINT },
+  { key: 'cod_505', label: '505 Agility', kind: 'manual', unit: 's', range: [1.8, 4.0], step: '0.01', group: 'Manual tests', hint: 'Timing gates, 5 m either side of the turn; best of two' },
   { key: 'medicine_ball', label: 'Medicine Ball Throw (seated, 4 kg)', kind: 'manual', unit: 'm', range: [1.5, 12.0], step: '0.01', group: 'Manual tests', hint: PENDING_HINT },
   { key: 'yoyo_ir1', label: 'Yo-Yo IR1', kind: 'yoyo', group: 'Manual tests', hint: 'Level.shuttle, e.g. 17.4. Stopped through injury = Injured' },
   { key: 'ruler_drop', label: 'Ruler Drop', kind: 'manual', unit: 'cm', range: [0, 30], step: '0.1', group: 'Manual tests', hint: 'Ruler not caught = 30' },

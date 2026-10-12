@@ -18,7 +18,7 @@ const RESULTS = {
   tests: {
     sprint_10m: { status: 'completed', value: '1.88' },
     sprint_20m: { status: 'completed', value: '3.19' },
-    agility_505: { status: 'completed', value: '4.62' },
+    cod_505: { status: 'completed', value: '2.52' },
     medicine_ball: { status: 'completed', value: '7.4' },
     yoyo_ir1: { status: 'completed', level: '17', shuttle: '4' },
     ruler_drop: { status: 'completed', value: '13.0' },
@@ -35,7 +35,7 @@ const copy = (o) => structuredClone(o);
 const fakeNarrative = (payload) => JSON.stringify({
   playerProfile: 'Skiddy pace bowler with quick hands in the field.',
   summary: 'A strong session. The rating will firm up after the remaining tests.',
-  stats: { speed: 'Quick between the wickets.', power: 'Good strength through the chain.', agility: 'Not scored yet: benchmarks pending.',
+  stats: { speed: 'Quick between the wickets.', power: 'Good strength through the chain.', agility: 'Turns well between the wickets.',
     endurance: 'Holds intensity through long spells.', balance: 'Stable on one leg.', reaction: 'Sharp hands.' },
   symmetry: 'The bowling arm is the weaker side in external rotation, which is common in cricketers.',
   recommendation: 'External rotator strength on the bowling arm.',
@@ -68,13 +68,16 @@ test('Gemini payload: pending tests, Yo-Yo distance, cricket flags, no name', ()
   const scored = scoreSession(session, cricket.cfg);
   const payload = cricket.buildGeminiPayload(scored, session);
   assert.equal(JSON.stringify(payload).includes('Bilal'), false);
-  assert.equal(payload.config_version, 'cricket-v1.0');
-  const agility = payload.tests.find(t => t.name === '5-10-5 Pro Agility');
-  assert.deepEqual([agility.raw, agility.score, agility.benchmark], [4.62, null, 'pending']);
+  assert.equal(payload.config_version, 'cricket-v1.1');
+  const agility = payload.tests.find(t => t.name === '505 Agility');
+  assert.deepEqual([agility.raw, agility.benchmark], [2.52, 'research']);
+  assert.ok(agility.score > 70 && agility.score < 85);
+  const mb = payload.tests.find(t => t.name === 'Medicine Ball Throw (seated, 4 kg)');
+  assert.deepEqual([mb.raw, mb.score, mb.benchmark], [7.4, null, 'pending']);
   const yoyo = payload.tests.find(t => t.name === 'Yo-Yo IR1');
   assert.deepEqual([yoyo.raw, yoyo.level, yoyo.shuttle, yoyo.distance_m], ['17.4', 17, 4, 1560]);
-  assert.deepEqual(payload.stats.agility, { value: null, status: 'benchmark_pending' });
-  assert.deepEqual(payload.ovr.reasons, ['5-10-5 Pro Agility: benchmarks pending', 'Medicine Ball Throw (seated, 4 kg): benchmarks pending']);
+  assert.equal(payload.stats.agility.partial, false);
+  assert.deepEqual(payload.ovr.reasons, ['Medicine Ball Throw (seated, 4 kg): benchmarks pending']);
   // R is the bowling arm: ER 118 weaker than L 150 -> monitor; ER:IR 118/210 = 56.2% -> shoulder balance.
   assert.deepEqual(payload.flags, [
     { type: 'LSI', test: 'Shoulder External Rotation', value: 78.7, level: 'monitor', dominant_side_weaker: true },
@@ -118,11 +121,12 @@ test('full pipeline: cricket card content', async () => {
   assert.equal(rc.dominantHand, 'R');
   assert.equal(rc.overallOVR, scored.ovr.value);
   assert.equal(rc.ovrStatus, 'provisional');
-  assert.deepEqual(rc.ovrScores.find(s => s.name === 'Agility'), { name: 'Agility', score: null, status: 'benchmark_pending' });
-  assert.equal(rc.fieldMeaning.stats.find(s => s.name === 'Agility').tag, 'PENDING');
+  assert.equal(rc.ovrScores.find(s => s.name === 'Agility').score, scored.stats.agility.value);
+  assert.ok(rc.ovrScores.find(s => s.name === 'Power').partial);   // medicine ball pending
+  assert.notEqual(rc.fieldMeaning.stats.find(s => s.name === 'Agility').tag, 'PENDING');
   assert.deepEqual(rc.manualBattery.map(t => [t.test, t.avg]), [
     ['10m Sprint', 'vs published international norms'], ['20m Sprint', 'vs published international norms'],
-    ['5-10-5 Pro Agility', 'benchmarks pending'], ['Medicine Ball Throw (seated, 4 kg)', 'benchmarks pending'],
+    ['505 Agility', 'vs published international norms'], ['Medicine Ball Throw (seated, 4 kg)', 'benchmarks pending'],
     ['Yo-Yo IR1', 'vs published international norms'], ['Ruler Drop', 'vs published international norms']
   ]);
   assert.deepEqual(rc.dynamoStrength.map(d => [d.joint, d.status]), [

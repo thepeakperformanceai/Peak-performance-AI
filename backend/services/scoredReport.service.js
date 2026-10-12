@@ -27,7 +27,7 @@ const ALL_TEST_INFO = {
   hip_abduction:    { label: 'Hip Abduction',           unit: 'N' },
   hip_adduction:    { label: 'Hip Adduction',           unit: 'N' },
   sprint_20m:       { label: '20m Sprint',              unit: 's' },
-  agility_505:      { label: '5-10-5 Pro Agility',      unit: 's' },
+  cod_505:          { label: '505 Agility',             unit: 's' },
   medicine_ball:    { label: 'Medicine Ball Throw (seated, 4 kg)', unit: 'm' },
   yoyo_ir1:         { label: 'Yo-Yo IR1',               unit: 'level.shuttle' },
   shoulder_ir:      { label: 'Shoulder Internal Rotation', unit: 'N' },
