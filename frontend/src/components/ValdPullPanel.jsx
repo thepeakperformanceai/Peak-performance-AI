@@ -47,6 +47,7 @@ export default function ValdPullPanel({ sportKey, athleteName, results, onChange
   const [status, setStatus] = useState(null)        // null = checking
   const [query, setQuery] = useState(athleteName || '')
   const [profiles, setProfiles] = useState(null)
+  const [counts, setCounts] = useState(null)        // { matches, total }
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
   const [summary, setSummary] = useState(null)
@@ -76,8 +77,9 @@ export default function ValdPullPanel({ sportKey, athleteName, results, onChange
   const search = async () => {
     setBusy(true); setError(''); setSummary(null)
     try {
-      const { profiles } = await valdProfiles(query)
+      const { profiles, matches, total } = await valdProfiles(query)
       setProfiles(profiles)
+      setCounts({ matches, total })
     } catch (e) { setError(e.message) } finally { setBusy(false) }
   }
 
@@ -124,9 +126,16 @@ export default function ValdPullPanel({ sportKey, athleteName, results, onChange
         <div className="mt-2 space-y-1">
           {profiles.length === 0 && (
             <>
-              <p className="text-xs text-gray-500">No VALD athlete matches “{query}”.</p>
-              <ValdCheck />
+              <p className="text-xs text-gray-500">
+                No match for “{query}” among {counts?.total ?? 0} VALD athletes. Try their surname, or clear the box and press Find athlete to browse A–Z.
+              </p>
+              {!counts?.total && <ValdCheck />}
             </>
+          )}
+          {profiles.length > 0 && counts && (
+            <p className="text-[11px] text-gray-500">
+              {query.trim() ? `${counts.matches} match(es)` : 'All athletes, A–Z'} · {counts.total} in VALD{counts.matches > profiles.length ? ` · showing first ${profiles.length}, type more of the name to narrow` : ''}
+            </p>
           )}
           {profiles.map(p => (
             <button

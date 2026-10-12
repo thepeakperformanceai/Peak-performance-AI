@@ -1,7 +1,7 @@
 // controllers/vald.controller.js
 // VALD auto-fill for the test form. Read-only; credentials stay server-side.
 
-const { createValdClient } = require('../services/vald/valdClient');
+const { createValdClient, matchProfiles } = require('../services/vald/valdClient');
 const { mapLatestResults } = require('../services/vald/valdMapping');
 const { loadConfig } = require('../scoring/scoring');
 
@@ -35,11 +35,15 @@ const diagnose = async (req, res, next) => {
   }
 };
 
-/** GET /api/vald/profiles?q=name — find the athlete in VALD. */
+/**
+ * GET /api/vald/profiles?q=name — find the athlete in VALD. An empty q lists
+ * athletes A–Z. `total` is how many VALD profiles were searched.
+ */
 const searchProfiles = async (req, res, next) => {
   try {
-    const profiles = await vald().searchProfiles(String(req.query.q || ''));
-    res.json({ profiles: profiles.slice(0, 25) });
+    const all = await vald().listProfiles();
+    const found = matchProfiles(all, String(req.query.q || ''));
+    res.json({ profiles: found.slice(0, 50), matches: found.length, total: all.length });
   } catch (e) {
     next(e);
   }

@@ -4,7 +4,7 @@
 
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { createValdClient, configProblems, readConfig } = require('./valdClient');
+const { createValdClient, configProblems, readConfig, matchProfiles } = require('./valdClient');
 const { mapLatestResults } = require('./valdMapping');
 const { loadConfig } = require('../../scoring/scoring');
 
@@ -283,4 +283,17 @@ test('diagnose: rejected credentials stop at login', async () => {
   assert.equal(out.steps.at(-1).step, 'Login (token)');
   assert.equal(out.steps.at(-1).ok, false);
   assert.match(out.advice, /Login failed/);
+});
+
+test('name search: word start, hyphenated names, external ID, then "contains" fallback', () => {
+  const people = [
+    { profileId: '1', name: 'Ali Khan', externalId: null },
+    { profileId: '2', name: 'Sara Malik', externalId: 'PP-7' },
+    { profileId: '3', name: 'Mohammad-Faraz Khwaja', externalId: null },
+    { profileId: '4', name: 'Abdulfaraz Test', externalId: null }];
+  assert.deepEqual(matchProfiles(people, 'ali').map(p => p.profileId), ['1']);
+  assert.deepEqual(matchProfiles(people, 'faraz').map(p => p.profileId), ['3']);      // hyphenated word start
+  assert.deepEqual(matchProfiles(people, 'pp-7').map(p => p.profileId), ['2']);       // external ID
+  assert.deepEqual(matchProfiles(people, 'dulfar').map(p => p.profileId), ['4']);     // contains fallback
+  assert.equal(matchProfiles(people, '').length, 4);
 });

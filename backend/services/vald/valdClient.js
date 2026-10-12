@@ -95,6 +95,22 @@ const tokenFacts = (jwt, tenantId) => {
   }
 };
 
+// Name search. Matches the start of the full name or of any word in it
+// ("ali" finds "Ali Khan", not "Sara Malik"), or the external ID. Only if
+// nothing matches that way does it fall back to "contains" (spelling in VALD
+// may differ, e.g. "Faraz" inside "Mohammad-Faraz").
+const matchProfiles = (profiles, query = '') => {
+  const q = String(query).trim().toLowerCase().replace(/\s+/g, ' ');
+  if (!q) return profiles;
+  const words = (p) => p.name.toLowerCase().split(/[\s\-'.]+/);
+  const strict = profiles.filter(p => {
+    const name = p.name.toLowerCase();
+    return name.startsWith(q) || words(p).some(w => w.startsWith(q)) || String(p.externalId || '').toLowerCase() === q;
+  });
+  if (strict.length) return strict;
+  return profiles.filter(p => p.name.toLowerCase().replace(/\s+/g, ' ').includes(q));
+};
+
 /**
  * createValdClient({ env, http }) — http defaults to axios; tests inject a fake.
  */
@@ -210,27 +226,23 @@ const createValdClient = ({ env = process.env, http = axios, now = () => Date.no
 
   const since = () => now() - cfg.lookbackDays * 86400000;
 
-  // Athlete profiles, optionally filtered by name.
-  const searchProfiles = async (query = '') => {
+  // Every athlete profile in the tenant, sorted by name.
+  const listProfiles = async () => {
     const tenantId = await getTenantId();
     const data = await get(`${cfg.profilesUrl}/profiles`, { tenantId });
-    const q = query.trim().toLowerCase();
     return asList(data, 'profiles', 'items')
       .map(p => ({
         profileId: p.profileId || p.id,
-        name: [p.givenName, p.familyName].filter(Boolean).join(' ') || p.name || '',
+        name: [p.givenName, p.familyName].filter(Boolean).join(' ').trim() || p.name || '',
         dateOfBirth: p.dateOfBirth || null,
         externalId: p.externalId || null
       }))
-      // Match the start of the full name or of any word in it ("ali" finds
-      // "Ali Khan", not "Sara Malik").
-      .filter(p => {
-        if (!p.profileId) return false;
-        if (!q) return true;
-        const name = p.name.toLowerCase();
-        return name.startsWith(q) || name.split(/\s+/).some(w => w.startsWith(q));
-      });
+      .filter(p => p.profileId)
+      .sort((a, b) => a.name.localeCompare(b.name));
   };
+
+  // Athlete profiles, optionally filtered by name (see matchProfiles).
+  const searchProfiles = async (query = '') => matchProfiles(await listProfiles(), query);
 
   // Dynamo tests for one profile, newest first.
   const dynamoTests = async (profileId) => {
@@ -351,7 +363,7 @@ const createValdClient = ({ env = process.env, http = axios, now = () => Date.no
     return { steps, advice };
   };
 
-  return { cfg, getToken, getTenantId, searchProfiles, dynamoTests, humantrakTests, status, diagnose };
+  return { cfg, getToken, getTenantId, listProfiles, searchProfiles, dynamoTests, humantrakTests, status, diagnose };
 };
 
-module.exports = { createValdClient, readConfig, configProblems };
+module.exports = { createValdClient, readConfig, configProblems, matchProfiles };
