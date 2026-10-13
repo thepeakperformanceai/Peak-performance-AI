@@ -114,6 +114,16 @@ const reportSchema = new mongoose.Schema({
     type: mongoose.Schema.Types.Mixed,
     default: undefined
   },
+  // Custom assessments only: the scoring config built for that session and
+  // the labels of its tests, so the report can be re-scored the same way.
+  scoringConfig: {
+    type: mongoose.Schema.Types.Mixed,
+    default: undefined
+  },
+  scoringTestInfo: {
+    type: mongoose.Schema.Types.Mixed,
+    default: undefined
+  },
   dominantHand: {
     type: String,
     default: undefined

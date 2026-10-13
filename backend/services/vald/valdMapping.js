@@ -237,7 +237,7 @@ const mapLatestResults = ({ dynamo = [], humantrak = [], testTypes = [] }, batte
         : (e.value !== undefined ? { value: e.value } : {});
       if (Object.keys(fill).length) {
         fills[e.target] = fill;
-        sources[e.target] = { device: e.device, date: e.date, testId: e.testIds.left || e.testIds.right || e.testIds.value || null, test: e.test, ...(e.metric ? { metric: e.metric } : {}) };
+        sources[e.target] = { key: e.key, device: e.device, date: e.date, testId: e.testIds.left || e.testIds.right || e.testIds.value || null, test: e.test, ...(e.metric ? { metric: e.metric } : {}) };
         continue;
       }
       unmatched.push({ device: e.device, test: e.test, date: e.date, reason: bilateral ? 'no left/right result' : 'no single result (only left/right)' });

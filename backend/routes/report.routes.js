@@ -22,6 +22,9 @@ router.post('/padel', upload.array('files', 10), reportController.generatePadelR
 // POST cricket report from manually entered results (VALD PDFs optional)
 router.post('/cricket', upload.array('files', 10), reportController.generateCricketReport);
 
+// POST custom assessment (tests chosen per session; same engine and checks)
+router.post('/custom', upload.array('files', 10), reportController.generateCustomReport);
+
 // POST extract athlete profile from PDFs (autofill)
 router.post('/extract', upload.array('files', 10), reportController.extractProfile);
 

@@ -108,10 +108,35 @@ export default function ValdPullPanel({ sportKey, athleteName, results, onChange
     } catch (e) { setError(e.message) } finally { setBusy(false) }
   }
 
+  // Custom assessment: every latest VALD test becomes a test on the form
+  // (replacing earlier VALD tests; manual tests are kept).
+  const pullCustom = async (out) => {
+    const keep = (results.customTests || []).filter(t => t.kind === 'manual')
+    const tests = Object.fromEntries(Object.entries(results.tests || {}).filter(([k]) => keep.some(t => t.key === k)))
+    for (const t of out.tests) {
+      tests[t.key] = {
+        status: 'completed', value: t.value !== undefined ? String(t.value) : '',
+        left: t.left !== undefined ? String(t.left) : '', right: t.right !== undefined ? String(t.right) : '',
+        level: '', shuttle: '', cutoffs: ['', '', '', ''], band: '', band_left: '', band_right: '',
+        vald: { device: t.device, date: t.date },
+      }
+    }
+    const valdTests = out.tests.map(({ left, right, value, ...meta }) => meta)
+    onChange({ ...results, customTests: [...keep, ...valdTests], tests })
+  }
+
   const pull = async (profile) => {
     setBusy(true); setError('')
     try {
       const out = await valdLatest(profile.profileId, sportKey)
+      if (sportKey === 'custom') {
+        await pullCustom(out)
+        setSummary({ name: profile.name, custom: true, scored: out.tests.filter(t => t.stat).length, shown: out.tests.filter(t => !t.stat).length, waiting: out.waiting || [], unmatched: out.unmatched || [] })
+        setFound(null)
+        const name = (athleteName || '').trim()
+        if (name) valdSaveLink(name, profile.profileId).then(() => setLink({ ...profile, athleteName: name })).catch(() => {})
+        return
+      }
       const tests = { ...results.tests }
       for (const [key, fill] of Object.entries(out.fills)) {
         if (!tests[key]) continue
@@ -200,7 +225,17 @@ export default function ValdPullPanel({ sportKey, athleteName, results, onChange
           )}
         </div>
       )}
-      {summary && (
+      {summary?.custom && (
+        <div className="mt-2 text-xs text-gray-700 space-y-1">
+          <p><b>Added from VALD for {summary.name}:</b> {summary.scored} test(s) to score, {summary.shown} shown only (no stat mapped).
+            {summary.scored + summary.shown === 0 && ' VALD has no Dynamo or HumanTrak tests for this athlete in the last year.'}</p>
+          {summary.waiting.length > 0 && <p className="text-amber-700">Waiting for an admin to pick the metric (Admin › VALD test mapping): {summary.waiting.join(', ')}</p>}
+          {summary.unmatched.length > 0 && <p className="text-gray-500">Couldn’t be used automatically: {summary.unmatched.map(u => `${u.device} ${u.test} (${u.reason})`).join('; ')}</p>}
+          <p className="text-gray-500">Enter the VALD cut-offs or band for each test to score. Remove any test you don’t want with ✕.</p>
+        </div>
+      )}
+
+      {summary && !summary.custom && (
         <div className="mt-2 text-xs text-gray-700 space-y-1">
           <p>
             <b>Filled from VALD for {summary.name}:</b>{' '}

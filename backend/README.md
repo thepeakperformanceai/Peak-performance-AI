@@ -34,6 +34,7 @@ npm run seed
 - `GET /api/report/:id` - Retrieve report by ID
 - `GET /api/report/:id/export` - Get report data for PDF export
 
+- `POST /api/report/custom` - Custom assessment: the tester's chosen tests (any VALD tests + manual tests) become a scoring config for that session (`services/customAssessment.service.js`), run through the same engine, Gemini and number check. Manual tests use the chosen sport's research anchors (or the only sport that has the test); VALD tests are scored from VALD cut-offs/band and feed the stat set in Admin › VALD test mapping (battery tests keep their usual stat); unmapped/"show only" VALD tests are shown, not scored. OVR = plain mean of the scored stats, only with 3+ scored stats ("No OVR: custom session" otherwise). The config is saved on the report so it can be re-scored. Football, padel and cricket configs are untouched.
 - `POST /api/report/football` - Football report from manually entered test results (VALD PDFs optional, kept as reference)
 - `POST /api/report/padel` - Padel report, same flow (`scoring/padel_v1.json`; dominant hand required)
 - `POST /api/report/cricket` - Cricket report, same flow (`scoring/cricket_v1.json`; bowling arm required)

@@ -9,6 +9,8 @@ const { ownerFilter } = require('../middleware/auth.middleware');
 const { extractDashboardMetrics } = require('../services/metricExtract.service');
 const footballReport = require('../services/footballReport.service');
 const scoredReport = require('../services/scoredReport.service');
+const customAssessment = require('../services/customAssessment.service');
+const ValdTestMapping = require('../models/ValdTestMapping.model');
 
 
 /**
@@ -310,6 +312,109 @@ const makeScoredReportHandler = (sportKey) => async (req, res, next) => {
 };
 
 const generatePadelReport = makeScoredReportHandler('padel');
+
+// Admin choices from "VALD test mapping", by VALD test key.
+const loadValdMappings = async () =>
+  Object.fromEntries((await ValdTestMapping.find({}).lean()).map(m => [m.key, { use: m.use, stat: m.stat, metric: m.metric }]));
+
+/**
+ * POST /api/report/custom - Custom assessment. The tester's test list becomes
+ * this session's scoring config (services/customAssessment.service.js); then
+ * the same pipeline as every sport: engine for every number, Gemini for the
+ * words, number check. VALD tests with no stat are shown, not scored.
+ *
+ * results = { timingMethod, benchmarkSport, customTests: [...], tests: {...},
+ *             additionalVald: [...] }
+ */
+const generateCustomReport = async (req, res, next) => {
+  const uploadedFiles = req.files || [];
+  try {
+    let profileIn, resultsIn;
+    try {
+      profileIn = JSON.parse(req.body.profile || '{}');
+      resultsIn = JSON.parse(req.body.results || '{}');
+    } catch (e) {
+      const err = new Error('Invalid custom assessment JSON');
+      err.statusCode = 400;
+      throw err;
+    }
+
+    const { cfg, testInfo, shownOnly } = customAssessment.buildCustomConfig({
+      testsIn: resultsIn.customTests,
+      benchmarkSport: resultsIn.benchmarkSport || 'football',
+      mappings: await loadValdMappings()
+    });
+    const pipeline = scoredReport.forCustom(cfg, testInfo);
+
+    // VALD tests with no stat: shown with the other additional VALD results.
+    const dates = Object.fromEntries((resultsIn.customTests || []).map(t => [t.key, t.date]));
+    const testsIn = resultsIn.tests || {};
+    const shownRows = shownOnly
+      .filter(t => (testsIn[t.key]?.status || 'completed') === 'completed')
+      .map(t => ({
+        test: t.label || scoredReport.ALL_TEST_INFO[t.key]?.label || t.key,
+        device: t.device,
+        unit: t.unit ?? scoredReport.ALL_TEST_INFO[t.key]?.unit ?? '',
+        left: testsIn[t.key]?.left, right: testsIn[t.key]?.right, value: testsIn[t.key]?.value,
+        date: dates[t.key], stat: null,
+        band: testsIn[t.key]?.band, band_left: testsIn[t.key]?.band_left, band_right: testsIn[t.key]?.band_right
+      }));
+    const anyScored = Object.keys(cfg.tests).length > 0;
+    if (!anyScored) {
+      const err = new Error('None of these tests can be scored: add a manual test, or map a VALD test to a stat (Admin › VALD test mapping).');
+      err.statusCode = 400;
+      throw err;
+    }
+
+    const { profile, session } = pipeline.validateInput(profileIn, {
+      ...resultsIn,
+      // A session with no sprints doesn't need a timing method.
+      timingMethod: resultsIn.timingMethod || (Object.keys(cfg.tests).some(k => k.startsWith('sprint_')) ? undefined : 'electronic'),
+      additionalVald: [...(resultsIn.additionalVald || []), ...shownRows]
+    });
+
+    const pdfData = uploadedFiles.length ? await pdfExtractService.processPdfs(uploadedFiles) : [];
+    const { scored, payload, rawResponse, reportContent } = await pipeline.runPipeline(profile, session);
+
+    const report = new Report({
+      user: req.user._id,
+      athleteName: profile.name,
+      age: profile.age,
+      sport: pipeline.sport.displayName,
+      dob: profile.dob,
+      weight: `${profile.bodyweight} kg`,
+      bodyweightKg: profile.bodyweight,
+      sex: profile.sex,
+      position: profile.position || '',
+      dominantHand: profile.dominantHand,
+      trainingLevel: profile.trainingLevel,
+      knownInjuries: profile.knownInjuries,
+      customParams: profile.customParams,
+      testDate: profile.testDate,
+      practitioner: profile.practitioner,
+      reportContent,
+      rawAiResponse: rawResponse,
+      sourcePdfData: pdfData.map(p => ({ type: p.type, text: p.text })),
+      scoringSport: 'custom',
+      scoringSession: session,
+      scoringConfig: cfg,
+      scoringTestInfo: testInfo,
+      scoring: scored,
+      scoringPayload: payload,
+      configVersion: scored.config_version
+    });
+    await report.save();
+    console.log(`Custom assessment saved with ID: ${report._id} (OVR ${scored.ovr.value ?? 'none'}, ${Object.keys(cfg.tests).length} scored tests)`);
+
+    if (uploadedFiles.length) pdfExtractService.cleanupTempFiles(uploadedFiles);
+    res.status(201).json(reportResponse(report, 'Report generated successfully'));
+  } catch (error) {
+    if (uploadedFiles.length) {
+      try { pdfExtractService.cleanupTempFiles(uploadedFiles); } catch (_) {}
+    }
+    next(error);
+  }
+};
 const generateCricketReport = makeScoredReportHandler('cricket');
 
 /**
@@ -317,7 +422,10 @@ const generateCricketReport = makeScoredReportHandler('cricket');
  * re-scores the stored entry with the current config and rewrites the text.
  */
 const regenerateScoredReport = async (existingReport, res) => {
-  const pipeline = scoredReport.forSport(existingReport.scoringSport);
+  // Custom assessments are re-run with the config saved for that session.
+  const pipeline = existingReport.scoringSport === 'custom'
+    ? scoredReport.forCustom(existingReport.scoringConfig, existingReport.scoringTestInfo || {})
+    : scoredReport.forSport(existingReport.scoringSport);
   const session = existingReport.scoringSession;
   const profile = {
     name: existingReport.athleteName,
@@ -580,6 +688,7 @@ module.exports = {
   generateFootballReport,
   generatePadelReport,
   generateCricketReport,
+  generateCustomReport,
   generateReportContent,
   getReport,
   exportReportPdf,

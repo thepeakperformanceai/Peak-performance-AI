@@ -174,8 +174,8 @@ function testRows(rc) {
   return rows
 }
 
-function testsTable(rc, t) {
-  const rows = testRows(rc)
+function testsTable(rc, t, rowsIn = null) {
+  const rows = rowsIn || testRows(rc)
   // Longer batteries (cricket has 11 tests) get tighter rows so the card
   // still fits one A4 page. 9-test batteries (football, padel) are unchanged.
   const cp = rows.length > 9
@@ -184,6 +184,9 @@ function testsTable(rc, t) {
   const th = (txt, align = 'left', w = '') =>
     `<th style="text-align:${align};${w}font-family:${TEXT};font-size:9px;font-weight:700;letter-spacing:0.8px;color:${FAINT};padding:0 8px 6px;border-bottom:1.5px solid ${t.deep}">${txt}</th>`
   const body = rows.map((r, i) => {
+    if (r.more) {
+      return `<tr><td colspan="5" style="padding:${pad};font-family:${TEXT};font-size:10.5px;font-style:italic;color:${MUTED}">${esc(r.test)}</td></tr>`
+    }
     const done = r.status === 'completed'
     let status
     if (done && r.benchmarkPending) {
@@ -342,6 +345,19 @@ const PADEL_PAGE_LINES = `<svg width="${CARD_WIDTH}" height="${CARD_HEIGHT}" vie
 // Court-blue turf strip with a white line, under the padel header.
 const PADEL_TURF = `<div style="height:9px;background:#1f5f8f;border-top:2px solid #ffffff;border-bottom:2px solid #174a70"></div>`
 
+// Custom assessments: tests chosen per session (any number of them).
+const isCustom = (rc) => /^custom/.test(rc.configVersion || '') || rc.sport === 'Custom Assessment'
+
+// The card fits 12 test rows; a longer custom session shows 11 and continues
+// on the next page. The three sports always fit, so they are unchanged.
+const CARD_MAX_ROWS = 12
+const cardRows = (rc) => {
+  const rows = testRows(rc)
+  if (!isCustom(rc) || rows.length <= CARD_MAX_ROWS) return rows
+  const more = rows.length - (CARD_MAX_ROWS - 1)
+  return [...rows.slice(0, CARD_MAX_ROWS - 1), { test: `+ ${more} more test${more > 1 ? 's' : ''} on the next page`, result: '', unit: '', score: null, status: 'completed', more: true }]
+}
+
 const sectionTitle = (txt, t, extra = '') =>
   `<div style="font-family:${DISPLAY};font-size:21px;letter-spacing:1px;color:${t.deep};line-height:1;margin-bottom:8px">${txt}${extra}</div>`
 
@@ -365,8 +381,9 @@ export function footballCardHtml(report) {
     ['HAND', rc.dominantHand === 'R' ? 'Right' : rc.dominantHand === 'L' ? 'Left' : null],
   ].filter(([, v]) => v != null && v !== '')
 
+  const custom = isCustom(rc)
   const statusBadge = pending
-    ? chip('OVR PENDING · COMPLETE TESTING', '#ffffff', '#1c1f24', 'font-size:10px;padding:4px 8px 5px')
+    ? chip(custom ? 'NO OVR · CUSTOM SESSION' : 'OVR PENDING · COMPLETE TESTING', '#ffffff', '#1c1f24', 'font-size:10px;padding:4px 8px 5px')
     : provisional
       ? chip('PROVISIONAL', '#ffffff', '#1c1f24', 'font-size:11px;letter-spacing:1.2px;padding:4px 9px 5px')
       : ''
@@ -400,7 +417,7 @@ ${look ? look.motif : `    <div style="position:absolute;left:232px;top:-120px;w
 
     <div style="position:absolute;left:28px;right:248px;top:22px">
       <div style="display:flex;align-items:center;margin-left:150px">
-        <span style="font-family:${DISPLAY};font-size:18px;letter-spacing:2.5px;color:${t.ink};border:2px solid ${t.ink};border-radius:5px;padding:1px 8px 0">${t.label} ${look ? look.word : 'CARD'}</span>${look ? look.icon : ''}
+        <span style="font-family:${DISPLAY};font-size:18px;letter-spacing:2.5px;color:${t.ink};border:2px solid ${t.ink};border-radius:5px;padding:1px 8px 0">${t.label} ${look ? look.word : custom ? '· CUSTOM ASSESSMENT' : 'CARD'}</span>${look ? look.icon : ''}
       </div>
       <div style="font-family:${DISPLAY};font-size:${nameSize}px;line-height:0.95;color:${t.ink};letter-spacing:1px;margin-top:16px;margin-left:150px">${esc(name.toUpperCase())}</div>
       ${rc.fieldMeaning?.playerProfile ? `<div style="font-family:${TEXT};font-size:12.5px;font-style:italic;color:${t.soft};margin-top:6px;line-height:1.35">${esc(rc.fieldMeaning.playerProfile)}</div>` : ''}
@@ -429,7 +446,7 @@ ${look ? look.motif : `    <div style="position:absolute;left:232px;top:-120px;w
 
     <div style="margin-top:10px">
       ${sectionTitle('ALL TESTS', t, `<span style="font-family:${TEXT};font-size:9.5px;font-weight:500;letter-spacing:0;color:${FAINT};margin-left:10px">raw results exactly as entered · scores out of 99</span>`)}
-      ${testsTable(rc, t)}
+      ${testsTable(rc, t, cardRows(rc))}
     </div>
 
     <div style="display:flex;gap:24px;margin-top:14px">
@@ -440,7 +457,9 @@ ${look ? look.motif : `    <div style="position:absolute;left:232px;top:-120px;w
 
   const footer = `
   <div style="position:absolute;left:0;right:0;bottom:0;padding:10px 26px 12px;border-top:1.5px solid ${RULE};background:#faf6ef">
-    ${provisional || pending ? `<div style="font-family:${TEXT};font-size:10px;color:${TXT};margin-bottom:4px"><b>${pending ? 'OVR pending' : 'Provisional OVR'}:</b> ${esc(pending ? (rc.ovrMessage || 'complete testing') : reasons)}${pending && reasons ? ` · ${esc(reasons)}` : ''}${provisional ? ' · firms up once the remaining tests are completed.' : ''}</div>` : ''}
+    ${pending && custom
+      ? `<div style="font-family:${TEXT};font-size:10px;color:${TXT};margin-bottom:4px"><b>No OVR: custom session.</b> An overall rating needs at least 3 scored stats; the stats and tests shown stand on their own.${reasons ? ` · ${esc(reasons)}` : ''}</div>`
+      : provisional || pending ? `<div style="font-family:${TEXT};font-size:10px;color:${TXT};margin-bottom:4px"><b>${pending ? 'OVR pending' : 'Provisional OVR'}:</b> ${esc(pending ? (rc.ovrMessage || 'complete testing') : reasons)}${pending && reasons ? ` · ${esc(reasons)}` : ''}${provisional ? ' · firms up once the remaining tests are completed.' : ''}</div>` : ''}
     <div style="display:flex;justify-content:space-between;gap:16px;font-family:${TEXT};font-size:8.5px;color:${FAINT};line-height:1.4">
       <span>${esc(rc.benchmarkNote || '')}</span>
       <span style="white-space:nowrap">peakperformance.pk · ${esc(rc.batteryLabel || '')}${rc.configVersion ? ` · ${esc(rc.configVersion)}` : ''}</span>
@@ -514,6 +533,52 @@ function additionalTable(rows, t) {
   </table>`
 }
 
+// One extra A4 page in the card's frame (same tier colours and logo).
+function framePage(report, title, sub, inner, footLeft) {
+  const rc = report.reportContent || {}
+  const t = TIERS[tierFor(rc.overallOVR)]
+  const name = report.athleteName || rc.athleteName || 'Athlete'
+  return `
+<div style="width:${CARD_WIDTH}px;height:${CARD_HEIGHT}px;box-sizing:border-box;padding:20px;background:${t.page};font-family:${TEXT}">
+  <div style="height:100%;box-sizing:border-box;padding:6px;border-radius:26px;background:${t.foil}">
+    <div style="position:relative;height:100%;border-radius:21px;background:${BODY};overflow:hidden">
+      <div style="background:${t.band};padding:18px 26px 14px;display:flex;align-items:flex-end;justify-content:space-between;gap:16px">
+        <div>
+          <div style="font-family:${DISPLAY};font-size:34px;line-height:0.95;color:${t.ink};letter-spacing:1px">${title}</div>
+          <div style="font-family:${TEXT};font-size:11px;color:${t.soft};margin-top:4px">${esc(name)} · ${esc(rc.sport || '')} · ${esc(rc.testDate || '')}${sub ? ` · ${sub}` : ''}</div>
+        </div>
+        <img src="${LOGO_URL}" alt="Peak Performance" width="80" height="61" style="width:80px;height:61px;opacity:0.92">
+      </div>
+      <div style="padding:14px 26px 0">${inner}</div>
+      <div style="position:absolute;left:0;right:0;bottom:0;padding:10px 26px 12px;border-top:1.5px solid ${RULE};background:#faf6ef;display:flex;justify-content:space-between;font-family:${TEXT};font-size:8.5px;color:${FAINT}">
+        <span>${footLeft}</span>
+        <span style="white-space:nowrap;margin-left:16px">peakperformance.pk · ${esc(rc.batteryLabel || '')}</span>
+      </div>
+    </div>
+  </div>
+</div>`
+}
+
+/** Custom sessions with more tests than the card holds: the rest of the tests. */
+export function continuedTestsPagesHtml(report) {
+  const rc = report.reportContent || {}
+  const rows = testRows(rc)
+  if (!isCustom(rc) || rows.length <= CARD_MAX_ROWS) return []
+  const t = TIERS[tierFor(rc.overallOVR)]
+  const rest = rows.slice(CARD_MAX_ROWS - 1)
+  const PER_PAGE = 28
+  const pages = []
+  for (let i = 0; i < rest.length; i += PER_PAGE) pages.push(rest.slice(i, i + PER_PAGE))
+  return pages.map((chunk, n) => framePage(report, 'ALL TESTS (CONTINUED)', pages.length > 1 ? `page ${n + 1} of ${pages.length}` : '',
+    `<div style="font-family:${TEXT};font-size:10.5px;color:${MUTED};margin-bottom:8px">Raw results exactly as entered · scores out of 99.</div>${testsTable(rc, t, chunk)}`,
+    esc(rc.benchmarkNote || '')))
+}
+
+/** Every page after the card: continued tests (custom), then additional VALD results. */
+export function extraPagesHtml(report) {
+  return [...continuedTestsPagesHtml(report), ...additionalValdPagesHtml(report)]
+}
+
 /**
  * Extra A4 pages for "Additional VALD results" (none if the report has none).
  * Same frame as the card, so the PDF reads as one document.
@@ -523,7 +588,6 @@ export function additionalValdPagesHtml(report) {
   const rows = additionalRows(rc)
   if (!rows.length) return []
   const t = TIERS[tierFor(rc.overallOVR)]
-  const name = report.athleteName || rc.athleteName || 'Athlete'
   // Split into pages; a group heading never sits alone at the bottom of a page.
   const pages = [[]]
   rows.forEach((r, i) => {
@@ -532,31 +596,16 @@ export function additionalValdPagesHtml(report) {
     if (room <= 0 || (r.group && room < 2 && i < rows.length - 1)) pages.push([r])
     else page.push(r)
   })
-  return pages.map((chunk, n) => `
-<div style="width:${CARD_WIDTH}px;height:${CARD_HEIGHT}px;box-sizing:border-box;padding:20px;background:${t.page};font-family:${TEXT}">
-  <div style="height:100%;box-sizing:border-box;padding:6px;border-radius:26px;background:${t.foil}">
-    <div style="position:relative;height:100%;border-radius:21px;background:${BODY};overflow:hidden">
-      <div style="background:${t.band};padding:18px 26px 14px;display:flex;align-items:flex-end;justify-content:space-between;gap:16px">
-        <div>
-          <div style="font-family:${DISPLAY};font-size:34px;line-height:0.95;color:${t.ink};letter-spacing:1px">ADDITIONAL VALD RESULTS</div>
-          <div style="font-family:${TEXT};font-size:11px;color:${t.soft};margin-top:4px">${esc(name)} · ${esc(rc.sport || '')} · ${esc(rc.testDate || '')}${pages.length > 1 ? ` · page ${n + 1} of ${pages.length}` : ''}</div>
-        </div>
-        <img src="${LOGO_URL}" alt="Peak Performance" width="80" height="61" style="width:80px;height:61px;opacity:0.92">
-      </div>
-      <div style="padding:14px 26px 0">
-        <div style="font-family:${TEXT};font-size:10.5px;color:${MUTED};margin-bottom:8px;line-height:1.45">
-          Every other test VALD holds for this athlete (most recent result per test and side). Shown for information:
+  const custom = isCustom(rc)
+  return pages.map((chunk, n) => framePage(report, custom ? 'VALD RESULTS · SHOWN, NOT SCORED' : 'ADDITIONAL VALD RESULTS', pages.length > 1 ? `page ${n + 1} of ${pages.length}` : '',
+    `<div style="font-family:${TEXT};font-size:10.5px;color:${MUTED};margin-bottom:8px;line-height:1.45">
+          ${custom
+            ? 'VALD tests in this session with no stat assigned (Admin › VALD test mapping), plus any other VALD results. Shown for information:'
+            : 'Every other test VALD holds for this athlete (most recent result per test and side). Shown for information:'}
           <b style="color:${TXT}">not scored and not counted in the OVR</b>. Symmetry = weaker side as a % of the stronger side.
         </div>
-        ${additionalTable(chunk, t)}
-      </div>
-      <div style="position:absolute;left:0;right:0;bottom:0;padding:10px 26px 12px;border-top:1.5px solid ${RULE};background:#faf6ef;display:flex;justify-content:space-between;font-family:${TEXT};font-size:8.5px;color:${FAINT}">
-        <span>Raw results from VALD Dynamo and HumanTrak. VALD bands as entered by the tester.</span>
-        <span>peakperformance.pk · ${esc(rc.batteryLabel || '')}</span>
-      </div>
-    </div>
-  </div>
-</div>`)
+        ${additionalTable(chunk, t)}`,
+    'Raw results from VALD Dynamo and HumanTrak. VALD bands as entered by the tester.'))
 }
 
 // The PDF renderer draws with whatever fonts are loaded at that moment, so

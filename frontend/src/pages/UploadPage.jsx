@@ -1,14 +1,14 @@
 import { useState, useCallback } from 'react'
 import { useDropzone } from 'react-dropzone'
 import toast from 'react-hot-toast'
-import { generateReport, generateFootballReport, generatePadelReport, generateCricketReport, extractProfile } from '../services/api'
+import { generateReport, generateFootballReport, generatePadelReport, generateCricketReport, generateCustomReport, extractProfile } from '../services/api'
 import { useReportStore } from '../store/reportStore'
 import { useParamStore } from '../store/paramStore'
 import { sanitizeInput } from '../utils/sanitize'
 import FootballResultsForm, { SCORED_SPORTS, emptyResults, footballProblems } from '../components/FootballResultsForm'
 
 
-const SPORTS = ['Football', 'Cricket', 'Padel']
+const SPORTS = ['Football', 'Cricket', 'Padel', 'Custom Assessment']
 
 const STEPS = [
   { num: 1, label: 'Upload files' },
@@ -115,8 +115,8 @@ export default function UploadPage({ onReportGenerated }) {
     if (!fbProfile.dob)            { toast.error('Date of birth is required.'); return false }
     if (fbAge === null || fbAge < 5 || fbAge > 80) { toast.error('Please check the date of birth.'); return false }
     if (!fbProfile.sex)            { toast.error('Sex is required.'); return false }
-    if (!scored.positions.some(p => p.value === fbProfile.position)) { toast.error(`${scored.positionLabel} is required.`); return false }
-    if (scored.handLabel && !fbProfile.dominantHand) { toast.error(`${scored.handLabel} is required.`); return false }
+    if (scored.positions && !scored.positions.some(p => p.value === fbProfile.position)) { toast.error(`${scored.positionLabel} is required.`); return false }
+    if (scored.handLabel && !scored.handOptional && !fbProfile.dominantHand) { toast.error(`${scored.handLabel} is required.`); return false }
     if (!fbProfile.bodyweight)     { toast.error('Bodyweight is required.'); return false }
     const bw = Number(fbProfile.bodyweight)
     if (bw < 30 || bw > 160)       { toast.error('Bodyweight must be 30–160 kg. Please re-check it.'); return false }
@@ -234,7 +234,9 @@ export default function UploadPage({ onReportGenerated }) {
           ? await generatePadelReport(files, scoredProfile, fbResults)
           : form.sport === 'Cricket'
             ? await generateCricketReport(files, scoredProfile, fbResults)
-            : await generateReport(files, sanitizedForm)
+            : form.sport === 'Custom Assessment'
+              ? await generateCustomReport(files, scoredProfile, fbResults)
+              : await generateReport(files, sanitizedForm)
       setReport(data)
       toast.success('Report generated!')
       onReportGenerated()
@@ -372,7 +374,12 @@ export default function UploadPage({ onReportGenerated }) {
             </select>
           </div>
 
-          {isScored ? (
+          {isScored && !scored.positions ? (
+            <div className="space-y-1">
+              <label className="text-xs font-medium text-gray-500">{scored.positionLabel}</label>
+              <input name="position" value={fbProfile.position} onChange={handleFbChange} maxLength={12} className="inp" placeholder="e.g. Wing, Sprinter" />
+            </div>
+          ) : isScored ? (
             <div className="space-y-1">
               <label className="text-xs font-medium text-gray-500">{scored.positionLabel} *</label>
               <select name="position" value={scored.positions.some(p => p.value === fbProfile.position) ? fbProfile.position : ''} onChange={handleFbChange} className="inp">
@@ -394,7 +401,7 @@ export default function UploadPage({ onReportGenerated }) {
             <>
               {scored.handLabel && (
                 <div className="space-y-1">
-                  <label className="text-xs font-medium text-gray-500">{scored.handLabel} *</label>
+                  <label className="text-xs font-medium text-gray-500">{scored.handLabel}{scored.handOptional ? '' : ' *'}</label>
                   <select name="dominantHand" value={fbProfile.dominantHand} onChange={handleFbChange} className="inp">
                     <option value="">Select…</option>
                     <option value="R">Right</option>

@@ -29,6 +29,8 @@ export const SCORED_SPORTS = {
   Football: { key: 'football', positions: FOOTBALL_POSITIONS, positionLabel: 'Position', title: '⚽ Football test results' },
   Padel: { key: 'padel', positions: PADEL_POSITIONS, positionLabel: 'Court side', handLabel: 'Dominant hand', title: '🎾 Padel test results' },
   Cricket: { key: 'cricket', positions: CRICKET_ROLES, positionLabel: 'Role', handLabel: 'Bowling arm', title: '🏏 Cricket test results' },
+  // Tests chosen per session; position and dominant hand are optional.
+  'Custom Assessment': { key: 'custom', custom: true, positions: null, positionLabel: 'Position / role (optional)', handLabel: 'Dominant hand (optional)', handOptional: true, title: '🧪 Custom assessment' },
 }
 
 const STATUSES = [
@@ -95,17 +97,66 @@ const CRICKET_TESTS = [
 ]
 
 const TESTS_BY_SPORT = { football: FOOTBALL_TESTS, padel: PADEL_TESTS, cricket: CRICKET_TESTS }
-const testsFor = (sportKey = 'football') => TESTS_BY_SPORT[sportKey]
+
+// ---------- custom assessment ----------
+// Manual tests a tester can add. Norms: the chosen sport's anchors if that
+// sport has the test, otherwise the only sport that does (shown beside it).
+const MANUAL_LIBRARY = [
+  { key: 'sprint_10m', label: '10m Sprint', kind: 'manual', unit: 's', range: [1.4, 3.5], step: '0.01', norms: ['football', 'padel', 'cricket'] },
+  { key: 'sprint_20m', label: '20m Sprint', kind: 'manual', unit: 's', range: [2.4, 5.5], step: '0.01', norms: ['cricket'] },
+  { key: 'sprint_30m', label: '30m Sprint', kind: 'manual', unit: 's', range: [3.5, 8.0], step: '0.01', norms: ['football'] },
+  { key: 'ruler_drop', label: 'Ruler Drop', kind: 'manual', unit: 'cm', range: [0, 30], step: '0.1', norms: ['football', 'padel', 'cricket'], hint: 'Ruler not caught = 30' },
+  { key: 'beep_test', label: 'Beep Test', kind: 'beep', norms: ['football', 'padel'], hint: 'Stopped early through injury = Injured, never a low score' },
+  { key: 'cod_505', label: '505 Agility', kind: 'manual', unit: 's', range: [1.8, 4.0], step: '0.01', norms: ['cricket'], hint: 'Timing gates, 5 m either side of the turn; best of two' },
+  { key: 'yoyo_ir1', label: 'Yo-Yo IR1', kind: 'yoyo', norms: ['cricket'], hint: 'Level.shuttle, e.g. 17.4. Stopped through injury = Injured' },
+  { key: 'medicine_ball', label: 'Medicine Ball Throw (seated, 4 kg)', kind: 'manual', unit: 'm', range: [1.5, 12.0], step: '0.01', norms: [], hint: PENDING_HINT },
+]
+const BENCHMARK_SPORTS = [{ value: 'football', label: 'Football' }, { value: 'padel', label: 'Padel' }, { value: 'cricket', label: 'Cricket' }]
+const normsFor = (t, benchmarkSport) => (t.norms.includes(benchmarkSport) ? benchmarkSport : t.norms[0] || null)
+
+// VALD battery tests (same definition in every sport), by key.
+const VALD_BATTERY = Object.fromEntries([...FOOTBALL_TESTS, ...PADEL_TESTS, ...CRICKET_TESTS]
+  .filter(t => t.kind === 'bilateral' || t.kind === 'single').map(t => [t.key, t]))
+const STAT_NAMES = { speed: 'Speed', power: 'Power', agility: 'Agility', endurance: 'Endurance', balance: 'Balance', reaction: 'Reaction' }
+
+// The form's test definitions for a custom session, from results.customTests.
+const customTestDefs = (results) => (results.customTests || []).map(c => {
+  if (c.kind === 'manual') {
+    const m = MANUAL_LIBRARY.find(x => x.key === c.key)
+    const from = normsFor(m, results.benchmarkSport)
+    return { ...m, group: 'Manual tests', removable: true, scored: true,
+      hint: [m.hint, from ? `${from[0].toUpperCase()}${from.slice(1)} norms` : null].filter(Boolean).join(' · ') }
+  }
+  const b = VALD_BATTERY[c.key]
+  return {
+    key: c.key,
+    label: c.label || b?.label || c.key,
+    kind: c.bilateral ? 'bilateral' : 'single',
+    unit: c.unit ?? b?.unit ?? '',
+    range: b?.range || null,
+    step: 'any',
+    group: c.stat ? 'VALD tests (scored)' : 'VALD tests (shown, not scored)',
+    removable: true,
+    scored: !!c.stat,
+    hint: c.stat
+      ? `${STAT_NAMES[c.stat]}${c.statSource === 'built_in' ? ' (standard)' : ''} · ${c.device}`
+      : `${c.statSource === 'show_only' ? 'Show only' : 'Not mapped'} · ${c.device} · map it to a stat in Admin › VALD test mapping to score it`,
+  }
+})
+
+const testsFor = (sportKey = 'football', results = {}) => (sportKey === 'custom' ? customTestDefs(results) : TESTS_BY_SPORT[sportKey])
 
 const emptyTest = () => ({
   status: 'completed', value: '', left: '', right: '', level: '', shuttle: '',
   cutoffs: ['', '', '', ''], band: '', band_left: '', band_right: '',
 })
 
-export const emptyResults = (sportKey = 'football') => ({
-  timingMethod: '',
-  tests: Object.fromEntries(testsFor(sportKey).map(t => [t.key, emptyTest()])),
-})
+export const emptyResults = (sportKey = 'football') => (sportKey === 'custom'
+  ? { timingMethod: '', benchmarkSport: 'football', customTests: [], tests: {} }
+  : {
+      timingMethod: '',
+      tests: Object.fromEntries(testsFor(sportKey).map(t => [t.key, emptyTest()])),
+    })
 export const emptyFootballResults = () => emptyResults('football')
 
 const filled = (v) => v !== '' && v !== null && v !== undefined
@@ -115,12 +166,19 @@ const outOfRange = (v, range) => filled(v) && range && (Number(v) < range[0] || 
 // Out-of-range values only warn: the engine marks them invalid.
 export function footballProblems(results, sportKey = 'football') {
   const problems = []
-  if (!results.timingMethod) problems.push('Choose the sprint timing method.')
+  const custom = sportKey === 'custom'
+  const tests = testsFor(sportKey, results)
+  // Custom: timing is only needed when the session has a sprint.
+  const needsTiming = !custom || tests.some(t => t.key.startsWith('sprint_'))
+  if (needsTiming && !results.timingMethod) problems.push('Choose the sprint timing method.')
+  if (custom && !tests.length) problems.push('Add at least one test: pull from VALD or add a manual test.')
+  if (custom && tests.length && !tests.some(t => t.scored)) problems.push('None of these tests can be scored: add a manual test, or map a VALD test to a stat (Admin › VALD test mapping).')
   let completed = 0
-  for (const t of testsFor(sportKey)) {
+  for (const t of tests) {
     const r = results.tests[t.key]
     if (r.status !== 'completed') continue
     completed++
+    if (t.scored === false) continue                      // shown only: no band needed
     if (t.kind === 'manual' && !filled(r.value)) problems.push(`${t.label}: enter a value or change the status.`)
     if ((t.kind === 'beep' || t.kind === 'yoyo') && (!filled(r.level) || !filled(r.shuttle))) problems.push(`${t.label}: enter level and shuttle or change the status.`)
     if (t.kind === 'single' && !filled(r.value)) problems.push(`${t.label}: enter a value or change the status.`)
@@ -189,7 +247,7 @@ function ValdBenchmark({ test, r, set }) {
   )
 }
 
-function TestRow({ test, r, set }) {
+function TestRow({ test, r, set, onRemove }) {
   const done = r.status === 'completed'
   const maxShuttle = BEEP_SHUTTLES[Number(r.level)]
   return (
@@ -205,6 +263,9 @@ function TestRow({ test, r, set }) {
         <select className="inp w-44" value={r.status} onChange={e => set({ status: e.target.value })}>
           {STATUSES.map(s => <option key={s.value} value={s.value}>{s.label}</option>)}
         </select>
+        {onRemove && (
+          <button type="button" onClick={onRemove} title="Remove this test" className="order-last ml-auto pt-2 text-xs text-gray-400 hover:text-red-600">✕ Remove</button>
+        )}
 
         {done && (test.kind === 'manual' || test.kind === 'single') && (
           <div>
@@ -262,18 +323,31 @@ function TestRow({ test, r, set }) {
           </div>
         )}
       </div>
-      {done && (test.kind === 'bilateral' || test.kind === 'single') && <ValdBenchmark test={test} r={r} set={set} />}
+      {done && (test.kind === 'bilateral' || test.kind === 'single') && test.scored !== false && <ValdBenchmark test={test} r={r} set={set} />}
     </div>
   )
 }
 
 export default function FootballResultsForm({ results, onChange, sport = 'Football', athleteName = '' }) {
   const { key: sportKey, title } = SCORED_SPORTS[sport] || SCORED_SPORTS.Football
-  const TESTS = testsFor(sportKey)
+  const custom = sportKey === 'custom'
+  const TESTS = testsFor(sportKey, results)
   const setTest = (key) => (patch) =>
     onChange({ ...results, tests: { ...results.tests, [key]: { ...results.tests[key], ...patch } } })
 
-  const groups = [...new Set(TESTS.map(t => t.group))]
+  // Custom: add / remove tests.
+  const addManual = (key) => {
+    if (!key || (results.customTests || []).some(t => t.key === key)) return
+    onChange({ ...results, customTests: [...results.customTests, { key, kind: 'manual' }], tests: { ...results.tests, [key]: emptyTest() } })
+  }
+  const removeTest = (key) => {
+    const { [key]: _gone, ...tests } = results.tests
+    onChange({ ...results, customTests: results.customTests.filter(t => t.key !== key), tests })
+  }
+  const showTiming = !custom || TESTS.some(t => t.key.startsWith('sprint_'))
+
+  const GROUP_ORDER = ['Manual tests', 'VALD tests (scored)', 'VALD tests (shown, not scored)']
+  const groups = [...new Set(TESTS.map(t => t.group))].sort((a, b) => (custom ? GROUP_ORDER.indexOf(a) - GROUP_ORDER.indexOf(b) : 0))
   return (
     <div className="card">
       <h2 className="text-sm font-medium text-gray-900 mb-1 flex items-center gap-2">
@@ -286,7 +360,34 @@ export default function FootballResultsForm({ results, onChange, sport = 'Footba
 
       <ValdPullPanel sportKey={sportKey} athleteName={athleteName} results={results} onChange={onChange} />
 
-      <div className="flex flex-wrap items-center gap-3 mb-2">
+      {custom && (
+        <div className="mb-4 rounded-lg border border-gray-100 bg-gray-50 p-3 space-y-2">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-xs font-semibold text-gray-700">Add a manual test</span>
+            <select className="inp w-64" value="" onChange={e => addManual(e.target.value)}>
+              <option value="">Choose…</option>
+              {MANUAL_LIBRARY.filter(m => !(results.customTests || []).some(t => t.key === m.key)).map(m => (
+                <option key={m.key} value={m.key}>{m.label}</option>
+              ))}
+            </select>
+            <span className="text-xs text-gray-500 ml-2">Norms for manual tests</span>
+            <select className="inp w-32" value={results.benchmarkSport} onChange={e => onChange({ ...results, benchmarkSport: e.target.value })}>
+              {BENCHMARK_SPORTS.map(b => <option key={b.value} value={b.value}>{b.label}</option>)}
+            </select>
+          </div>
+          <p className="text-[11px] text-gray-500">
+            Each test is scored on its own: manual tests by their research norms, VALD tests by the VALD cut-offs or band.
+            Stats come from the tests that feed them (VALD tests via Admin › VALD test mapping). The OVR is the plain average of the
+            scored stats and needs at least 3; otherwise the card says “No OVR: custom session”. Remove any test with ✕.
+          </p>
+        </div>
+      )}
+
+      {custom && !TESTS.length && (
+        <p className="text-sm text-gray-500 mb-2">No tests yet: pull the athlete from VALD above, or add a manual test.</p>
+      )}
+
+      {showTiming && <div className="flex flex-wrap items-center gap-3 mb-2">
         <span className="text-xs font-medium text-gray-500">Sprint timing *</span>
         {['hand', 'electronic'].map(m => (
           <label key={m} className="flex items-center gap-1.5 text-sm text-gray-700">
@@ -298,18 +399,18 @@ export default function FootballResultsForm({ results, onChange, sport = 'Footba
             {m === 'hand' ? 'Hand stopwatch' : 'Electronic gates'}
           </label>
         ))}
-      </div>
+      </div>}
 
       {groups.map(g => (
         <div key={g} className="mt-4">
           <div className="text-[11px] font-semibold uppercase tracking-wide text-gray-400 mb-1">{g}</div>
           {TESTS.filter(t => t.group === g).map(t => (
-            <TestRow key={t.key} test={t} r={results.tests[t.key]} set={setTest(t.key)} />
+            <TestRow key={t.key} test={t} r={results.tests[t.key]} set={setTest(t.key)} onRemove={custom ? () => removeTest(t.key) : null} />
           ))}
         </div>
       ))}
 
-      <AdditionalVald rows={results.additionalVald || []} onChange={rows => onChange({ ...results, additionalVald: rows })} />
+      {!custom && <AdditionalVald rows={results.additionalVald || []} onChange={rows => onChange({ ...results, additionalVald: rows })} />}
     </div>
   )
 }

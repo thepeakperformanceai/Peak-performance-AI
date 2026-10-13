@@ -93,6 +93,28 @@ const SPORT_PROFILES = {
   }
 };
 
+// Custom assessment: tests chosen per session, so the wording is general.
+const CUSTOM_PROFILE = {
+  key: 'custom',
+  displayName: 'Custom Assessment',
+  batteryLabel: 'Custom Assessment',
+  freePosition: true,
+  positions: [],
+  needsDominantHand: false,
+  optionalDominantHand: true,
+  athleteNoun: 'athlete',
+  coachLine: 'a coach and the athlete: plain English, not specific to one sport',
+  comparedWith: 'other athletes in a particular sport',
+  profileWhere: 'in training and competition',
+  symmetryTests: 'the Dynamo strength tests in the payload',
+  nullStatRule: 'This is a custom assessment: only the tests in the payload were done, so never mention tests that are not in it.',
+  nullOvrRule: 'If the OVR value is null, say there is no overall rating for this custom session because too few stats were scored, and that the stats and tests still stand on their own.',
+  noOvrMessage: 'No OVR: custom session',
+  extraRules: [
+    'Yo-Yo IR1 results are written as level.shuttle (for example 17.4) and also given in metres (distance_m).'
+  ]
+};
+
 const STAT_LABELS = {
   speed: 'Speed', power: 'Power', agility: 'Agility',
   endurance: 'Endurance', balance: 'Balance', reaction: 'Reaction'
@@ -174,8 +196,8 @@ const parseDate = (v, field) => {
 const systemPromptFor = (sp) => {
   const rules = [
     'Use only numbers present in the payload. Never compute, adjust, estimate, average or invent any number. If you mention a number, copy it exactly as it appears in the payload. When in doubt, describe in words instead of numbers.',
-    'A stat whose value is null is "not tested this session". Do not speculate on why and never estimate it. Agility is not in the current test battery: say it was not tested this session.',
-    'If ovr.provisional is true, say once, plainly, that the rating will firm up after the remaining tests. If the OVR value is null, say the overall rating is pending until testing is complete.',
+    `A stat whose value is null is "not tested this session". Do not speculate on why and never estimate it. ${sp.nullStatRule ?? 'Agility is not in the current test battery: say it was not tested this session.'}`,
+    `If ovr.provisional is true, say once, plainly, that the rating will firm up after the remaining tests. ${sp.nullOvrRule ?? 'If the OVR value is null, say the overall rating is pending until testing is complete.'}`,
     'Describe flags as areas to work on, never as diagnoses, injuries or injury predictions.',
     `Benchmark wording: tests with benchmark "research" are "compared with published international norms". Tests with benchmark "vald_age_sex" (HumanTrak and Dynamo) are "compared with others of the same age and sex". Never say a VALD result is compared with ${sp.comparedWith}.`,
     `Write for ${sp.coachLine}, encouraging but honest. Refer to the athlete as "the athlete" (no name is given).`,
@@ -275,8 +297,17 @@ const statTags = (stats) => {
 const forSport = (sportKey) => {
   const sp = SPORT_PROFILES[sportKey];
   if (!sp) throw new Error(`no scored-report profile for sport "${sportKey}"`);
-  const cfg = loadConfig(sportKey);
-  const TEST_INFO = Object.fromEntries(Object.keys(cfg.tests).map(n => [n, ALL_TEST_INFO[n]]));
+  return makePipeline(sp, loadConfig(sportKey), ALL_TEST_INFO);
+};
+
+/**
+ * Custom assessment: the same pipeline over a config built for this session
+ * (services/customAssessment.service.js). testInfo labels the session's tests.
+ */
+const forCustom = (cfg, testInfo) => makePipeline(CUSTOM_PROFILE, cfg, { ...ALL_TEST_INFO, ...testInfo });
+
+const makePipeline = (sp, cfg, testInfoAll) => {
+  const TEST_INFO = Object.fromEntries(Object.keys(cfg.tests).map(n => [n, testInfoAll[n]]));
   const SYSTEM_PROMPT = systemPromptFor(sp);
 
   // Battery sections, in config order.
@@ -384,10 +415,17 @@ const forSport = (sportKey) => {
     const age = ageOn(dob, testDate);
     if (age < 5 || age > 80) throw badRequest('Date of birth gives an age outside 5–80 — please check it');
     if (!SEXES.includes(profileIn.sex)) throw badRequest('Sex is required (M or F)');
-    if (!sp.positions.includes(profileIn.position)) throw badRequest(sp.positionError);
+    // Custom assessments have no fixed positions: an optional short label.
+    const position = sp.freePosition
+      ? String(profileIn.position || '').trim().slice(0, 12).toUpperCase()
+      : profileIn.position;
+    if (!sp.freePosition && !sp.positions.includes(position)) throw badRequest(sp.positionError);
     if (sp.needsDominantHand && !HANDS.includes(profileIn.dominantHand)) {
       throw badRequest(sp.handError);
     }
+    // Optional dominant hand (custom): used only by the arm-balance flag.
+    const hand = sp.needsDominantHand || (sp.optionalDominantHand && HANDS.includes(profileIn.dominantHand))
+      ? profileIn.dominantHand : null;
     const bodyweight = toNum(profileIn.bodyweight, 'Bodyweight');
     if (bodyweight === undefined) throw badRequest('Bodyweight is required');
     if (bodyweight < BODYWEIGHT_RANGE[0] || bodyweight > BODYWEIGHT_RANGE[1]) {
@@ -408,8 +446,8 @@ const forSport = (sportKey) => {
       dob: profileIn.dob,
       age,
       sex: profileIn.sex,
-      position: profileIn.position,
-      ...(sp.needsDominantHand ? { dominantHand: profileIn.dominantHand } : {}),
+      position,
+      ...(hand ? { dominantHand: hand } : {}),
       bodyweight: Math.round(bodyweight * 10) / 10,
       testDate: testDateStr,
       trainingLevel: profileIn.trainingLevel,
@@ -421,7 +459,7 @@ const forSport = (sportKey) => {
     const session = {
       athlete: {
         id: profileIn.athleteId || null, age, sex: profile.sex, position: profile.position,
-        ...(sp.needsDominantHand ? { dominant_hand: profile.dominantHand } : {})
+        ...(hand ? { dominant_hand: hand } : {})
       },
       timing_method: timing,
       tests
@@ -697,6 +735,8 @@ const forSport = (sportKey) => {
    */
   const runPipeline = async (profile, session, opts) => {
     const scored = scoreSession(session, cfg);
+    // Custom sessions: an OVR needs 3+ scored stats; otherwise "No OVR".
+    if (sp.noOvrMessage && scored.ovr.value === null) scored.ovr.message = sp.noOvrMessage;
     const payload = buildGeminiPayload(scored, session);
     const { narrative, rawResponse } = await generateNarrative(payload, opts);
     const reportContent = buildReportContent(profile, scored, narrative);
@@ -718,4 +758,4 @@ const forSport = (sportKey) => {
 
 const SCORED_SPORTS = Object.keys(SPORT_PROFILES);
 
-module.exports = { forSport, findUnsupportedNumbers, cleanAdditionalVald, SCORED_SPORTS, SPORT_PROFILES };
+module.exports = { forSport, forCustom, findUnsupportedNumbers, cleanAdditionalVald, SCORED_SPORTS, SPORT_PROFILES, CUSTOM_PROFILE, ALL_TEST_INFO };

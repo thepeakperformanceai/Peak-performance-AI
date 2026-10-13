@@ -9,6 +9,7 @@ const ValdTestMapping = require('../models/ValdTestMapping.model');
 const { loadConfig } = require('../scoring/scoring');
 
 const SPORTS = ['football', 'padel', 'cricket'];
+const { valdFormTests, valdBattery } = require('../services/customAssessment.service');
 
 // One client per process, so the login token is reused between requests.
 let client = null;
@@ -120,8 +121,14 @@ const getLatest = async (req, res, next) => {
     const profileId = String(req.query.profileId || '').trim();
     const sport = String(req.query.sport || '').trim().toLowerCase();
     if (!profileId) throw badRequest('profileId is required');
-    if (!SPORTS.includes(sport)) throw badRequest(`sport must be one of ${SPORTS.join(', ')}`);
+    if (sport !== 'custom' && !SPORTS.includes(sport)) throw badRequest(`sport must be one of ${SPORTS.join(', ')}, custom`);
     const [data, mappings] = await Promise.all([vald().athleteTests(profileId), loadMappings()]);
+    if (sport === 'custom') {
+      // Custom assessment: every latest VALD test becomes a form test, with
+      // the stat it feeds (from VALD test mapping) or none (shown only).
+      const mapped = mapLatestResults(data, valdBattery(), mappings);
+      return res.json(valdFormTests(mapped, mappings));
+    }
     res.json(mapLatestResults(data, loadConfig(sport).tests, mappings));
   } catch (e) {
     next(e);

@@ -2,7 +2,7 @@ import axios from 'axios'
 import html2pdf from 'html2pdf.js'
 import { jsPDF } from 'jspdf'
 import { clearAuthToken, getAuthToken } from '../utils/auth'
-import { footballCardHtml, additionalValdPagesHtml, ensureCardFonts } from '../components/footballCard'
+import { footballCardHtml, extraPagesHtml, ensureCardFonts } from '../components/footballCard'
 
 const api = axios.create({
   baseURL: import.meta.env.VITE_API_URL,
@@ -68,6 +68,16 @@ export const generatePadelReport = async (files, athleteProfile, padelResults) =
 }
 
 // Cricket: same engine-scored flow as football and padel.
+export const generateCustomReport = async (files, athleteProfile, customResults) => {
+  const formData = new FormData()
+  files.forEach(f => formData.append('files', f))
+  formData.append('profile', JSON.stringify(athleteProfile))
+  formData.append('results', JSON.stringify(customResults))
+  return api.post('/report/custom', formData, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+  })
+}
+
 export const generateCricketReport = async (files, athleteProfile, cricketResults) => {
   const formData = new FormData()
   files.forEach(f => formData.append('files', f))
@@ -130,7 +140,7 @@ export const downloadReportPDF = async reportId => {
           jsPDF: { orientation: 'portrait', unit: 'mm', format: 'a4' },
         }).from(el).toCanvas().get('canvas')
         const elements = [card.firstElementChild]
-        for (const html of additionalValdPagesHtml(report)) {
+        for (const html of extraPagesHtml(report)) {
           const wrap = document.createElement('div')
           wrap.innerHTML = html
           elements.push(wrap.firstElementChild)
