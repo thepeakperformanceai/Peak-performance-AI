@@ -80,7 +80,7 @@ test('Gemini payload: padel battery, dominant hand, no athlete name', () => {
     'Shoulder External Rotation', 'Hip Abduction', 'Hip Adduction']);
   // R (dominant) is the weaker shoulder: monitor, not red. Adduction 193 / abduction 255 = 75.7%: groin flag.
   assert.deepEqual(payload.flags, [
-    { type: 'LSI', test: 'Shoulder External Rotation', value: 78.7, level: 'monitor', dominant_side_weaker: true },
+    { type: 'LSI', test: 'Shoulder External Rotation', value: 78.7, level: 'monitor', dominant_side_weaker: true, gap_pct: 21.3 },
     { type: 'groin_risk', test: 'Hip Adduction', value: 75.7, level: 'amber' }
   ]);
   assert.equal(payload.stats.agility.status, 'not_in_battery');

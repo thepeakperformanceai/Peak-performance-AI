@@ -114,7 +114,7 @@ test('Gemini payload follows the spec and carries no athlete name', () => {
   assert.equal(knee.lsi, 87.1);
   const sprint = payload.tests.find(t => t.name === '30m Sprint');
   assert.equal(sprint.timing, 'hand');
-  assert.deepEqual(payload.flags[0], { type: 'LSI', test: 'Knee Extension', value: 87.1, level: 'amber' });
+  assert.deepEqual(payload.flags[0], { type: 'LSI', test: 'Knee Extension', value: 87.1, level: 'amber', gap_pct: 12.9 });
   for (const rule of ['Use only numbers present in the payload', 'not tested this session', 'firm up after the remaining tests',
     'never as diagnoses', 'compared with published international norms', 'compared with others of the same age and sex']) {
     assert.ok(SYSTEM_PROMPT.includes(rule), rule);
@@ -144,6 +144,41 @@ test('Gemini answer with an invented number is rejected and retried', async () =
   assert.equal(attempts, 2);
   assert.match(prompts[1], /numbers that are not in the payload: 64/);
   assert.equal(narrative.stats.agility, 'Not tested this session.');
+});
+
+test('wording: never "comprehensive"/"complete" when anything is Not tested; LSI as symmetry', async () => {
+  const { findWordingProblems } = require('./scoredReport.service');
+  const { session } = validateFootballInput(PROFILE, FOOTBALL);
+  const payload = buildGeminiPayload(scoreSession(session), session);
+  // Beep Test injured and Agility not in the battery: not everything was tested.
+  assert.equal(payload.session.everything_tested, false);
+  assert.ok(payload.session.not_tested.includes('Beep Test'));
+  assert.ok(payload.session.not_tested.includes('Agility (stat)'));
+  assert.equal(payload.tests.find(t => t.name === 'Knee Extension').lsi_gap_pct, 12.9);
+  for (const rule of ['never call the session', '"comprehensive" or "complete"', '% symmetry', 'Never write "asymmetry of <number>"']) {
+    assert.ok(SYSTEM_PROMPT.includes(rule), rule);
+  }
+
+  const bad = (summary) => findWordingProblems({ summary }, payload);
+  assert.equal(bad('A comprehensive testing session for the athlete.').length, 1);
+  assert.equal(bad('This complete assessment shows good speed.').length, 1);
+  assert.equal(bad('Knee Extension shows an asymmetry of 87.1.').length, 1);
+  assert.equal(bad('Knee Extension asymmetry: 87.1%.').length, 1);
+  assert.deepEqual(bad('Knee Extension shows 87.1% symmetry, a 12.9% gap between sides.'), []);
+  assert.deepEqual(bad('The rating will firm up once the remaining tests are complete.'), []);
+  assert.deepEqual(bad('Some asymmetry between legs is worth training.'), []);
+  // With everything tested, "complete" is allowed.
+  assert.deepEqual(findWordingProblems({ s: 'A complete testing session.' }, { ...payload, session: { everything_tested: true, not_tested: [] } }), []);
+
+  const prompts = [];
+  const callModel = async (system, prompt) => {
+    prompts.push(prompt);
+    if (prompts.length === 1) return JSON.stringify({ ...JSON.parse(goodNarrative(payload)), summary: 'A comprehensive testing session.' });
+    return goodNarrative(payload);
+  };
+  const { attempts } = await generateNarrative(payload, { callModel });
+  assert.equal(attempts, 2);
+  assert.match(prompts[1], /"comprehensive" or "complete" although some tests or stats were not tested \(Beep Test/);
 });
 
 test('report fails cleanly after three bad answers', async () => {

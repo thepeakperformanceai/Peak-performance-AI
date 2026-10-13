@@ -80,7 +80,7 @@ test('Gemini payload: pending tests, Yo-Yo distance, cricket flags, no name', ()
   assert.deepEqual(payload.ovr.reasons, ['Medicine Ball Throw (seated, 4 kg): benchmarks pending']);
   // R is the bowling arm: ER 118 weaker than L 150 -> monitor; ER:IR 118/210 = 56.2% -> shoulder balance.
   assert.deepEqual(payload.flags, [
-    { type: 'LSI', test: 'Shoulder External Rotation', value: 78.7, level: 'monitor', dominant_side_weaker: true },
+    { type: 'LSI', test: 'Shoulder External Rotation', value: 78.7, level: 'monitor', dominant_side_weaker: true, gap_pct: 21.3 },
     { type: 'shoulder_balance', test: 'Shoulder External Rotation', value: 56.2, level: 'amber' }
   ]);
 });

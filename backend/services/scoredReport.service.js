@@ -199,6 +199,8 @@ const systemPromptFor = (sp) => {
     `A stat whose value is null is "not tested this session". Do not speculate on why and never estimate it. ${sp.nullStatRule ?? 'Agility is not in the current test battery: say it was not tested this session.'}`,
     `If ovr.provisional is true, say once, plainly, that the rating will firm up after the remaining tests. ${sp.nullOvrRule ?? 'If the OVR value is null, say the overall rating is pending until testing is complete.'}`,
     'Describe flags as areas to work on, never as diagnoses, injuries or injury predictions.',
+    'If session.everything_tested is false (anything is Not tested, listed in session.not_tested), never call the session, testing, battery, assessment, profile or picture "comprehensive" or "complete". Say what was tested instead.',
+    'Left/right strength (lsi) is SYMMETRY: the weaker side as a percentage of the stronger, so higher is better and 100 is perfectly even. Write it as "<lsi>% symmetry" (for example "88.9% symmetry") or as "a <lsi_gap_pct>% gap" between sides (for example "an 11.1% gap"), copying the payload numbers. An LSI flag\'s value is the same symmetry figure (its gap is gap_pct). Never write "asymmetry of <number>" or call the symmetry figure an asymmetry.',
     `Benchmark wording: tests with benchmark "research" are "compared with published international norms". Tests with benchmark "vald_age_sex" (HumanTrak and Dynamo) are "compared with others of the same age and sex". Never say a VALD result is compared with ${sp.comparedWith}.`,
     `Write for ${sp.coachLine}, encouraging but honest. Refer to the athlete as "the athlete" (no name is given).`,
     ...sp.extraRules
@@ -244,6 +246,24 @@ const findUnsupportedNumbers = (narrative, payload) => {
     for (const n of numbersIn(s)) if (!allowed.has(n)) bad.add(n);
   }
   return [...bad];
+};
+
+// LSI is symmetry (weaker side as % of stronger); the gap is what's left.
+const gapOf = (lsi) => Math.round((100 - lsi) * 10) / 10;
+
+// Wording rules the prompt asks for, checked in code.
+const COMPLETE_WORDING = /\bcomprehensive\b|\bcomplete(?:ly)?\s+(?:testing|test|tests|session|assessment|battery|profile|picture|evaluation|screen|screening|set|overview|data)\b/i;
+const ASYMMETRY_NUMBER = /\basymmetr(?:y|ies)\s*(?:of|at|score|value|index|is|was|:)?\s*(?:of\s+)?\d|\d+(?:\.\d+)?\s*%?\s*asymmetr/i;
+const findWordingProblems = (narrative, payload) => {
+  const text = collectStrings(narrative).join('\n');
+  const out = [];
+  if (payload.session && !payload.session.everything_tested && COMPLETE_WORDING.test(text)) {
+    out.push(`it called the session "comprehensive" or "complete" although some tests or stats were not tested (${payload.session.not_tested.join(', ')})`);
+  }
+  if (ASYMMETRY_NUMBER.test(text)) {
+    out.push('it wrote LSI as an asymmetry number. Write it as "<lsi>% symmetry" or "a <lsi_gap_pct>% gap"');
+  }
+  return out;
 };
 
 const stripFences = (text) => {
@@ -511,7 +531,10 @@ const makePipeline = (sp, cfg, testInfoAll) => {
       }
       out.score = t.score;
       if (t.partial) out.partial = true;
-      if (t.lsi !== undefined) out.lsi = t.lsi;
+      if (t.lsi !== undefined) {
+        out.lsi = t.lsi;
+        out.lsi_gap_pct = gapOf(t.lsi);
+      }
       if (!tdef.stat) out.feeds_ovr = false;
       return out;
     });
@@ -523,12 +546,23 @@ const makePipeline = (sp, cfg, testInfoAll) => {
       ? { value: null, status: 'pending', message: scored.ovr.message, reasons: scored.ovr.reasons.map(reasonText) }
       : { value: scored.ovr.value, provisional: scored.ovr.provisional, reasons: scored.ovr.reasons.map(reasonText) };
 
-    const flags = scored.flags.map(f => ({ ...f, test: TEST_INFO[f.test].label }));
+    const flags = scored.flags.map(f => ({
+      ...f,
+      test: TEST_INFO[f.test].label,
+      ...(f.type === 'LSI' && f.value !== undefined ? { gap_pct: gapOf(f.value) } : {})
+    }));
+
+    // What was not tested, so the text never calls the session "complete".
+    const notTested = [
+      ...tests.filter(t => t.status !== 'completed').map(t => t.name),
+      ...Object.entries(stats).filter(([, v]) => v.value === null).map(([k]) => `${STAT_LABELS[k]} (stat)`)
+    ];
 
     return {
       athlete: scored.athlete,
       sport: scored.sport,
       config_version: scored.config_version,
+      session: { everything_tested: notTested.length === 0, not_tested: notTested },
       ovr,
       stats,
       tests,
@@ -559,11 +593,14 @@ const makePipeline = (sp, cfg, testInfoAll) => {
       }
       const narrative = normaliseNarrative(parsed, payload);
       const bad = findUnsupportedNumbers(narrative, payload);
-      if (!bad.length) return { narrative, rawResponse, attempts: attempt };
-      lastProblem = `it used numbers not in the scores (${bad.join(', ')})`;
-      console.warn(`[${sp.key}] Gemini attempt ${attempt} rejected: ${lastProblem}`);
-      prompt = `${basePrompt}\n\nYour previous answer used numbers that are not in the payload: ${bad.join(', ')}. ` +
-        'Rewrite it using only numbers that appear in the payload, or describe in words.';
+      const wording = findWordingProblems(narrative, payload);
+      if (!bad.length && !wording.length) return { narrative, rawResponse, attempts: attempt };
+      const fixes = [];
+      if (bad.length) fixes.push(`it used numbers that are not in the payload: ${bad.join(', ')}. Use only numbers that appear in the payload, or describe in words`);
+      fixes.push(...wording);
+      lastProblem = bad.length ? `it used numbers not in the scores (${bad.join(', ')})` : wording[0];
+      console.warn(`[${sp.key}] Gemini attempt ${attempt} rejected: ${fixes.join('; ')}`);
+      prompt = `${basePrompt}\n\nYour previous answer was rejected because ${fixes.join('; and ')}. Rewrite it.`;
     }
     const err = new Error(`The AI's report text was rejected ${MAX_ATTEMPTS} times because ${lastProblem}. No report was saved. Please try again.`);
     err.statusCode = 502;
@@ -758,4 +795,4 @@ const makePipeline = (sp, cfg, testInfoAll) => {
 
 const SCORED_SPORTS = Object.keys(SPORT_PROFILES);
 
-module.exports = { forSport, forCustom, findUnsupportedNumbers, cleanAdditionalVald, SCORED_SPORTS, SPORT_PROFILES, CUSTOM_PROFILE, ALL_TEST_INFO };
+module.exports = { forSport, forCustom, findUnsupportedNumbers, findWordingProblems, cleanAdditionalVald, SCORED_SPORTS, SPORT_PROFILES, CUSTOM_PROFILE, ALL_TEST_INFO };
