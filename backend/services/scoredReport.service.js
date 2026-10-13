@@ -251,14 +251,44 @@ const findUnsupportedNumbers = (narrative, payload) => {
 // LSI is symmetry (weaker side as % of stronger); the gap is what's left.
 const gapOf = (lsi) => Math.round((100 - lsi) * 10) / 10;
 
-// Wording rules the prompt asks for, checked in code.
-const COMPLETE_WORDING = /\bcomprehensive\b|\bcomplete(?:ly)?\s+(?:testing|test|tests|session|assessment|battery|profile|picture|evaluation|screen|screening|set|overview|data)\b/i;
+// Wording rules the prompt asks for, checked in code. The version is shown
+// on /api/health so a deploy can be checked.
+const WORDING_CHECK_VERSION = 2;
+// Model text can carry invisible or look-alike characters (soft hyphens,
+// zero-width spaces, non-breaking spaces, full-width letters) that hide a word
+// from a plain regex, so the text is normalised before it is checked.
+const normaliseForCheck = (text) => String(text)
+  .normalize('NFKC')
+  .replace(/[\u00AD\u180E\u200B-\u200F\u2060-\u2064\uFEFF]/g, '')
+  .replace(/[\u2010-\u2015\u2212]/g, '-')
+  .replace(/\s+/g, ' ');
+// "comprehensive", "exhaustive", or complete / full / entire / whole / thorough
+// + session, testing, battery... (up to two words between, e.g. "a full padel
+// testing session"), but not "complete the remaining tests".
+const SESSION_NOUN = '(?:testing|tests?|session|assessments?|battery|profile|picture|evaluation|screen(?:ing)?|set|overview|data|work-?up|panel)';
+const COMPLETE_WORDING = new RegExp(
+  '\\b(?:comprehensive(?:ly)?|exhaustive(?:ly)?)\\b' +
+  `|\\b(?:complete(?:ly)?|full(?:y)?|entire(?:ly)?|whole|thorough(?:ly)?|all-round|all-encompassing)\\s+(?:(?!the\\b|remaining\\b|outstanding\\b|missing\\b|other\\b|rest\\b)[a-z-]+\\s+){0,2}${SESSION_NOUN}\\b` +
+  '|(?<!\\bnot )\\b(?:all|every)\\s+(?:of\\s+(?:the|their|its)\\s+)?(?:(?!other\\b|remaining\\b)[a-z-]+\\s+)?(?:tests?|stats|qualities|areas)\\s+(?:were|was|have been|has been)\\s+(?:completed|done|tested|covered|assessed)\\b',
+  'i'
+);
 const ASYMMETRY_NUMBER = /\basymmetr(?:y|ies)\s*(?:of|at|score|value|index|is|was|:)?\s*(?:of\s+)?\d|\d+(?:\.\d+)?\s*%?\s*asymmetr/i;
+// What was not tested: from session.not_tested, or worked out from the tests
+// and stats if an older payload has no session block.
+const notTestedIn = (payload) => {
+  if (payload.session) return payload.session.everything_tested ? [] : payload.session.not_tested;
+  return [
+    ...(payload.tests || []).filter(t => t.status !== 'completed').map(t => t.name),
+    ...Object.entries(payload.stats || {}).filter(([, v]) => v && v.value === null).map(([k]) => `${STAT_LABELS[k] || k} (stat)`)
+  ];
+};
 const findWordingProblems = (narrative, payload) => {
-  const text = collectStrings(narrative).join('\n');
+  const text = normaliseForCheck(collectStrings(narrative).join('\n'));
   const out = [];
-  if (payload.session && !payload.session.everything_tested && COMPLETE_WORDING.test(text)) {
-    out.push(`it called the session "comprehensive" or "complete" although some tests or stats were not tested (${payload.session.not_tested.join(', ')})`);
+  const notTested = notTestedIn(payload);
+  const complete = notTested.length ? text.match(COMPLETE_WORDING) : null;
+  if (complete) {
+    out.push(`it called the session "comprehensive" or "complete" although some tests or stats were not tested (${notTested.join(', ')}). It wrote "${complete[0]}"`);
   }
   if (ASYMMETRY_NUMBER.test(text)) {
     out.push('it wrote LSI as an asymmetry number. Write it as "<lsi>% symmetry" or "a <lsi_gap_pct>% gap"');
@@ -795,4 +825,4 @@ const makePipeline = (sp, cfg, testInfoAll) => {
 
 const SCORED_SPORTS = Object.keys(SPORT_PROFILES);
 
-module.exports = { forSport, forCustom, findUnsupportedNumbers, findWordingProblems, cleanAdditionalVald, SCORED_SPORTS, SPORT_PROFILES, CUSTOM_PROFILE, ALL_TEST_INFO };
+module.exports = { forSport, forCustom, findUnsupportedNumbers, findWordingProblems, WORDING_CHECK_VERSION, cleanAdditionalVald, SCORED_SPORTS, SPORT_PROFILES, CUSTOM_PROFILE, ALL_TEST_INFO };

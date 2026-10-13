@@ -165,3 +165,48 @@ test('additional VALD results: shown on the report, never scored, never sent to 
   assert.equal(seen.includes('Knee Flexion'), false);
   assert.equal(out.reportContent.additionalVald.length, 2);
 });
+
+test('wording: a padel report (Agility not tested) is never called "comprehensive" or "complete"', async () => {
+  const { findWordingProblems } = require('./scoredReport.service');
+  const full = copy(RESULTS);
+  full.tests.beep_test = { status: 'completed', level: '9', shuttle: '4' };
+  const { session } = padel.validateInput(PROFILE, full);
+  const payload = padel.buildGeminiPayload(scoreSession(session, padel.cfg), session);
+  // Every padel test done, but Agility is not in the battery.
+  assert.deepEqual(payload.session, { everything_tested: false, not_tested: ['Agility (stat)'] });
+
+  const bad = (summary, p = payload) => findWordingProblems({ summary }, p).length;
+  for (const s of [
+    'The athlete completed a comprehensive testing session.',
+    'The athlete completed a compre\u00ADhensive testing session.',   // soft hyphen
+    'The athlete completed a compre\u200Bhensive testing session.',   // zero-width space
+    'The athlete completed a ｃｏｍｐｒｅｈｅｎｓｉｖｅ testing session.', // full-width
+    'A complete\u00A0testing session.',                                // non-breaking space
+    'A full padel testing session.',
+    'This thorough physical assessment shows good speed.',
+    'An exhaustive look at the athlete.',
+    'All tests were completed.'
+  ]) assert.equal(bad(s), 1, s);
+  for (const s of [
+    'The athlete completed a testing session covering speed, power, balance and reaction. Agility was not tested this session.',
+    'The rating will firm up once the remaining tests are complete.',
+    'Complete the remaining tests to firm up the rating.',
+    'Not all tests were completed.',
+    'Shows full range of motion at the hip.'
+  ]) assert.equal(bad(s), 0, s);
+  // An older payload without a session block is still checked.
+  const { session: _s, ...old } = payload;
+  assert.equal(bad('A comprehensive testing session.', old), 1);
+
+  const prompts = [];
+  const callModel = async (system, prompt) => {
+    prompts.push(prompt);
+    const n = JSON.parse(fakeNarrative(payload));
+    if (prompts.length === 1) n.summary = 'The athlete completed a comprehensive testing session.';
+    return JSON.stringify(n);
+  };
+  const { narrative, attempts } = await padel.generateNarrative(payload, { callModel });
+  assert.equal(attempts, 2);
+  assert.match(prompts[1], /not tested \(Agility \(stat\)\)/);
+  assert.equal(/comprehensive/i.test(narrative.summary), false);
+});
