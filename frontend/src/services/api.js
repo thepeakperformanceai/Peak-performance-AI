@@ -2,7 +2,7 @@ import axios from 'axios'
 import html2pdf from 'html2pdf.js'
 import { jsPDF } from 'jspdf'
 import { clearAuthToken, getAuthToken } from '../utils/auth'
-import { footballCardHtml, ensureCardFonts } from '../components/footballCard'
+import { footballCardHtml, additionalValdPagesHtml, ensureCardFonts } from '../components/footballCard'
 
 const api = axios.create({
   baseURL: import.meta.env.VITE_API_URL,
@@ -84,6 +84,11 @@ export const valdDiagnose = () => api.get('/vald/diagnose', { timeout: 120000 })
 export const valdProfiles = (q) => api.get('/vald/profiles', { params: { q }, timeout: 120000 })
 export const valdGetLink = (name) => api.get('/vald/link', { params: { name }, timeout: 120000 })
 export const valdSaveLink = (athleteName, profileId) => api.put('/vald/link', { athleteName, profileId })
+// Admin: VALD test mapping and raw tests.
+export const valdMappings = () => api.get('/vald/mappings', { timeout: 180000 })
+export const valdSaveMapping = (key, body) => api.put(`/vald/mappings/${encodeURIComponent(key)}`, body)
+export const valdDeleteMapping = (key) => api.delete(`/vald/mappings/${encodeURIComponent(key)}`)
+export const valdRaw = (profileId) => api.get('/vald/raw', { params: { profileId }, timeout: 180000 })
 export const valdLatest = (profileId, sport) => api.get('/vald/latest', { params: { profileId, sport } })
 
 export const downloadReportPDF = async reportId => {
@@ -113,7 +118,9 @@ export const downloadReportPDF = async reportId => {
       try {
         // Render to one image and place it on exactly one A4 page (html2pdf's
         // own paging pushes a full-height card onto a second page).
-        const canvas = await html2pdf().set({
+        // Each page (the card, then any "Additional VALD results" pages) is
+        // drawn separately and placed on its own A4 page.
+        const pageToCanvas = (el) => html2pdf().set({
           margin: 0,
           // Card fonts must also be ready inside html2canvas's cloned document.
           html2canvas: {
@@ -121,9 +128,19 @@ export const downloadReportPDF = async reportId => {
             onclone: (doc) => { addFix(doc); return ensureCardFonts(doc) },
           },
           jsPDF: { orientation: 'portrait', unit: 'mm', format: 'a4' },
-        }).from(card.firstElementChild).toCanvas().get('canvas')
+        }).from(el).toCanvas().get('canvas')
+        const elements = [card.firstElementChild]
+        for (const html of additionalValdPagesHtml(report)) {
+          const wrap = document.createElement('div')
+          wrap.innerHTML = html
+          elements.push(wrap.firstElementChild)
+        }
         const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' })
-        pdf.addImage(canvas.toDataURL('image/jpeg', 0.95), 'JPEG', 0, 0, 210, 297)
+        for (let i = 0; i < elements.length; i++) {
+          const canvas = await pageToCanvas(elements[i])
+          if (i) pdf.addPage('a4', 'portrait')
+          pdf.addImage(canvas.toDataURL('image/jpeg', 0.95), 'JPEG', 0, 0, 210, 297)
+        }
         pdf.save(cardFile)
       } finally {
         fix.remove()

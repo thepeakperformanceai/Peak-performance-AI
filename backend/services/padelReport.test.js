@@ -142,3 +142,26 @@ test('full pipeline: padel card content', async () => {
   ]);
   assert.equal(scored.stats.power.capped, undefined);               // monitor never caps power
 });
+
+test('additional VALD results: shown on the report, never scored, never sent to Gemini', async () => {
+  const withExtra = { ...copy(RESULTS), additionalVald: [
+    { test: 'Knee Flexion', device: 'Dynamo', unit: 'N', left: '250', right: 241, date: '2026-10-01T09:10:00Z', stat: 'power', band_left: 'below', band_right: 'made_up', symmetry: 12 },
+    { test: 'Squat — Depth', device: 'HumanTrak', unit: '°', value: 92.04, stat: 'cheating', band: 'within_normal' },
+    { test: 'Waiting for a metric', device: 'HumanTrak' }                                     // no values: dropped
+  ] };
+  const plain = padel.validateInput(PROFILE, copy(RESULTS));
+  const { profile, session } = padel.validateInput(PROFILE, withExtra);
+  assert.deepEqual(session, plain.session);                                 // scoring input unchanged
+  assert.deepEqual(profile.additionalVald, [
+    { test: 'Knee Flexion', device: 'Dynamo', unit: 'N', left: 250, right: 241, symmetry: 96.4, date: '2026-10-01', stat: 'power', band_left: 'below', band_right: null },
+    { test: 'Squat — Depth', device: 'HumanTrak', unit: '°', value: 92, symmetry: null, date: '', stat: null, band: 'within_normal' }
+  ]);
+  let seen = '';
+  const callModel = async (sys, prompt) => { seen = prompt; return fakeNarrative(JSON.parse(prompt.split('PAYLOAD:\n')[1])); };
+  const out = await padel.runPipeline(profile, session, { callModel });
+  const base = await padel.runPipeline(plain.profile, plain.session, { callModel: async (s, p) => fakeNarrative(JSON.parse(p.split('PAYLOAD:\n')[1])) });
+  assert.equal(out.scored.ovr.value, base.scored.ovr.value);                  // OVR identical
+  assert.deepEqual(out.payload, base.payload);                               // Gemini payload identical
+  assert.equal(seen.includes('Knee Flexion'), false);
+  assert.equal(out.reportContent.additionalVald.length, 2);
+});

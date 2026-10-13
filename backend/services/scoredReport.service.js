@@ -108,6 +108,40 @@ const HANDS = ['L', 'R'];
 const TIMING = ['hand', 'electronic'];
 const BODYWEIGHT_RANGE = [30, 160];
 
+// "Additional VALD results": VALD tests outside the sport's battery. Shown on
+// the report only — never scored, never in the OVR, never sent to Gemini.
+const ADDITIONAL_STATS = ['speed', 'power', 'agility', 'balance', 'reaction', 'endurance'];
+const MAX_ADDITIONAL = 60;
+
+const cleanAdditionalVald = (rows, bandLabels) => {
+  if (!Array.isArray(rows)) return [];
+  const num = (v) => (v === null || v === undefined || v === '' || !Number.isFinite(Number(v)) ? undefined : Math.round(Number(v) * 10) / 10);
+  const str = (v, n) => String(v ?? '').trim().slice(0, n);
+  const band = (v) => (bandLabels.includes(v) ? v : null);
+  return rows.slice(0, MAX_ADDITIONAL).map(r => {
+    const left = num(r?.left);
+    const right = num(r?.right);
+    const value = num(r?.value);
+    if (left === undefined && right === undefined && value === undefined) return null;
+    return {
+      test: str(r.test, 160) || 'VALD test',
+      device: ['Dynamo', 'HumanTrak'].includes(r.device) ? r.device : 'VALD',
+      unit: str(r.unit, 20),
+      ...(left !== undefined ? { left } : {}),
+      ...(right !== undefined ? { right } : {}),
+      ...(value !== undefined ? { value } : {}),
+      // Symmetry recomputed here: smaller side as a % of the larger.
+      symmetry: left !== undefined && right !== undefined && Math.max(left, right) > 0
+        ? Math.round(Math.min(left, right) / Math.max(left, right) * 1000) / 10 : null,
+      date: str(r.date, 10),
+      stat: ADDITIONAL_STATS.includes(r.stat) ? r.stat : null,
+      ...(left !== undefined || right !== undefined
+        ? { band_left: band(r.band_left), band_right: band(r.band_right) }
+        : { band: band(r.band) })
+    };
+  }).filter(Boolean);
+};
+
 const badRequest = (msg) => {
   const err = new Error(msg);
   err.statusCode = 400;
@@ -381,7 +415,8 @@ const forSport = (sportKey) => {
       trainingLevel: profileIn.trainingLevel,
       knownInjuries: profileIn.knownInjuries || '',
       practitioner: profileIn.practitioner || 'Not specified',
-      customParams: profileIn.customParams || {}
+      customParams: profileIn.customParams || {},
+      additionalVald: cleanAdditionalVald(resultsIn.additionalVald, cfg.vald_band_labels)
     };
     const session = {
       athlete: {
@@ -650,6 +685,8 @@ const forSport = (sportKey) => {
           body: narrative.stats[k]
         }))
       },
+      // Shown only; not scored and not part of the Gemini payload or the OVR.
+      additionalVald: profile.additionalVald || [],
       benchmarkNote: 'Manual tests compared with published international norms; HumanTrak and Dynamo tests compared with others of the same age and sex.',
       configVersion: scored.config_version
     };
@@ -681,4 +718,4 @@ const forSport = (sportKey) => {
 
 const SCORED_SPORTS = Object.keys(SPORT_PROFILES);
 
-module.exports = { forSport, findUnsupportedNumbers, SCORED_SPORTS, SPORT_PROFILES };
+module.exports = { forSport, findUnsupportedNumbers, cleanAdditionalVald, SCORED_SPORTS, SPORT_PROFILES };

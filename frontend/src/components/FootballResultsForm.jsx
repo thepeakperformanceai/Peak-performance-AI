@@ -308,6 +308,57 @@ export default function FootballResultsForm({ results, onChange, sport = 'Footba
           ))}
         </div>
       ))}
+
+      <AdditionalVald rows={results.additionalVald || []} onChange={rows => onChange({ ...results, additionalVald: rows })} />
+    </div>
+  )
+}
+
+// VALD tests outside this sport's battery, filled by "Pull from VALD". They go
+// on the report under "Additional VALD results": not scored, not in the OVR.
+// The VALD band is optional (from the VALD report or VALD Hub).
+function AdditionalVald({ rows, onChange }) {
+  if (!rows.length) return null
+  const set = (i, patch) => onChange(rows.map((r, j) => (j === i ? { ...r, ...patch } : r)))
+  const remove = (i) => onChange(rows.filter((_, j) => j !== i))
+  const n = (v) => (v === undefined || v === null ? '—' : v)
+  const bandSelect = (i, key, value, label) => (
+    <select className="inp text-xs w-32" value={value || ''} onChange={e => set(i, { [key]: e.target.value })}>
+      <option value="">{label}</option>
+      {BANDS.map(b => <option key={b.value} value={b.value}>{b.label}</option>)}
+    </select>
+  )
+  return (
+    <div className="mt-6">
+      <div className="text-[11px] font-semibold uppercase tracking-wide text-gray-400 mb-1">Additional VALD results</div>
+      <p className="text-xs text-gray-500 mb-2">
+        Other tests VALD holds for this athlete (most recent per test and side). They appear on the report and PDF for
+        information only: <b>not scored and not counted in the OVR</b>. Adding the VALD band is optional.
+      </p>
+      {rows.map((r, i) => {
+        const sided = r.left !== undefined || r.right !== undefined
+        return (
+          <div key={`${r.key}-${i}`} className="flex flex-wrap items-center gap-2 py-1.5 border-b border-gray-50">
+            <div className="flex-1 min-w-[220px]">
+              <span className="text-sm font-medium text-gray-900">{r.test}</span>
+              <span className="text-xs text-gray-500">
+                {' · '}{r.device}{r.date ? ` · ${String(r.date).slice(0, 10)}` : ''}{r.stat ? ` · ${r.stat[0].toUpperCase()}${r.stat.slice(1)}` : ''}
+              </span>
+              <div className="text-xs text-gray-700">
+                {r.needsMetric
+                  ? <span className="text-amber-700">Result not shown until an admin picks which metric to report (Admin › VALD test mapping).</span>
+                  : sided
+                    ? <>L {n(r.left)} · R {n(r.right)} {r.unit}{r.symmetry != null ? ` · symmetry ${r.symmetry}%` : ''}</>
+                    : <>{n(r.value)} {r.unit}</>}
+              </div>
+            </div>
+            {!r.needsMetric && (sided
+              ? <>{r.left !== undefined && bandSelect(i, 'band_left', r.band_left, 'Left band…')}{r.right !== undefined && bandSelect(i, 'band_right', r.band_right, 'Right band…')}</>
+              : bandSelect(i, 'band', r.band, 'Band…'))}
+            <button type="button" className="text-xs text-gray-400 hover:text-red-600" onClick={() => remove(i)} title="Leave this test off the report">✕</button>
+          </div>
+        )
+      })}
     </div>
   )
 }

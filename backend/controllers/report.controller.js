@@ -324,7 +324,8 @@ const regenerateScoredReport = async (existingReport, res) => {
     age: session.athlete.age,
     position: existingReport.position,
     dominantHand: existingReport.dominantHand,
-    testDate: existingReport.testDate
+    testDate: existingReport.testDate,
+    additionalVald: existingReport.reportContent?.additionalVald || []
   };
   const { scored, payload, rawResponse, reportContent } = await pipeline.runPipeline(profile, session);
 
@@ -344,7 +345,8 @@ const regenerateFootballReport = async (existingReport, res) => {
     name: existingReport.athleteName,
     age: existingReport.footballSession.athlete.age,
     position: existingReport.position,
-    testDate: existingReport.testDate
+    testDate: existingReport.testDate,
+    additionalVald: existingReport.reportContent?.additionalVald || []
   };
   const { scored, payload, rawResponse, reportContent } =
     await footballReport.runFootballPipeline(profile, existingReport.footballSession);

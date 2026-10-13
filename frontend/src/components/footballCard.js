@@ -460,6 +460,105 @@ ${look ? look.motif : `    <div style="position:absolute;left:232px;top:-120px;w
 </div>`
 }
 
+// ---------- additional VALD results (extra pages) ----------
+// VALD tests outside the sport's battery. Shown for information only: they
+// are not scored and never count towards the OVR. Grouped by the stat an
+// admin assigned them to; unassigned ones are listed under "Other".
+
+const ADDITIONAL_GROUPS = ['speed', 'power', 'agility', 'balance', 'reaction', 'endurance', null]
+const BAND_TEXT = { well_below: 'Well below', below: 'Below', within_normal: 'Within normal', slightly_above: 'Slightly above', well_above: 'Well above' }
+const ROWS_PER_PAGE = 26
+
+const num = (v) => (v === undefined || v === null ? '—' : esc(v))
+
+function additionalRows(rc) {
+  const rows = Array.isArray(rc.additionalVald) ? rc.additionalVald : []
+  const out = []
+  for (const g of ADDITIONAL_GROUPS) {
+    const inGroup = rows.filter(r => (r.stat || null) === g)
+    if (!inGroup.length) continue
+    out.push({ group: g ? g[0].toUpperCase() + g.slice(1) : 'Other VALD tests' })
+    out.push(...inGroup)
+  }
+  return out
+}
+
+function additionalTable(rows, t) {
+  const th = (txt, align = 'left') =>
+    `<th style="text-align:${align};font-family:${TEXT};font-size:9px;font-weight:700;letter-spacing:0.8px;color:${FAINT};padding:0 8px 6px;border-bottom:1.5px solid ${t.deep}">${txt}</th>`
+  let stripe = 0
+  const body = rows.map(r => {
+    if (r.group) {
+      stripe = 0
+      return `<tr><td colspan="7" style="padding:12px 8px 4px;font-family:${DISPLAY};font-size:17px;letter-spacing:1px;color:${t.deep}">${esc(r.group.toUpperCase())}</td></tr>`
+    }
+    const sided = r.left !== undefined || r.right !== undefined
+    const band = sided
+      ? (r.band_left || r.band_right ? [r.band_left, r.band_right].map(b => BAND_TEXT[b] || '—').join(' / ') : '—')
+      : (BAND_TEXT[r.band] || '—')
+    const bg = stripe++ % 2 ? '#faf6ef' : BODY
+    const td = (v, extra = '') => `<td style="padding:4px 8px;font-family:${TEXT};font-size:10.5px;color:${TXT};${extra}">${v}</td>`
+    return `<tr style="background:${bg}">
+      ${td(`<b>${esc(r.test)}</b><span style="color:${FAINT}"> · ${esc(r.device)}</span>`)}
+      ${td(sided ? num(r.left) : '—', 'text-align:right;white-space:nowrap')}
+      ${td(sided ? num(r.right) : num(r.value), 'text-align:right;white-space:nowrap')}
+      ${td(esc(r.unit || ''), `color:${MUTED}`)}
+      ${td(r.symmetry == null ? '—' : `${esc(r.symmetry)}%`, 'text-align:right;white-space:nowrap')}
+      ${td(esc(band), 'white-space:nowrap')}
+      ${td(esc(String(r.date || '').slice(0, 10)), `color:${MUTED};white-space:nowrap`)}
+    </tr>`
+  }).join('')
+  return `<table style="width:100%;border-collapse:collapse">
+    <thead><tr>${th('TEST')}${th('LEFT', 'right')}${th('RIGHT / RESULT', 'right')}${th('UNIT')}${th('SYMMETRY', 'right')}${th('VALD BAND')}${th('DATE')}</tr></thead>
+    <tbody>${body}</tbody>
+  </table>`
+}
+
+/**
+ * Extra A4 pages for "Additional VALD results" (none if the report has none).
+ * Same frame as the card, so the PDF reads as one document.
+ */
+export function additionalValdPagesHtml(report) {
+  const rc = report.reportContent || {}
+  const rows = additionalRows(rc)
+  if (!rows.length) return []
+  const t = TIERS[tierFor(rc.overallOVR)]
+  const name = report.athleteName || rc.athleteName || 'Athlete'
+  // Split into pages; a group heading never sits alone at the bottom of a page.
+  const pages = [[]]
+  rows.forEach((r, i) => {
+    const page = pages[pages.length - 1]
+    const room = ROWS_PER_PAGE - page.length
+    if (room <= 0 || (r.group && room < 2 && i < rows.length - 1)) pages.push([r])
+    else page.push(r)
+  })
+  return pages.map((chunk, n) => `
+<div style="width:${CARD_WIDTH}px;height:${CARD_HEIGHT}px;box-sizing:border-box;padding:20px;background:${t.page};font-family:${TEXT}">
+  <div style="height:100%;box-sizing:border-box;padding:6px;border-radius:26px;background:${t.foil}">
+    <div style="position:relative;height:100%;border-radius:21px;background:${BODY};overflow:hidden">
+      <div style="background:${t.band};padding:18px 26px 14px;display:flex;align-items:flex-end;justify-content:space-between;gap:16px">
+        <div>
+          <div style="font-family:${DISPLAY};font-size:34px;line-height:0.95;color:${t.ink};letter-spacing:1px">ADDITIONAL VALD RESULTS</div>
+          <div style="font-family:${TEXT};font-size:11px;color:${t.soft};margin-top:4px">${esc(name)} · ${esc(rc.sport || '')} · ${esc(rc.testDate || '')}${pages.length > 1 ? ` · page ${n + 1} of ${pages.length}` : ''}</div>
+        </div>
+        <img src="${LOGO_URL}" alt="Peak Performance" width="80" height="61" style="width:80px;height:61px;opacity:0.92">
+      </div>
+      <div style="padding:14px 26px 0">
+        <div style="font-family:${TEXT};font-size:10.5px;color:${MUTED};margin-bottom:8px;line-height:1.45">
+          Every other test VALD holds for this athlete (most recent result per test and side). Shown for information:
+          <b style="color:${TXT}">not scored and not counted in the OVR</b>. Symmetry = weaker side as a % of the stronger side.
+        </div>
+        ${additionalTable(chunk, t)}
+      </div>
+      <div style="position:absolute;left:0;right:0;bottom:0;padding:10px 26px 12px;border-top:1.5px solid ${RULE};background:#faf6ef;display:flex;justify-content:space-between;font-family:${TEXT};font-size:8.5px;color:${FAINT}">
+        <span>Raw results from VALD Dynamo and HumanTrak. VALD bands as entered by the tester.</span>
+        <span>peakperformance.pk · ${esc(rc.batteryLabel || '')}</span>
+      </div>
+    </div>
+  </div>
+</div>`)
+}
+
 // The PDF renderer draws with whatever fonts are loaded at that moment, so
 // make sure both card fonts are ready first.
 export async function ensureCardFonts(doc = document) {

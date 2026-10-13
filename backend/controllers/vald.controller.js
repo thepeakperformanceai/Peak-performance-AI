@@ -4,7 +4,8 @@
 const { createValdClient } = require('../services/vald/valdClient');
 const { searchProfiles: searchByName, normalize } = require('../services/vald/valdSearch');
 const ValdLink = require('../models/ValdLink.model');
-const { mapLatestResults } = require('../services/vald/valdMapping');
+const { mapLatestResults, testTypesSeen, rawRows } = require('../services/vald/valdMapping');
+const ValdTestMapping = require('../models/ValdTestMapping.model');
 const { loadConfig } = require('../scoring/scoring');
 
 const SPORTS = ['football', 'padel', 'cricket'];
@@ -105,39 +106,98 @@ const saveLink = async (req, res, next) => {
   }
 };
 
-/** GET /api/vald/latest?profileId=...&sport=football — form fills for that sport. */
+// Admin choices by VALD test key.
+const loadMappings = async () =>
+  Object.fromEntries((await ValdTestMapping.find({}).lean()).map(m => [m.key, { use: m.use, stat: m.stat, metric: m.metric }]));
+
+/**
+ * GET /api/vald/latest?profileId=...&sport=football — every VALD test for the
+ * athlete: battery results to fill the form, and all other tests as
+ * "additional" results (shown on the report, never in the OVR).
+ */
 const getLatest = async (req, res, next) => {
   try {
     const profileId = String(req.query.profileId || '').trim();
     const sport = String(req.query.sport || '').trim().toLowerCase();
     if (!profileId) throw badRequest('profileId is required');
     if (!SPORTS.includes(sport)) throw badRequest(`sport must be one of ${SPORTS.join(', ')}`);
-    const [dynamo, humantrak] = await Promise.all([
-      vald().dynamoTests(profileId),
-      vald().humantrakTests(profileId)
-    ]);
-    res.json(mapLatestResults({ dynamo, humantrak }, loadConfig(sport).tests));
+    const [data, mappings] = await Promise.all([vald().athleteTests(profileId), loadMappings()]);
+    res.json(mapLatestResults(data, loadConfig(sport).tests, mappings));
   } catch (e) {
     next(e);
   }
 };
 
 /**
- * GET /api/vald/raw?profileId=... (admins only) — the athlete's latest raw
- * VALD tests, trimmed, so the field mapping can be checked against real data.
+ * GET /api/vald/raw?profileId=... (admins only) — the athlete's raw VALD
+ * tests, one row per test and side: name, body region, movement, side, date.
  */
 const getRaw = async (req, res, next) => {
   try {
     const profileId = String(req.query.profileId || '').trim();
     if (!profileId) throw badRequest('profileId is required');
-    const [dynamo, humantrak] = await Promise.all([
-      vald().dynamoTests(profileId),
-      vald().humantrakTests(profileId)
-    ]);
-    res.json({ dynamo: dynamo.slice(0, 5), humantrak: humantrak.slice(0, 5) });
+    const data = await vald().athleteTests(profileId);
+    res.json({ rows: rawRows(data), dynamoTests: data.dynamo.length, humantrakTests: data.humantrak.length });
   } catch (e) {
     next(e);
   }
 };
 
-module.exports = { getStatus, diagnose, searchProfiles, getLink, saveLink, getLatest, getRaw };
+// Which sports' batteries a VALD test type fills (built in, by name).
+const BATTERY_SPORTS = (battery) => SPORTS.filter(sp => battery && loadConfig(sp).tests[battery]);
+
+/**
+ * GET /api/vald/mappings (admins only) — every VALD test type in the
+ * organisation's tests, with the admin's choice (if any).
+ */
+const listMappings = async (req, res, next) => {
+  try {
+    const client = vald();
+    const [dynamo, humantrak, testTypes, mappings] = await Promise.all([
+      client.allTests('dynamo'), client.allTests('humantrak'),
+      client.humantrakTestTypes().catch(() => []), loadMappings()
+    ]);
+    const types = testTypesSeen({ dynamo, humantrak, testTypes }).map(t => ({
+      ...t,
+      batterySports: BATTERY_SPORTS(t.battery),
+      mapping: mappings[t.key] || null
+    }));
+    res.json({ stats: ValdTestMapping.STATS, types });
+  } catch (e) {
+    next(e);
+  }
+};
+
+/** PUT /api/vald/mappings/:key (admins only) { use, stat, metric, device, test } */
+const saveMapping = async (req, res, next) => {
+  try {
+    const key = String(req.params.key || '').trim();
+    const { use, stat = null, metric = null, device, test = '' } = req.body || {};
+    if (!/^(dynamo|humantrak):[\w.-]{1,120}$/.test(key)) throw badRequest('Unknown VALD test key');
+    if (!['stat', 'show'].includes(use)) throw badRequest('use must be "stat" or "show"');
+    if (use === 'stat' && !ValdTestMapping.STATS.includes(stat)) throw badRequest(`stat must be one of ${ValdTestMapping.STATS.join(', ')}`);
+    const dev = key.startsWith('dynamo:') ? 'Dynamo' : 'HumanTrak';
+    if (device && device !== dev) throw badRequest('device does not match the test key');
+    const saved = await ValdTestMapping.findOneAndUpdate(
+      { key },
+      { key, device: dev, test: String(test).slice(0, 200), use, stat: use === 'stat' ? stat : null,
+        metric: dev === 'HumanTrak' && metric ? String(metric).slice(0, 120) : null, updatedBy: req.user?._id },
+      { upsert: true, new: true, setDefaultsOnInsert: true }
+    ).lean();
+    res.json({ mapping: { use: saved.use, stat: saved.stat, metric: saved.metric } });
+  } catch (e) {
+    next(e);
+  }
+};
+
+/** DELETE /api/vald/mappings/:key (admins only) — back to unmapped. */
+const deleteMapping = async (req, res, next) => {
+  try {
+    await ValdTestMapping.deleteOne({ key: String(req.params.key || '') });
+    res.json({ deleted: true });
+  } catch (e) {
+    next(e);
+  }
+};
+
+module.exports = { getStatus, diagnose, searchProfiles, getLink, saveLink, getLatest, getRaw, listMappings, saveMapping, deleteMapping };

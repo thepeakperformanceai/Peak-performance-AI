@@ -170,29 +170,43 @@ const createValdClient = ({ env = process.env, http = axios, now = () => Date.no
     }
   };
 
-  // Pages a tests-by-modified-date list forward until VALD answers 204.
-  const testsSince = async (url, fromMs, listKeys) => {
-    const TenantId = await getTenantId();
-    let from = utc(fromMs);
-    const all = [];
-    for (let page = 0; page < 20; page++) {
-      const tests = asList(await get(url, { TenantId, ModifiedFromUtc: from }), ...listKeys);
-      if (!tests.length) break;
-      all.push(...tests);
-      const last = tests[tests.length - 1].modifiedDateUtc;
-      if (!last || last === from) break;
-      from = last;                                   // exact value, never rounded (per VALD guide)
-    }
-    // The cursor date can be inclusive, so the same test may come back twice.
-    const seen = new Set();
-    return all.filter(t => {
-      const id = t.testId || t.id;
-      if (!id) return true;
-      if (seen.has(id)) return false;
-      seen.add(id);
-      return true;
-    });
+  // ---------- test sync ----------
+  // VALD's test lists have no athlete filter, so the organisation's tests are
+  // kept in memory and synced the way VALD's guides describe: page forward
+  // from the last modifiedDateUtc until VALD answers 204. The first sync reads
+  // VALD_LOOKBACK_DAYS; later ones only fetch what changed since.
+  const DEVICES = {
+    dynamo: { path: () => `${cfg.dynamoUrl}/v1/test/tests-by-modified-date`, keys: ['tests', 'items'] },
+    humantrak: { path: () => `${cfg.humantrakUrl}/v2/tests-by-modified-date`, keys: ['testResults', 'tests', 'items'] }
   };
+  const store = {};        // device -> { byId: Map, cursor, syncedAt, running }
+  const RESYNC_MS = 15_000;
+
+  const syncDevice = async (device) => {
+    const st = store[device] || (store[device] = { byId: new Map(), cursor: null, syncedAt: 0, running: null });
+    if (st.running) return st.running;
+    if (st.syncedAt && now() - st.syncedAt < RESYNC_MS) return st.byId;
+    st.running = (async () => {
+      const TenantId = await getTenantId();
+      let from = st.cursor || utc(since());
+      let anon = st.byId.size;
+      for (let page = 0; page < 200; page++) {
+        const tests = asList(await get(DEVICES[device].path(), { TenantId, ModifiedFromUtc: from }), ...DEVICES[device].keys);
+        if (!tests.length) break;
+        // Same id again = the cursor is inclusive, or the test was edited: keep the newest copy.
+        for (const t of tests) st.byId.set(t.id || t.testId || `anon-${anon++}`, t);
+        const last = tests[tests.length - 1].modifiedDateUtc;
+        if (!last || last === from) break;
+        from = last;                                 // exact value, never rounded (per VALD guide)
+      }
+      st.cursor = from;
+      st.syncedAt = now();
+      return st.byId;
+    })();
+    try { return await st.running; } finally { st.running = null; }
+  };
+
+  const allTests = async (device) => [...(await syncDevice(device)).values()];
 
   // The tenant (organisation) your credentials can read. Uses VALD_TENANT_ID
   // if set, otherwise the first tenant VALD returns.
@@ -234,15 +248,9 @@ const createValdClient = ({ env = process.env, http = axios, now = () => Date.no
   // Athlete profiles, optionally filtered by name (see matchProfiles).
   const searchProfiles = async (query = '') => matchProfiles(await listProfiles(), query);
 
-  // Latest Dynamo / HumanTrak test date per profile, across the tenant, for
-  // the search list. One paged pass per device; cached for 10 minutes.
-  let lastTests = null;    // { at, map }
+  // Latest Dynamo / HumanTrak test date per profile, for the search list.
   const lastTestDates = async () => {
-    if (lastTests && now() - lastTests.at < 10 * 60_000) return lastTests.map;
-    const [dynamo, humantrak] = await Promise.all([
-      testsSince(`${cfg.dynamoUrl}/v1/test/tests-by-modified-date`, since(), ['tests', 'items']),
-      testsSince(`${cfg.humantrakUrl}/v2/tests-by-modified-date`, since(), ['testResults', 'tests', 'items'])
-    ]);
+    const [dynamo, humantrak] = await Promise.all([allTests('dynamo'), allTests('humantrak')]);
     const map = new Map();
     const add = (t, device) => {
       const id = t.profileId || t.athleteId;
@@ -253,26 +261,37 @@ const createValdClient = ({ env = process.env, http = axios, now = () => Date.no
     };
     dynamo.forEach(t => add(t, 'Dynamo'));
     humantrak.forEach(t => add(t, 'HumanTrak'));
-    lastTests = { at: now(), map };
     return map;
   };
 
+  const newestFirst = (a, b) => String(testDate(b) || '').localeCompare(String(testDate(a) || ''));
+
   // Dynamo tests for one profile, newest first.
-  const dynamoTests = async (profileId) => {
-    const all = await testsSince(`${cfg.dynamoUrl}/v1/test/tests-by-modified-date`, since(), ['tests', 'items']);
-    return all
-      .filter(t => (t.athleteId || t.profileId) === profileId)
-      .sort((a, b) => String(b.startTimeUTC || b.testDateUtc || b.startDateUtc || '').localeCompare(
-        String(a.startTimeUTC || a.testDateUtc || a.startDateUtc || '')));
+  const dynamoTests = async (profileId) =>
+    (await allTests('dynamo')).filter(t => (t.athleteId || t.profileId) === profileId).sort(newestFirst);
+
+  // HumanTrak tests for one profile, newest first.
+  const humantrakTests = async (profileId) =>
+    (await allTests('humantrak')).filter(t => (t.profileId || t.athleteId) === profileId).sort(newestFirst);
+
+  // HumanTrak test types with their metric groups (names for testTypeCode).
+  // Rarely changes: cached for an hour.
+  let types = null;        // { at, list }
+  const humantrakTestTypes = async () => {
+    if (types && now() - types.at < 3600_000) return types.list;
+    const data = await get(`${cfg.humantrakUrl}/v2/test-type/metrics`);
+    types = { at: now(), list: asList(data, 'testTypes', 'items') };
+    return types.list;
   };
 
-  // HumanTrak tests for one profile, newest first. VALD has no profile
-  // filter on this call, so the tenant's tests are filtered here.
-  const humantrakTests = async (profileId) => {
-    const all = await testsSince(`${cfg.humantrakUrl}/v2/tests-by-modified-date`, since(), ['testResults', 'tests', 'items']);
-    return all
-      .filter(t => (t.profileId || t.athleteId) === profileId)
-      .sort((a, b) => String(b.startDateUtc || b.testDateUtc || '').localeCompare(String(a.startDateUtc || a.testDateUtc || '')));
+  // Everything VALD holds for one athlete, for mapping and the admin views.
+  const athleteTests = async (profileId) => {
+    const [dynamo, humantrak, testTypes] = await Promise.all([
+      dynamoTests(profileId),
+      humantrakTests(profileId),
+      humantrakTestTypes().catch(() => [])          // names are a nicety; codes still work
+    ]);
+    return { dynamo, humantrak, testTypes };
   };
 
   // Login + tenant check, for the status endpoint (no secrets returned).
@@ -385,7 +404,7 @@ const createValdClient = ({ env = process.env, http = axios, now = () => Date.no
     return { steps, advice };
   };
 
-  return { cfg, getToken, getTenantId, listProfiles, searchProfiles, lastTestDates, dynamoTests, humantrakTests, status, diagnose };
+  return { cfg, getToken, getTenantId, listProfiles, searchProfiles, lastTestDates, dynamoTests, humantrakTests, humantrakTestTypes, athleteTests, allTests, status, diagnose };
 };
 
 module.exports = { createValdClient, readConfig, configProblems, matchProfiles };

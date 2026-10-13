@@ -85,7 +85,12 @@ VALD cut-offs or band). Credentials stay on the backend.
 - `GET /api/vald/profiles?q=name` - find the athlete. Forgiving: ignores case, accents and extra spaces; matches part of the first name, last name or both; returns every match with date of birth and last Dynamo/HumanTrak test date, plus close spellings when nothing matches
 - `GET /api/vald/link?name=...`, `PUT /api/vald/link` - the VALD profile remembered for an athlete name (saved when a tester picks the athlete; stored in the `valdlinks` collection)
 - `GET /api/vald/latest?profileId=...&sport=football|padel|cricket` - form fills
-- `GET /api/vald/raw?profileId=...` - admins only: raw latest tests, for checking the field mapping
+- `GET /api/vald/latest?profileId=...&sport=...` returns `fills` (battery tests, scored as before) and `additional` (every other VALD test: shown on the report under "Additional VALD results", never scored or counted in the OVR). Most recent result per test and per side.
+  - Dynamo is matched on `bodyRegion` + `movement` (+ side from `repetitionTypeSummaries[].laterality`): Knee+Extension, Hip+Extension, Shoulder+External/Internal Rotation, Elbow+Extension, Hip+Abduction/Adduction.
+  - HumanTrak is matched on the test type name (from `/v2/test-type/metrics`) and one clear metric (Single Leg Stand → hold time, Overhead Squat → composite score, Trunk Rotation → rotation); if more than one metric could fit, nothing is filled until an admin picks one.
+  - Organisation tests are synced incrementally (by `modifiedDateUtc`, as VALD's guides describe) and kept in memory.
+- `GET /api/vald/raw?profileId=...` - admins only: the athlete's raw VALD tests (test, body region, movement, side, date, result)
+- `GET /api/vald/mappings`, `PUT|DELETE /api/vald/mappings/:key` - admins only: every VALD test type seen, and the admin's choice (stat or "show only", plus the HumanTrak metric). Stored in `valdtestmappings`; nothing is ever assigned automatically.
 - `GET /api/vald/diagnose` - step-by-step check of every VALD call (login, tenants in each region, profiles, Dynamo, HumanTrak) with HTTP status and advice; no secrets. Also the "Run VALD check" button on the form.
 
 Environment variables:

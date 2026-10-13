@@ -23,7 +23,12 @@ router.put('/link', valdController.saveLink);
 // GET latest HumanTrak + Dynamo results mapped to a sport's test form
 router.get('/latest', valdController.getLatest);
 
-// GET raw latest tests for checking the field mapping (admins only)
+// GET an athlete's raw VALD tests: name, body region, movement, side, date (admins only)
 router.get('/raw', adminOnly, valdController.getRaw);
+
+// VALD test mapping: every test type seen, and the admin's choice (admins only)
+router.get('/mappings', adminOnly, valdController.listMappings);
+router.put('/mappings/:key', adminOnly, valdController.saveMapping);
+router.delete('/mappings/:key', adminOnly, valdController.deleteMapping);
 
 module.exports = router;

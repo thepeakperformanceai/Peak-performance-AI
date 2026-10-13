@@ -31,28 +31,44 @@ const fakeVald = (routes) => {
   return { http, calls };
 };
 
+// Shapes follow VALD's External DynaMo / HumanTrak API guides and valdr:
+// Dynamo has bodyRegion + movement, per-side repetitionTypeSummaries;
+// HumanTrak has testTypeCode + metricGroups[].summaryMeasurements[].
+const dyn = (id, athleteId, bodyRegion, movement, date, left, right, extra = {}) => ({
+  id, athleteId, bodyRegion, movement, laterality: 'LeftThenRight', position: 'Seated', startTimeUTC: date, modifiedDateUtc: date,
+  repetitionTypeSummaries: [
+    ...(left !== null ? [{ movement, laterality: 'LeftSide', repCount: 3, maxForceNewtons: left }] : []),
+    ...(right !== null ? [{ movement, laterality: 'RightSide', repCount: 3, maxForceNewtons: right }] : [])],
+  ...extra
+});
+
 const DYNAMO_TESTS = { tests: [
-  { id: 'd1', athleteId: 'P1', movement: 'HipExtension', laterality: 'LeftThenRight', startTimeUTC: '2026-10-01T09:00:00Z',
-    repetitionTypeSummaries: [
-      { movement: 'HipExtension', laterality: 'LeftSide', repCount: 3, maxForceNewtons: 410.24 },
-      { movement: 'HipExtension', laterality: 'RightSide', repCount: 3, maxForceNewtons: 395.06 }] },
-  { id: 'd0', athleteId: 'P1', movement: 'HipExtension', laterality: 'LeftThenRight', startTimeUTC: '2026-06-01T09:00:00Z',
-    repetitionTypeSummaries: [{ laterality: 'LeftSide', maxForceNewtons: 300 }, { laterality: 'RightSide', maxForceNewtons: 290 }] },
-  { id: 'd2', athleteId: 'P1', movement: 'KneeExtension', startTimeUTC: '2026-10-01T09:05:00Z',
-    repetitionTypeSummaries: [{ laterality: 'LeftSide', maxForceNewtons: 612 }, { laterality: 'RightSide', maxForceNewtons: 533 }] },
-  { id: 'd3', athleteId: 'P1', movement: 'KneeFlexion', startTimeUTC: '2026-10-01T09:10:00Z',
-    repetitionTypeSummaries: [{ laterality: 'LeftSide', maxForceNewtons: 250 }] },
-  { id: 'x9', athleteId: 'OTHER', movement: 'HipExtension', startTimeUTC: '2026-10-05T09:00:00Z',
-    repetitionTypeSummaries: [{ laterality: 'LeftSide', maxForceNewtons: 999 }] }
+  dyn('d0', 'P1', 'Hip', 'Extension', '2026-06-01T09:00:00Z', 300, 290),
+  dyn('d1', 'P1', 'Hip', 'Extension', '2026-10-01T09:00:00Z', 410.24, 395.06),
+  dyn('d2', 'P1', 'Knee', 'Extension', '2026-10-01T09:05:00Z', 612, 533),
+  dyn('d3', 'P1', 'Knee', 'Flexion', '2026-10-01T09:10:00Z', 250, 241),
+  dyn('x9', 'OTHER', 'Hip', 'Extension', '2026-10-05T09:00:00Z', 999, 999)
+] };
+
+const mg = (code, longName, sides, unit = 's') => ({
+  code, longName, shortName: longName, unit,
+  summaryMeasurements: Object.entries(sides).map(([side, max]) => ({ side, unit, aggregates: { max, min: max / 2, avg: max * 0.8 } }))
+});
+
+const HT_TYPES = { testTypes: [
+  { code: 'TT_SLS-EC', name: 'Single Leg Stand Eyes Closed', metricGroups: [] },
+  { code: 'TT_OHS', name: 'Overhead Squat', metricGroups: [] },
+  { code: 'TT_TRUNK-ROT', name: 'Trunk Rotation', metricGroups: [] },
+  { code: 'TT_SQUAT-DL', name: 'Squat', metricGroups: [] }
 ] };
 
 const HT_PAGE = [
-  { testId: 'h1', profileId: 'P1', testTypeName: 'Single Leg Stand Eyes Closed', startDateUtc: '2026-10-01T08:00:00Z', modifiedDateUtc: '2026-10-01T08:30:00.1234567Z',
-    metrics: [{ name: 'Left Hold Time (s)', value: 18 }, { name: 'Right Hold Time (s)', value: 22 }] },
-  { testId: 'h2', profileId: 'P1', testTypeName: 'Overhead Squat', startDateUtc: '2026-10-01T08:10:00Z', modifiedDateUtc: '2026-10-01T08:40:00.7654321Z',
-    metrics: [{ name: 'Composite Score', value: 68 }, { name: 'Left Knee Flexion', value: 110 }] },
-  { testId: 'h3', profileId: 'P1', testTypeName: 'Trunk Rotation', startDateUtc: '2026-10-01T08:20:00Z', modifiedDateUtc: '2026-10-01T08:50:00.5Z',
-    metrics: [{ name: 'Left Rotation Angle', value: 42 }, { name: 'Left Rotation Range', value: 44 }, { name: 'Right Rotation Angle', value: 40 }] }
+  { testId: 'h1', profileId: 'P1', testTypeCode: 'TT_SLS-EC', startDateUtc: '2026-10-01T08:00:00Z', modifiedDateUtc: '2026-10-01T08:30:00.1234567Z',
+    metricGroups: [mg('MG_SLS_DURATION', 'Hold Duration', { Left: 18, Right: 22 }), mg('MG_SLS_SWAY', 'Sway Area', { Left: 4.1, Right: 3.9 }, 'cm²')] },
+  { testId: 'h2', profileId: 'P1', testTypeCode: 'TT_OHS', startDateUtc: '2026-10-01T08:10:00Z', modifiedDateUtc: '2026-10-01T08:40:00.7654321Z',
+    metricGroups: [mg('MG_OHS_COMPOSITE', 'Composite Score', { Both: 68 }, 'score'), mg('MG_OHS_KNEE', 'Knee Flexion', { Left: 110, Right: 108 }, '°')] },
+  { testId: 'h3', profileId: 'P1', testTypeCode: 'TT_TRUNK-ROT', startDateUtc: '2026-10-01T08:20:00Z', modifiedDateUtc: '2026-10-01T08:50:00.5Z',
+    metricGroups: [mg('MG_TR_ANGLE', 'Rotation Angle', { Left: 42, Right: 40 }, '°'), mg('MG_TR_RANGE', 'Rotation Range', { Left: 44, Right: 41 }, '°')] }
 ];
 
 const routes = () => {
@@ -65,7 +81,8 @@ const routes = () => {
       { profileId: 'P1', givenName: 'Ali', familyName: 'Khan', dateOfBirth: '2007-03-02' },
       { profileId: 'P2', givenName: 'Sara', familyName: 'Malik' }] } }),
     '/v1/test/tests-by-modified-date': () => (++dyCalls === 1 ? { status: 200, data: DYNAMO_TESTS } : { status: 204, data: '' }),
-    '/v2/tests-by-modified-date': () => (++htCalls === 1 ? { status: 200, data: { testResults: HT_PAGE } } : { status: 204, data: '' })
+    '/v2/tests-by-modified-date': () => (++htCalls === 1 ? { status: 200, data: { testResults: HT_PAGE } } : { status: 204, data: '' }),
+    '/v2/test-type/metrics': () => ({ status: 200, data: HT_TYPES })
   };
 };
 
@@ -144,45 +161,97 @@ test('dynamo and humantrak: only this athlete, newest first; humantrak pages unt
   assert.deepEqual(dyCall.params, { TenantId: 'T1', ModifiedFromUtc: '2025-10-12T10:00:00Z' });
 });
 
-test('mapping (football): latest Dynamo max force per side; HumanTrak by test type', async () => {
+test('mapping (football): Dynamo by body region + movement + side; HumanTrak by test type name', async () => {
   const { http } = fakeVald(routes());
   const c = createValdClient({ env: ENV, http, now: () => NOW });
-  const out = mapLatestResults({ dynamo: await c.dynamoTests('P1'), humantrak: await c.humantrakTests('P1') }, loadConfig('football').tests);
+  const out = mapLatestResults(await c.athleteTests('P1'), loadConfig('football').tests);
   assert.deepEqual(out.fills, {
-    single_leg_stand: { left: 18, right: 22 },
+    single_leg_stand: { left: 18, right: 22 },       // "Hold Duration", not "Sway Area"
     overhead_squat: { value: 68 },
     hip_extension: { left: 410.2, right: 395.1 },     // newest test, not the June one
     knee_extension: { left: 612, right: 533 }
   });
   assert.equal(out.sources.hip_extension.testId, 'd1');
-  // Trunk rotation has two "left" candidates (angle and range): not guessed.
+  assert.equal(out.sources.single_leg_stand.metric, 'Hold Duration');
+  // Trunk rotation has two possible fields (angle and range): not guessed.
   assert.deepEqual(out.missing, ['trunk_rotation']);
   const trunk = out.unmatched.find(u => u.test === 'Trunk Rotation');
-  assert.match(trunk.reason, /enter by hand/);
-  assert.deepEqual(trunk.metrics, ['Left Rotation Angle', 'Left Rotation Range', 'Right Rotation Angle']);
-  assert.ok(out.unmatched.some(u => u.test === 'KneeFlexion' && u.reason === 'movement not recognised'));
+  assert.match(trunk.reason, /more than one possible result field/);
+  assert.deepEqual(trunk.metrics, ['Rotation Angle', 'Rotation Range']);
+  // Knee Flexion isn't a battery test: it's an additional result, with symmetry.
+  const flex = out.additional.find(a => a.test === 'Knee Flexion');
+  assert.deepEqual({ left: flex.left, right: flex.right, symmetry: flex.symmetry, unit: flex.unit, stat: flex.stat }, { left: 250, right: 241, symmetry: 96.4, unit: 'N', stat: null });
 });
 
-test('mapping (padel/cricket): only tests in that battery are filled', async () => {
+test('mapping: "Extension" alone is matched using the body region (the staging case)', () => {
+  const out = mapLatestResults({ dynamo: [
+    dyn('k', 'P1', 'Knee', 'Extension', '2026-10-01T09:00:00Z', 500, 480),
+    dyn('h', 'P1', 'Hip', 'Extension', '2026-10-01T09:00:00Z', 400, 390),
+    dyn('s', 'P1', 'Shoulder', 'ExternalRotation', '2026-10-01T09:00:00Z', 150, 160),
+    dyn('a', 'P1', 'Hip', 'Abduction', '2026-10-01T09:00:00Z', 260, 250),
+    dyn('b', 'P1', 'Hip', 'Adduction', '2026-10-01T09:00:00Z', 240, 230)
+  ] }, { ...loadConfig('football').tests, ...loadConfig('padel').tests });
+  assert.deepEqual(Object.keys(out.fills).sort(), ['hip_abduction', 'hip_adduction', 'hip_extension', 'knee_extension', 'shoulder_er']);
+  assert.deepEqual(out.fills.shoulder_er, { left: 150, right: 160 });
+  assert.deepEqual(out.additional, []);
+});
+
+test('mapping (padel/cricket): only that battery is filled; the rest are additional results', async () => {
   const { http } = fakeVald(routes());
   const c = createValdClient({ env: ENV, http, now: () => NOW });
-  const data = { dynamo: await c.dynamoTests('P1'), humantrak: await c.humantrakTests('P1') };
+  const data = await c.athleteTests('P1');
   const padel = mapLatestResults(data, loadConfig('padel').tests);
   assert.deepEqual(Object.keys(padel.fills).sort(), ['overhead_squat', 'single_leg_stand']);
   assert.deepEqual(padel.missing, ['trunk_rotation', 'shoulder_er', 'hip_abduction', 'hip_adduction']);
-  assert.ok(padel.unmatched.some(u => u.test === 'HipExtension' && u.reason === 'not in this battery'));
+  assert.deepEqual(padel.additional.map(a => a.test), ['Hip Extension', 'Knee Extension', 'Knee Flexion']);
   const cricket = mapLatestResults(data, loadConfig('cricket').tests);
   assert.deepEqual(cricket.fills.hip_extension, { left: 410.2, right: 395.1 });
   assert.equal(cricket.fills.overhead_squat, undefined);            // not in the cricket battery
+  assert.ok(cricket.additional.some(a => a.test === 'Overhead Squat — Composite Score' && a.value === 68));
+  // Trunk Rotation isn't in cricket's battery and has two metrics: listed, waiting for a metric choice.
+  assert.ok(cricket.additional.some(a => a.test === 'Trunk Rotation' && a.needsMetric));
+});
+
+test('mapping: most recent result per test AND side', () => {
+  const out = mapLatestResults({ dynamo: [
+    dyn('new', 'P1', 'Hip', 'Abduction', '2026-10-01T09:00:00Z', 260, null),      // only left re-tested
+    dyn('old', 'P1', 'Hip', 'Abduction', '2026-08-01T09:00:00Z', 200, 210)
+  ] }, loadConfig('padel').tests);
+  assert.deepEqual(out.fills.hip_abduction, { left: 260, right: 210 });
+  assert.equal(out.sources.hip_abduction.date, '2026-10-01T09:00:00Z');
 });
 
 test('mapping: one side only is kept; no cut-offs are ever invented', () => {
-  const out = mapLatestResults({ dynamo: [
-    { id: 'a', movement: 'Hip Abduction', repetitionTypeSummaries: [{ laterality: 'LeftSide', maxForceNewtons: 260 }] }
-  ], humantrak: [] }, loadConfig('padel').tests);
+  const out = mapLatestResults({ dynamo: [dyn('a', 'P1', 'Hip', 'Abduction', '2026-10-01T09:00:00Z', 260, null)] }, loadConfig('padel').tests);
   assert.deepEqual(out.fills.hip_abduction, { left: 260 });
   assert.equal(JSON.stringify(out.fills).includes('cutoff'), false);
   assert.equal(JSON.stringify(out.fills).includes('band'), false);
+});
+
+test('mapping: admin choices — stat for an additional test, metric for an ambiguous HumanTrak test', async () => {
+  const { http } = fakeVald(routes());
+  const c = createValdClient({ env: ENV, http, now: () => NOW });
+  const out = mapLatestResults(await c.athleteTests('P1'), loadConfig('football').tests, {
+    'dynamo:kneeflexion': { use: 'stat', stat: 'power' },
+    'humantrak:TT_TRUNK-ROT': { use: 'show', metric: 'MG_TR_RANGE' }
+  });
+  assert.deepEqual(out.fills.trunk_rotation, { left: 44, right: 41 });
+  assert.equal(out.additional.find(a => a.test === 'Knee Flexion').stat, 'power');
+});
+
+test('admin views: test types seen and raw rows (body region, movement, side, date)', async () => {
+  const { testTypesSeen, rawRows } = require('./valdMapping');
+  const { http } = fakeVald(routes());
+  const c = createValdClient({ env: ENV, http, now: () => NOW });
+  const data = await c.athleteTests('P1');
+  const seen = testTypesSeen(data);
+  assert.deepEqual(seen.map(s => s.key), ['dynamo:hipextension', 'dynamo:kneeextension', 'dynamo:kneeflexion',
+    'humantrak:TT_OHS', 'humantrak:TT_SLS-EC', 'humantrak:TT_TRUNK-ROT']);
+  assert.equal(seen.find(s => s.key === 'dynamo:kneeflexion').battery, null);
+  const rows = rawRows(data);
+  const r = rows.find(x => x.device === 'Dynamo' && x.testId === 'd3' && x.side === 'LeftSide');
+  assert.deepEqual({ bodyRegion: r.bodyRegion, movement: r.movement, maxForceN: r.maxForceN, date: r.date }, { bodyRegion: 'Knee', movement: 'Flexion', maxForceN: 250, date: '2026-10-01T09:10:00Z' });
+  assert.ok(rows.some(x => x.device === 'HumanTrak' && x.test === 'Trunk Rotation' && x.side === 'Left' && x.metric === 'Rotation Range'));
 });
 
 // ---------- diagnosing a 403 on /tenants (as seen on staging) ----------

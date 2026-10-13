@@ -125,7 +125,8 @@ export default function ValdPullPanel({ sportKey, athleteName, results, onChange
           vald: { device: src.device, date: src.date },
         }
       }
-      onChange({ ...results, tests })
+      // Every other VALD test: shown on the report, never scored.
+      onChange({ ...results, tests, additionalVald: out.additional || [] })
       setSummary({ name: profile.name, ...out })
       setFound(null)
       // Remember the pick for the athlete named on the form.
@@ -210,10 +211,15 @@ export default function ValdPullPanel({ sportKey, athleteName, results, onChange
           {summary.missing.length > 0 && (
             <p className="text-amber-700">Not found in VALD, enter by hand: {summary.missing.map(k => LABELS[k] || k).join(', ')}</p>
           )}
-          {summary.unmatched.filter(u => u.reason !== 'not in this battery').length > 0 && (
+          {summary.unmatched.length > 0 && (
             <p className="text-gray-500">
-              VALD results that couldn’t be matched automatically:{' '}
-              {summary.unmatched.filter(u => u.reason !== 'not in this battery').map(u => `${u.device} ${u.test} (${u.reason})`).join('; ')}
+              VALD results that couldn’t be used automatically:{' '}
+              {summary.unmatched.map(u => `${u.device} ${u.test} (${u.reason}${u.metrics?.length ? `: ${u.metrics.join(', ')}` : ''})`).join('; ')}
+            </p>
+          )}
+          {summary.additional?.length > 0 && (
+            <p className="text-gray-500">
+              {summary.additional.length} other VALD test(s) added under “Additional VALD results” below (shown on the report, not scored).
             </p>
           )}
         </div>

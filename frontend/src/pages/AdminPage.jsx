@@ -2,10 +2,13 @@ import { useState, useEffect } from 'react'
 import toast from 'react-hot-toast'
 import { getExercises, addExercise, updateExercise, deleteExercise } from '../services/api'
 import { useParamStore } from '../store/paramStore'
+import { ValdMapping, ValdRaw } from '../components/ValdAdmin'
 
 const TABS = [
   { id: 'exercises',  label: '💪 Exercise library' },
   { id: 'parameters', label: '⚙️ Form parameters' },
+  { id: 'vald-mapping', label: '🏷️ VALD test mapping' },
+  { id: 'vald-raw', label: '🔎 VALD raw tests' },
 ]
 
 export default function AdminPage() {
@@ -34,6 +37,8 @@ export default function AdminPage() {
 
       {activeTab === 'exercises'  && <ExerciseLibrary />}
       {activeTab === 'parameters' && <FormParameters />}
+      {activeTab === 'vald-mapping' && <ValdMapping />}
+      {activeTab === 'vald-raw' && <ValdRaw />}
     </div>
   )
 }

@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useReportStore } from '../store/reportStore'
 import toast from 'react-hot-toast'
 import { downloadReportPDF } from '../services/api'
-import { footballCardHtml, CARD_WIDTH } from '../components/footballCard'
+import { footballCardHtml, additionalValdPagesHtml, CARD_WIDTH } from '../components/footballCard'
 
 /* Athlete Test Battery Report — 4-page dark card (matches dashboard) */
 const ORANGE = '#ff4b12', INK = '#f2f4f7', MUTED = '#9aa7b4', FAINT = '#5b6b7c'
@@ -134,6 +134,11 @@ export default function ReportPage() {
             style={{ width: CARD_WIDTH, boxShadow: '0 12px 40px rgba(0,0,0,0.18)', borderRadius: 4 }}
             dangerouslySetInnerHTML={{ __html: footballCardHtml(report) }}
           />
+          {additionalValdPagesHtml(report).map((html, i) => (
+            <div key={i} data-testid="additional-vald-page"
+              style={{ width: CARD_WIDTH, marginTop: 24, boxShadow: '0 12px 40px rgba(0,0,0,0.18)', borderRadius: 4 }}
+              dangerouslySetInnerHTML={{ __html: html }} />
+          ))}
         </div>
       </div>
     )
