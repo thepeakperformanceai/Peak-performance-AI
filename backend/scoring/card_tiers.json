@@ -1,0 +1,9 @@
+{
+  "_comment": "Player card colour by OVR. The card (frontend/src/components/footballCard.js, tierFor) must use the same thresholds; backend/services/methodology.test.js checks it.",
+  "tiers": [
+    { "key": "gold", "label": "Gold", "min_ovr": 75 },
+    { "key": "silver", "label": "Silver", "min_ovr": 65 },
+    { "key": "bronze", "label": "Bronze", "min_ovr": 0 }
+  ],
+  "unrated": { "key": "unrated", "label": "Unrated", "meaning": "No OVR yet, so the card has no medal colour." }
+}

@@ -14,6 +14,7 @@ import '@fontsource/inter/700.css'
 // Transparent Peak Performance logo in the card's dark ink (same artwork as
 // the dashboard's logo.png), so it sits cleanly on every tier colour.
 import LOGO_URL from '../assets/pp-logo-card.png'
+import QRCode from 'qrcode'
 
 export const CARD_WIDTH = 794    // A4 at 96 dpi
 export const CARD_HEIGHT = 1122  // a hair under 297 mm so html2pdf keeps one page
@@ -345,6 +346,62 @@ const PADEL_PAGE_LINES = `<svg width="${CARD_WIDTH}" height="${CARD_HEIGHT}" vie
 // Court-blue turf strip with a white line, under the padel header.
 const PADEL_TURF = `<div style="height:9px;background:#1f5f8f;border-top:2px solid #ffffff;border-bottom:2px solid #174a70"></div>`
 
+// ---------- "How is my OVR calculated?" (QR + link) ----------
+// Points to that sport's public methodology page (/how-we-score/<sport>).
+// The block sits at a fixed spot so the PDF can put a clickable link on it.
+
+export const sportKeyOf = (rc) =>
+  /^custom/.test(rc.configVersion || '') || rc.sport === 'Custom Assessment' ? 'custom'
+    : /padel/i.test(rc.sport || '') ? 'padel'
+      : /cricket/i.test(rc.sport || '') ? 'cricket' : 'football'
+
+const siteOrigin = () =>
+  (import.meta.env?.VITE_PUBLIC_SITE_URL || (typeof window !== 'undefined' ? window.location.origin : 'https://peakperformance.pk')).replace(/\/$/, '')
+
+export const methodologyUrl = (rc) => `${siteOrigin()}/how-we-score/${sportKeyOf(rc)}`
+
+// QR code as an inline SVG (drawn synchronously, so the card stays a string).
+function qrSvg(text, size, color) {
+  const q = QRCode.create(text, { errorCorrectionLevel: 'M' })
+  const n = q.modules.size
+  const quiet = 2
+  const cell = size / (n + quiet * 2)
+  let d = ''
+  for (let r = 0; r < n; r++) {
+    for (let c = 0; c < n; c++) {
+      if (q.modules.get(r, c)) d += `M${((c + quiet) * cell).toFixed(2)} ${((r + quiet) * cell).toFixed(2)}h${cell.toFixed(2)}v${cell.toFixed(2)}h-${cell.toFixed(2)}z`
+    }
+  }
+  return `<svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}" xmlns="http://www.w3.org/2000/svg" style="display:block"><rect width="${size}" height="${size}" fill="#ffffff"/><path d="${d}" fill="${color}"/></svg>`
+}
+
+// Card geometry: 20 px page margin + 6 px foil around the card body.
+const INSET = 26
+const QR_SIZE = 54
+const QR_RIGHT = 18, QR_BOTTOM = 10, QR_TEXT_W = 112
+/** Where the link sits on the card, in card pixels (for the PDF's clickable area). */
+export const OVR_LINK_BOX = {
+  x: CARD_WIDTH - INSET - QR_RIGHT - QR_SIZE - QR_TEXT_W - 6,
+  y: CARD_HEIGHT - INSET - QR_BOTTOM - QR_SIZE,
+  w: QR_SIZE + QR_TEXT_W + 6,
+  h: QR_SIZE,
+}
+
+function ovrLink(rc, t) {
+  const url = methodologyUrl(rc)
+  const host = url.replace(/^https?:\/\//, '').replace(/\/how-we-score.*$/, '')
+  const small = Math.max(5.5, Math.min(8, 112 / (host.length * 0.52)))   // long hosts (e.g. staging) still fit
+  return `<a href="${esc(url)}" target="_blank" rel="noopener" data-ovr-link="1"
+    style="position:absolute;right:${QR_RIGHT}px;bottom:${QR_BOTTOM}px;display:flex;align-items:center;gap:6px;text-decoration:none;z-index:2">
+    <span style="width:${QR_TEXT_W}px;text-align:right;font-family:${TEXT};line-height:1.25">
+      <span style="display:block;font-size:10px;font-weight:700;color:${t.deep}">How is my OVR calculated?</span>
+      <span style="display:block;font-size:${small.toFixed(1)}px;color:${FAINT};white-space:nowrap">${esc(host)}</span>
+      <span style="display:block;font-size:8px;color:${FAINT};white-space:nowrap">${esc(url.replace(/^.*(\/how-we-score)/, '$1'))}</span>
+    </span>
+    <span style="display:block;border:1px solid ${RULE};border-radius:4px;overflow:hidden">${qrSvg(url, QR_SIZE - 2, '#1c1f24')}</span>
+  </a>`
+}
+
 // Custom assessments: tests chosen per session (any number of them).
 const isCustom = (rc) => /^custom/.test(rc.configVersion || '') || rc.sport === 'Custom Assessment'
 
@@ -456,15 +513,16 @@ ${look ? look.motif : `    <div style="position:absolute;left:232px;top:-120px;w
   </div>`
 
   const footer = `
-  <div style="position:absolute;left:0;right:0;bottom:0;padding:10px 26px 12px;border-top:1.5px solid ${RULE};background:#faf6ef">
+  <div style="position:absolute;left:0;right:0;bottom:0;min-height:${QR_SIZE + QR_BOTTOM + 8}px;box-sizing:border-box;padding:10px ${QR_RIGHT + QR_SIZE + QR_TEXT_W + 24}px 12px 26px;border-top:1.5px solid ${RULE};background:#faf6ef">
     ${pending && custom
       ? `<div style="font-family:${TEXT};font-size:10px;color:${TXT};margin-bottom:4px"><b>No OVR: custom session.</b> An overall rating needs at least 3 scored stats; the stats and tests shown stand on their own.${reasons ? ` · ${esc(reasons)}` : ''}</div>`
       : provisional || pending ? `<div style="font-family:${TEXT};font-size:10px;color:${TXT};margin-bottom:4px"><b>${pending ? 'OVR pending' : 'Provisional OVR'}:</b> ${esc(pending ? (rc.ovrMessage || 'complete testing') : reasons)}${pending && reasons ? ` · ${esc(reasons)}` : ''}${provisional ? ' · firms up once the remaining tests are completed.' : ''}</div>` : ''}
-    <div style="display:flex;justify-content:space-between;gap:16px;font-family:${TEXT};font-size:8.5px;color:${FAINT};line-height:1.4">
-      <span>${esc(rc.benchmarkNote || '')}</span>
-      <span style="white-space:nowrap">peakperformance.pk · ${esc(rc.batteryLabel || '')}${rc.configVersion ? ` · ${esc(rc.configVersion)}` : ''}</span>
+    <div style="font-family:${TEXT};font-size:8.5px;color:${FAINT};line-height:1.4">
+      <div>${esc(rc.benchmarkNote || '')}</div>
+      <div style="white-space:nowrap">peakperformance.pk · ${esc(rc.batteryLabel || '')}${rc.configVersion ? ` · ${esc(rc.configVersion)}` : ''}</div>
     </div>
-  </div>`
+  </div>
+  ${ovrLink(rc, t)}`
 
   return `
 <div style="width:${CARD_WIDTH}px;height:${CARD_HEIGHT}px;box-sizing:border-box;padding:20px;background:${look ? look.page : t.page};font-family:${TEXT}${look ? ';position:relative' : ''}">${look ? look.lines : ''}

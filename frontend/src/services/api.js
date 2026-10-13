@@ -2,7 +2,7 @@ import axios from 'axios'
 import html2pdf from 'html2pdf.js'
 import { jsPDF } from 'jspdf'
 import { clearAuthToken, getAuthToken } from '../utils/auth'
-import { footballCardHtml, extraPagesHtml, ensureCardFonts } from '../components/footballCard'
+import { footballCardHtml, extraPagesHtml, ensureCardFonts, methodologyUrl, OVR_LINK_BOX, CARD_WIDTH, CARD_HEIGHT } from '../components/footballCard'
 
 const api = axios.create({
   baseURL: import.meta.env.VITE_API_URL,
@@ -18,6 +18,13 @@ api.interceptors.request.use((config) => {
 })
 
 export const getReport = (reportId) => api.get(`/report/${reportId}`)
+
+// "How your OVR is calculated": public methodology, personal breakdown.
+export const getMethodology = (sport) => api.get(`/methodology/${encodeURIComponent(sport)}`)
+export const getBreakdown = (reportId) => api.get(`/report/${reportId}/breakdown`)
+export const createBreakdownLink = (reportId) => api.post(`/report/${reportId}/breakdown-link`)
+export const deleteBreakdownLink = (reportId) => api.delete(`/report/${reportId}/breakdown-link`)
+export const getSharedBreakdown = (token) => api.get(`/breakdown/${encodeURIComponent(token)}`)
 
 api.interceptors.response.use(
   res => res.data,
@@ -150,6 +157,11 @@ export const downloadReportPDF = async reportId => {
           const canvas = await pageToCanvas(elements[i])
           if (i) pdf.addPage('a4', 'portrait')
           pdf.addImage(canvas.toDataURL('image/jpeg', 0.95), 'JPEG', 0, 0, 210, 297)
+          // Card page: make "How is my OVR calculated?" (and its QR) clickable.
+          if (i === 0) {
+            const sx = 210 / CARD_WIDTH, sy = 297 / CARD_HEIGHT
+            pdf.link(OVR_LINK_BOX.x * sx, OVR_LINK_BOX.y * sy, OVR_LINK_BOX.w * sx, OVR_LINK_BOX.h * sy, { url: methodologyUrl(rc) })
+          }
         }
         pdf.save(cardFile)
       } finally {

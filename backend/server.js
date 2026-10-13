@@ -99,6 +99,12 @@ app.post('/api/report/generate-content',
   upload.array('files', 10),
   reportController.generateReportContent);
 
+// Public: "How we score" pages and private breakdown links (no login).
+const methodologyController = require('./controllers/methodology.controller');
+app.get('/api/methodology', methodologyController.listSports);
+app.get('/api/methodology/:sport', methodologyController.getMethodology);
+app.get('/api/breakdown/:token', methodologyController.getSharedBreakdown);
+
 app.use('/api', protect);
 app.use('/api/report', reportRoutes);
 app.use('/api/exercises', exerciseRoutes);

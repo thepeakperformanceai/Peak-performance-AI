@@ -11,6 +11,18 @@ import SignupPage from './pages/SignupPage'
 import ForgotPasswordPage from './pages/ForgotPasswordPage'
 import ResetPasswordPage from './pages/ResetPasswordPage'
 import { useAuth } from './context/AuthContext'
+import HowWeScorePage from './pages/HowWeScorePage'
+import SharedBreakdownPage from './pages/SharedBreakdownPage'
+
+// Public pages (no login): /how-we-score/<sport> and /breakdown/<private token>.
+const publicPage = () => {
+  const path = window.location.pathname
+  const how = /^\/how-we-score\/?([a-z]*)\/?$/.exec(path)
+  if (how) return { kind: 'how', sport: how[1] || 'football' }
+  const share = /^\/breakdown\/([A-Za-z0-9_-]+)\/?$/.exec(path)
+  if (share) return { kind: 'share', token: share[1] }
+  return null
+}
 
 const PAGE_TITLES = {
   upload: 'New report',
@@ -23,6 +35,13 @@ const PAGE_TITLES = {
 const getResetTokenFromUrl = () => new URLSearchParams(window.location.search).get('token')
 
 export default function App() {
+  const pub = publicPage()
+  if (pub?.kind === 'how') return <HowWeScorePage sport={pub.sport} />
+  if (pub?.kind === 'share') return <SharedBreakdownPage token={pub.token} />
+  return <SignedInApp />
+}
+
+function SignedInApp() {
   const { user, loading, logout } = useAuth()
 
   const [activePage, setActivePage] = useState('upload')

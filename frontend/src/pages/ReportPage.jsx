@@ -2,7 +2,9 @@ import { useState } from 'react'
 import { useReportStore } from '../store/reportStore'
 import toast from 'react-hot-toast'
 import { downloadReportPDF } from '../services/api'
-import { footballCardHtml, extraPagesHtml, CARD_WIDTH } from '../components/footballCard'
+import { footballCardHtml, extraPagesHtml, CARD_WIDTH, sportKeyOf } from '../components/footballCard'
+import ScoreBreakdown from '../components/ScoreBreakdown'
+import { getBreakdown, createBreakdownLink, deleteBreakdownLink } from '../services/api'
 
 /* Athlete Test Battery Report — 4-page dark card (matches dashboard) */
 const ORANGE = '#ff4b12', INK = '#f2f4f7', MUTED = '#9aa7b4', FAINT = '#5b6b7c'
@@ -98,6 +100,63 @@ function EmptyState() {
   )
 }
 
+// "How this OVR was calculated" under the card (logged-in users), with a
+// private link that can be shared (and turned off).
+function BreakdownSection({ report }) {
+  const [data, setData] = useState(null)
+  const [open, setOpen] = useState(false)
+  const [error, setError] = useState('')
+  const [token, setToken] = useState(null)
+  const [busy, setBusy] = useState(false)
+
+  const load = async () => {
+    setOpen(o => !o)
+    if (data || !report._id) return
+    try {
+      const r = await getBreakdown(report._id)
+      setData(r.breakdown)
+      setToken(r.shareToken)
+    } catch (e) { setError(e.message) }
+  }
+  const shareUrl = token ? `${window.location.origin}/breakdown/${token}` : ''
+  const makeLink = async () => {
+    setBusy(true)
+    try {
+      const r = await createBreakdownLink(report._id)
+      setToken(r.token)
+      const url = `${window.location.origin}/breakdown/${r.token}`
+      try { await navigator.clipboard.writeText(url); toast.success('Private link copied') } catch { toast.success('Private link created') }
+    } catch (e) { toast.error(e.message) } finally { setBusy(false) }
+  }
+  const removeLink = async () => {
+    setBusy(true)
+    try { await deleteBreakdownLink(report._id); setToken(null); toast.success('Link turned off') }
+    catch (e) { toast.error(e.message) } finally { setBusy(false) }
+  }
+
+  const methodologyHref = `/how-we-score/${sportKeyOf(report.reportContent || {})}`
+  return (
+    <div style={{ marginTop: 24 }} className="rounded-2xl bg-gray-50 border border-gray-200 p-4">
+      <div className="flex flex-wrap items-center gap-2">
+        <button type="button" className="btn text-sm" onClick={load}>{open ? '▾' : '▸'} How this OVR was calculated</button>
+        <a className="text-sm text-blue-700 underline" href={methodologyHref} target="_blank" rel="noopener noreferrer">How we score (public page)</a>
+        {open && data && (
+          token
+            ? <span className="flex flex-wrap items-center gap-2 text-xs text-gray-600">
+                Private link: <input readOnly className="inp text-xs w-72" value={shareUrl} onFocus={e => e.target.select()} />
+                <button type="button" className="btn text-xs" disabled={busy} onClick={() => navigator.clipboard?.writeText(shareUrl).then(() => toast.success('Copied'))}>Copy</button>
+                <button type="button" className="text-xs text-gray-500 underline" disabled={busy} onClick={removeLink}>Turn off link</button>
+              </span>
+            : <button type="button" className="btn text-xs" disabled={busy} onClick={makeLink}>Create private link for the athlete / parent</button>
+        )}
+      </div>
+      {open && error && <p className="text-sm text-red-600 mt-2">{error}</p>}
+      {open && !data && !error && <p className="text-sm text-gray-500 mt-2">Loading…</p>}
+      {open && data && <div className="mt-3"><ScoreBreakdown b={data} methodologyHref={methodologyHref} /></div>}
+    </div>
+  )
+}
+
 export default function ReportPage() {
   const report = useReportStore(s => s.report)
   const [downloading, setDownloading] = useState(false)
@@ -140,6 +199,7 @@ export default function ReportPage() {
               dangerouslySetInnerHTML={{ __html: html }} />
           ))}
         </div>
+        <BreakdownSection report={report} />
       </div>
     )
   }

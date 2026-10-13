@@ -1,0 +1,37 @@
+{
+  "_comment": "Words only for the public 'How we score' pages: no scores, weights, anchors or thresholds. Every one of those comes from the config files the engine uses (football_v1.json, padel_v1.json, cricket_v1.json, card_tiers.json). Padel and cricket notes and sources come from their configs; football's config must stay identical to the Python engine's, so its notes live here.",
+  "football": {
+    "notes": "Interim: the manual-test norms are approximate, research-based and for adult men. They will be replaced with sourced or local data. VALD tests use VALD's own age-and-sex bands.",
+    "sources": {
+      "ruler_drop": "Davis (2000) rating bands for the ruler drop test (16-19 years, general population)."
+    }
+  },
+  "tests": {
+    "sprint_10m": "How quickly the athlete gets going: a 10 metre dash from a standing start.",
+    "sprint_20m": "Acceleration over 20 metres from a standing start.",
+    "sprint_30m": "Acceleration and top speed over 30 metres.",
+    "ruler_drop": "Reaction time: how far a dropped ruler falls before the athlete catches it.",
+    "beep_test": "Aerobic fitness: shuttle runs between two lines that get faster each level.",
+    "yoyo_ir1": "Repeated high-intensity running with short recoveries, the way matches feel.",
+    "cod_505": "Turning speed: sprint in, turn 180 degrees, sprint 5 metres out, timed through the turn.",
+    "medicine_ball": "Upper-body power: a seated two-handed chest throw with a 4 kg ball.",
+    "single_leg_stand": "Balance: how long the athlete can stand on each leg with eyes closed (HumanTrak).",
+    "trunk_rotation": "Mobility: how far the upper body turns to each side (HumanTrak).",
+    "overhead_squat": "Movement quality: a full squat with arms overhead, scored by HumanTrak.",
+    "hip_extension": "Strength of the muscles that drive the hip back (glutes and hamstrings), each side (Dynamo).",
+    "knee_extension": "Strength of the thigh muscles that straighten the knee (quads), each side (Dynamo).",
+    "shoulder_er": "Strength rotating the shoulder outwards, each side (Dynamo).",
+    "shoulder_ir": "Strength rotating the shoulder inwards, each side (Dynamo).",
+    "elbow_extension": "Strength straightening the elbow (triceps), each side (Dynamo).",
+    "hip_abduction": "Strength pushing the leg out to the side, each side (Dynamo).",
+    "hip_adduction": "Strength pulling the leg in (groin muscles), each side (Dynamo)."
+  },
+  "stats": {
+    "speed": "How fast the athlete accelerates and runs.",
+    "power": "How much force the athlete's muscles produce.",
+    "agility": "How quickly the athlete changes direction.",
+    "endurance": "How long the athlete keeps working hard.",
+    "balance": "How steady the athlete is on one leg.",
+    "reaction": "How quickly the athlete responds."
+  }
+}

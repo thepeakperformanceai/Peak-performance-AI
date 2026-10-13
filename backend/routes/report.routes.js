@@ -31,6 +31,12 @@ router.post('/extract', upload.array('files', 10), reportController.extractProfi
 // POST regenerate existing report
 router.post('/:id/regenerate', reportController.regenerateReport);
 
+// GET how this report's OVR was calculated; POST/DELETE its private link
+const methodologyController = require('../controllers/methodology.controller');
+router.get('/:id/breakdown', methodologyController.getBreakdown);
+router.post('/:id/breakdown-link', methodologyController.createLink);
+router.delete('/:id/breakdown-link', methodologyController.deleteLink);
+
 // GET report by ID
 router.get('/:id', reportController.getReport);
 

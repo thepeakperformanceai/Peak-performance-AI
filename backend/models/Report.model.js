@@ -120,6 +120,12 @@ const reportSchema = new mongoose.Schema({
     type: mongoose.Schema.Types.Mixed,
     default: undefined
   },
+  // Private link to this report's score breakdown (random, 192 bits). Unset = no link.
+  breakdownToken: {
+    type: String,
+    default: undefined,
+    index: { unique: true, sparse: true }
+  },
   scoringTestInfo: {
     type: mongoose.Schema.Types.Mixed,
     default: undefined
