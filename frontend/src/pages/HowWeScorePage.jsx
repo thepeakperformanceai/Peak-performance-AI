@@ -66,6 +66,33 @@ function TestCard({ t, ovr }) {
   )
 }
 
+const BASIS = {
+  study: { pill: 'Published study', tone: 'blue' },
+  vald: { pill: 'VALD norms', tone: 'blue' },
+  interim: { pill: 'Interim', tone: 'amber' },
+  pending: { pill: 'No benchmark yet', tone: 'gray' },
+}
+
+function BenchmarkSources({ list }) {
+  return (
+    <ul className="text-sm text-gray-700 divide-y divide-gray-100">
+      {list.map(b => (
+        <li key={b.key} className="py-2 first:pt-0 last:pb-0">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="font-medium text-gray-900">{b.label}</span>
+            <Pill tone={BASIS[b.basis].tone}>{BASIS[b.basis].pill}</Pill>
+          </div>
+          <p className="text-xs text-gray-500 mt-0.5">
+            {b.basis === 'interim' ? 'Interim: approximate, research-based norms; no study cited yet. Will be replaced with a cited or local benchmark.'
+              : b.basis === 'pending' ? 'Recorded on the card but not scored until there is an agreed benchmark.'
+              : b.source}
+          </p>
+        </li>
+      ))}
+    </ul>
+  )
+}
+
 function WorkedExample({ w }) {
   const scoredStats = w.stats.filter(s => s.value !== null)
   return (
@@ -145,11 +172,19 @@ export default function HowWeScorePage({ sport }) {
                 <li><b>Tests are combined into six stats</b>: Speed, Power, Agility, Endurance, Balance and Reaction.</li>
                 <li><b>The stats are combined into the OVR</b>, the big number on the card. A missing test is never guessed: it shows as “Not tested”.</li>
               </ol>
+              <p className="text-sm text-gray-700">Our benchmarks come from published international sports-science research and VALD’s global athlete database, matched by age and sex where available. As we test more athletes in Pakistan, we’ll add local benchmarks too.</p>
               {m.interim && (
                 <p className="text-sm rounded-lg bg-amber-50 border border-amber-200 text-amber-900 p-3"><b>Interim norms.</b> {m.notes.replace(/^interim[.:]?\s*/i, '')}</p>
               )}
               {!m.interim && m.notes && <p className="text-sm text-gray-600">{m.notes}</p>}
               <p className="text-[11px] text-gray-400">Method version {m.configVersion}. Every number on this page is read from the files our scoring engine uses.</p>
+            </Section>
+
+            <h2 className="pt-2 text-xs font-semibold uppercase tracking-wide text-gray-500">More detail</h2>
+
+            <Section title="Where each benchmark comes from">
+              <p className="text-sm text-gray-700">Every test is compared with a named benchmark. Where we haven’t yet tied a benchmark to a published study, we label it <b>interim</b> rather than claim one.</p>
+              <BenchmarkSources list={m.benchmarkSources} />
             </Section>
 
             {m.tests && (

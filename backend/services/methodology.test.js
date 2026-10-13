@@ -174,3 +174,22 @@ test('report breakdown: from the stored engine output; old AI reports have none'
 test('unknown sport is a 404', () => {
   assert.throws(() => methodology('golf'), (e) => e.statusCode === 404);
 });
+
+test('benchmark sources: a study is named only when the config cites one; otherwise interim', () => {
+  for (const sport of [...SPORTS, 'custom']) {
+    const m = methodology(sport);
+    assert.ok(m.benchmarkSources.length, sport);
+    for (const b of m.benchmarkSources) {
+      assert.ok(['study', 'vald', 'interim', 'pending'].includes(b.basis), `${sport} ${b.key}`);
+      if (b.basis === 'study') assert.ok(b.source, `${sport} ${b.key}`);
+      if (b.basis === 'interim' || b.basis === 'pending') assert.equal(b.source, null, `${sport} ${b.key}`);
+    }
+    if (m.tests) {
+      for (const t of m.tests) {
+        const b = m.benchmarkSources.find(x => x.key === t.key);
+        const expected = t.benchmark.type === 'vald_age_sex' ? 'vald' : t.benchmark.type === 'pending' ? 'pending' : t.benchmark.source ? 'study' : 'interim';
+        assert.equal(b.basis, expected, `${sport} ${t.key}`);
+      }
+    }
+  }
+});

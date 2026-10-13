@@ -80,6 +80,18 @@ const describeTest = (key, tdef, cfg, { sport, testInfo = {}, benchmarkFrom = nu
   return out;
 };
 
+/**
+ * Where each benchmark comes from, one line per test: a cited study, VALD's
+ * norms, "interim" when no study is cited yet, or none (recorded only). A
+ * test is only ever shown as study-backed when its config cites a source.
+ */
+const benchmarkSource = ({ key, label, kind, pending, source }) => {
+  if (kind === 'vald') return { key, label, basis: 'vald', source: "VALD norms (VALD's global athlete database, same age and sex)" };
+  if (pending) return { key, label, basis: 'pending', source: null };
+  if (source) return { key, label, basis: 'study', source };
+  return { key, label, basis: 'interim', source: null };
+};
+
 const valdBands = (cfg) => cfg.vald_band_labels.map((label, i) => ({
   key: label,
   label: BAND_TEXT[label] || label,
@@ -300,6 +312,10 @@ const sportMethodology = (sport) => {
     sport, name: SPORTS[sport], configVersion: cfg.config_version,
     interim: isInterim(sport, cfg), notes: notesFor(sport, cfg),
     tests, stats,
+    benchmarkSources: tests.map(t => benchmarkSource({
+      key: t.key, label: t.label, kind: t.benchmark.type === 'vald_age_sex' ? 'vald' : 'manual',
+      pending: t.benchmark.type === 'pending', source: t.benchmark.source
+    })),
     flagOnlyTests: tests.filter(t => !t.feedsOvr).map(t => t.key),
     valdBands: valdBands(cfg),
     ovr: ovrRules(cfg),
@@ -321,19 +337,23 @@ const customMethodology = () => {
   });
   const cfg = example.cfg;
   const labelOf = (k) => info(k).label;
+  const manualTests = lib.map(t => {
+    const from = loadConfig(t.benchmarkFrom);
+    return {
+      key: t.key, label: t.label, unit: t.unit, what: TEXT.tests[t.key] || null, stat: t.stat,
+      normsFrom: SPORTS[t.benchmarkFrom], pending: t.benchmarkPending,
+      interim: isInterim(t.benchmarkFrom, from), source: sourceFor(t.benchmarkFrom, from, t.key),
+      handTimingAddSeconds: t.key.startsWith('sprint_') ? cfg.hand_timing_offset_s : null
+    };
+  });
   return {
     sport: 'custom', name: SPORTS.custom, configVersion: cfg.config_version,
     interim: true,
     notes: 'A custom assessment uses the tests chosen for that session. Manual tests use the same research norms as our sport batteries (interim where those are interim); VALD tests use VALD\'s age-and-sex bands.',
-    manualTests: lib.map(t => {
-      const from = loadConfig(t.benchmarkFrom);
-      return {
-        key: t.key, label: t.label, unit: t.unit, what: TEXT.tests[t.key] || null, stat: t.stat,
-        normsFrom: SPORTS[t.benchmarkFrom], pending: t.benchmarkPending,
-        interim: isInterim(t.benchmarkFrom, from), source: sourceFor(t.benchmarkFrom, from, t.key),
-        handTimingAddSeconds: t.key.startsWith('sprint_') ? cfg.hand_timing_offset_s : null
-      };
-    }),
+    manualTests,
+    benchmarkSources: manualTests
+      .map(t => benchmarkSource({ key: t.key, label: `${t.label} (${t.normsFrom} norms)`, kind: 'manual', pending: t.pending, source: t.source }))
+      .concat([benchmarkSource({ key: 'vald', label: 'VALD tests (Dynamo, HumanTrak)', kind: 'vald' })]),
     statRule: 'VALD tests count towards the stat chosen for them in our VALD test mapping (standard battery tests keep their usual stat, for example Knee Extension counts towards Power). VALD tests with no stat are shown on the report but not scored. Inside a stat, every test counts equally.',
     statWeights: STAT_ORDER.map(s => ({ key: s, label: STAT_LABELS[s], description: TEXT.stats[s], ovrWeight: cfg.stat_weights[s] })),
     valdBands: valdBands(cfg),
