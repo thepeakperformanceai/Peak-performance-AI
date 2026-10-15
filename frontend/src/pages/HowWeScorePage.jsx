@@ -41,6 +41,32 @@ function Anchors({ b, unit }) {
   )
 }
 
+// A full reference: authors (year). Title. Journal, volume(issue), pages. Link.
+// Every field comes from the "references" block of the sport's config.
+function Reference({ r }) {
+  if (!r) return null
+  const where = `${r.volume ? `, ${r.volume}${r.issue ? `(${r.issue})` : ''}` : ''}${r.pages ? `, ${String(r.pages).replace('-', '–')}` : ''}`
+  return (
+    <span>
+      {r.authors} ({r.year}). {r.title}. <i>{r.journal}</i>{where}.
+      {r.doi && <> doi:{r.doi}.</>}
+      {r.url && <> <a className="text-blue-700 underline break-all" href={r.url} target="_blank" rel="noopener noreferrer">Link</a></>}
+      {r.note && <span className="block text-gray-500">{r.note}</span>}
+    </span>
+  )
+}
+
+function Citation({ c, handTiming }) {
+  if (!c) return null
+  return (
+    <div className="text-[11px] text-gray-500 mt-1 space-y-0.5">
+      <p>Benchmark: {c.reference ? <Reference r={c.reference} /> : c.label}</p>
+      {c.testReference && <p>Test protocol and reference values: <Reference r={c.testReference} /></p>}
+      {handTiming && <p>Hand-timing correction: <Reference r={handTiming} /></p>}
+    </div>
+  )
+}
+
 function TestCard({ t, ovr }) {
   return (
     <div className="border-t border-gray-100 pt-3 first:border-t-0 first:pt-0">
@@ -58,7 +84,7 @@ function TestCard({ t, ovr }) {
         {t.plausible && ` Results outside ${t.plausible[0]}–${t.plausible[1]} ${t.unit} are treated as a mistake ("invalid") and not scored.`}
       </p>
       {t.benchmark.type === 'research' && <Anchors b={t.benchmark} unit={t.unit} />}
-      {t.benchmark.source && <p className="text-[11px] text-gray-500 mt-1">Source: {t.benchmark.source}</p>}
+      <Citation c={t.benchmark.citation} handTiming={t.handTimingReference} />
       {t.benchmark.type === 'research' && (
         <p className="text-[11px] text-gray-500">Scores never go below {ovr.scoreFloor} or above {ovr.scoreCap}.</p>
       )}
@@ -82,11 +108,8 @@ function BenchmarkSources({ list }) {
             <span className="font-medium text-gray-900">{b.label}</span>
             <Pill tone={BASIS[b.basis].tone}>{BASIS[b.basis].pill}</Pill>
           </div>
-          <p className="text-xs text-gray-500 mt-0.5">
-            {b.basis === 'interim' ? 'Interim: approximate, research-based norms; no study cited yet. Will be replaced with a cited or local benchmark.'
-              : b.basis === 'pending' ? 'Recorded on the card but not scored until there is an agreed benchmark.'
-              : b.source}
-          </p>
+          <p className="text-xs text-gray-500 mt-0.5">{b.reference ? <Reference r={b.reference} /> : b.citation}</p>
+          {b.testReference && <p className="text-xs text-gray-500 mt-0.5">Test protocol and reference values: <Reference r={b.testReference} /></p>}
         </li>
       ))}
     </ul>
@@ -183,8 +206,21 @@ export default function HowWeScorePage({ sport }) {
             <h2 className="pt-2 text-xs font-semibold uppercase tracking-wide text-gray-500">More detail</h2>
 
             <Section title="Where each benchmark comes from">
-              <p className="text-sm text-gray-700">Every test is compared with a named benchmark. Where we haven’t yet tied a benchmark to a published study, we label it <b>interim</b> rather than claim one.</p>
+              <p className="text-sm text-gray-700">Every test is compared with a named benchmark. Where a published study backs it, we give the full reference. Where we haven’t yet tied a benchmark to a study, we label it interim rather than claim one.</p>
               <BenchmarkSources list={m.benchmarkSources} />
+              {m.otherReferences?.length > 0 && (
+                <>
+                  <h3 className="text-sm font-semibold text-gray-900 pt-2">Other rules backed by research</h3>
+                  <ul className="text-sm text-gray-700 divide-y divide-gray-100">
+                    {m.otherReferences.map(o => (
+                      <li key={o.key} className="py-2 first:pt-0 last:pb-0">
+                        <span className="font-medium text-gray-900">{o.label}</span>
+                        <p className="text-xs text-gray-500 mt-0.5"><Reference r={o.reference} /></p>
+                      </li>
+                    ))}
+                  </ul>
+                </>
+              )}
             </Section>
 
             {m.tests && (
@@ -204,8 +240,8 @@ export default function HowWeScorePage({ sport }) {
                       <div className="text-xs text-gray-500">
                         {t.pending ? 'Recorded but not scored yet: no agreed norms.' : `Counts towards ${t.stat}. Norms: the chosen sport's, or ${t.normsFrom}'s if that sport doesn't use this test.`}
                         {t.handTimingAddSeconds != null && ` Hand-timed: +${t.handTimingAddSeconds} s.`}
-                        {t.source && ` Source: ${t.source}`}
                       </div>
+                      <Citation c={t.citation} />
                     </li>
                   ))}
                 </ul>
@@ -253,7 +289,9 @@ export default function HowWeScorePage({ sport }) {
 
             <Section title="Flags: areas to work on">
               <p className="text-sm text-gray-700">Flags point to things worth training. They are never a diagnosis or an injury prediction.</p>
-              <ul className="text-sm text-gray-700 list-disc pl-5 space-y-1">{m.flags.map((f, i) => <li key={i}>{f.text}</li>)}</ul>
+              <ul className="text-sm text-gray-700 list-disc pl-5 space-y-1">{m.flags.map((f, i) => (
+                <li key={i}>{f.text}{f.reference && <span className="block text-[11px] text-gray-500">Research: <Reference r={f.reference} /></span>}</li>
+              ))}</ul>
             </Section>
 
             <Section title="What the labels mean">

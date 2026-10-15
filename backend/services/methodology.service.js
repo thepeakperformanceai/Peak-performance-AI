@@ -29,11 +29,45 @@ const pct = (part, whole) => (whole ? pyRound(part / whole * 100, 1) : 0);
 const r1 = (x) => pyRound(x, 1);
 const info = (key, extra = {}) => extra[key] || ALL_TEST_INFO[key] || MANUAL_TESTS[key] || { label: key, unit: '' };
 
-// Plain-language notes and per-test sources: padel / cricket from their
-// configs; football from methodology_text.json (its config mirrors Python's).
+// Plain-language notes: padel / cricket from their configs; football from
+// methodology_text.json (its config mirrors the Python engine's).
 const notesFor = (sport, cfg) => (sport === 'football' ? TEXT.football.notes : cfg.notes || '');
-const sourceFor = (sport, cfg, key) => (sport === 'football' ? TEXT.football.sources[key] : cfg.sources?.[key]) || null;
 const isInterim = (sport, cfg) => /^interim/i.test(notesFor(sport, cfg));
+
+// ---------- citations (stored in each sport config, next to the numbers) ----------
+// A test's "citation" in the config is "interim", "pending", "vald_norms",
+// {"basis": "vald_norms", "test_reference": "<id>"} or
+// {"basis": "study", "reference": "<id>"}; references live in the config's
+// "references" block. Anything missing or unknown is shown as interim (manual
+// tests) or VALD norms (VALD tests): a study is never named unless the config
+// cites it.
+const INTERIM_LABEL = 'Interim benchmark – citation being finalised';
+const VALD_LABEL = 'VALD normative data, matched by age and sex';
+const PENDING_LABEL = 'No agreed benchmark yet – recorded, not scored';
+
+const formatReference = (r) =>
+  `${r.authors} (${r.year}). ${r.title}. ${r.journal}` +
+  `${r.volume ? `, ${r.volume}${r.issue ? `(${r.issue})` : ''}` : ''}${r.pages ? `, ${String(r.pages).replace('-', '–')}` : ''}.`;
+
+const referenceOf = (cfg, id) => {
+  const r = id && cfg.references && cfg.references[id];
+  return r ? { id, ...r, text: formatReference(r) } : null;
+};
+
+const citationOf = (cfg, tdef) => {
+  const c = tdef.citation;
+  const basis = typeof c === 'string' ? c : c && c.basis;
+  if (tdef.source !== 'manual') {
+    const testReference = referenceOf(cfg, c && c.test_reference);
+    return { basis: 'vald', label: VALD_LABEL, ...(testReference ? { testReference } : {}) };
+  }
+  if (tdef.benchmark_pending || basis === 'pending') return { basis: 'pending', label: PENDING_LABEL };
+  if (basis === 'study') {
+    const reference = referenceOf(cfg, c.reference);
+    if (reference) return { basis: 'study', label: reference.text, reference };
+  }
+  return { basis: 'interim', label: INTERIM_LABEL };
+};
 
 // ---------- pieces shared by every sport ----------
 
@@ -70,26 +104,41 @@ const describeTest = (key, tdef, cfg, { sport, testInfo = {}, benchmarkFrom = nu
         ...(key === 'yoyo_ir1' ? { anchorUnit: 'm' } : key === 'beep_test' ? { anchorUnit: 'level' } : {})
       };
     }
+    // Norms (and their citation) come from the sport whose anchors are used.
+    const srcCfg = benchmarkFrom ? loadConfig(benchmarkFrom) : cfg;
     out.benchmark.from = benchmarkFrom || sport;
-    out.benchmark.source = sourceFor(benchmarkFrom || sport, benchmarkFrom ? loadConfig(benchmarkFrom) : cfg, key);
-    out.benchmark.interim = isInterim(benchmarkFrom || sport, benchmarkFrom ? loadConfig(benchmarkFrom) : cfg);
-    if (key.startsWith('sprint_')) out.handTimingAddSeconds = cfg.hand_timing_offset_s;
+    out.benchmark.citation = citationOf(srcCfg, benchmarkFrom ? srcCfg.tests[key] : tdef);
+    out.benchmark.interim = out.benchmark.citation.basis === 'interim';
+    if (key.startsWith('sprint_')) {
+      out.handTimingAddSeconds = cfg.hand_timing_offset_s;
+      out.handTimingReference = referenceOf(cfg, cfg.hand_timing_citation);
+    }
   } else {
-    out.benchmark = { type: 'vald_age_sex', text: "Compared with VALD's own bands for athletes of the same age and sex.", interim: false };
+    out.benchmark = { type: 'vald_age_sex', text: "Compared with VALD's own bands for athletes of the same age and sex.", interim: false, citation: citationOf(cfg, tdef) };
   }
   return out;
 };
 
 /**
- * Where each benchmark comes from, one line per test: a cited study, VALD's
- * norms, "interim" when no study is cited yet, or none (recorded only). A
- * test is only ever shown as study-backed when its config cites a source.
+ * Where each benchmark comes from, one line per test, straight from the
+ * config's citation: a cited study, VALD's norms (plus the test's reference
+ * study where the config gives one), interim, or pending (recorded only).
  */
-const benchmarkSource = ({ key, label, kind, pending, source }) => {
-  if (kind === 'vald') return { key, label, basis: 'vald', source: "VALD norms (VALD's global athlete database, same age and sex)" };
-  if (pending) return { key, label, basis: 'pending', source: null };
-  if (source) return { key, label, basis: 'study', source };
-  return { key, label, basis: 'interim', source: null };
+const benchmarkSource = ({ key, label, citation }) => ({
+  key, label,
+  basis: citation.basis,
+  citation: citation.label,
+  reference: citation.reference || null,
+  testReference: citation.testReference || null
+});
+
+// Other cited parts of the method: the hand-timing correction and flag rules.
+const otherReferences = (cfg, { hasSprint, flags }) => {
+  const out = [];
+  const hand = referenceOf(cfg, cfg.hand_timing_citation);
+  if (hasSprint && hand) out.push({ key: 'hand_timing', label: `Hand-timed sprint correction (+${cfg.hand_timing_offset_s} s)`, reference: hand });
+  for (const f of flags) if (f.reference) out.push({ key: `flag_${f.type}`, label: f.text, reference: f.reference });
+  return out;
 };
 
 const valdBands = (cfg) => cfg.vald_band_labels.map((label, i) => ({
@@ -123,7 +172,8 @@ const flagRules = (cfg, labelOf) => {
     rules.push({ type: cfg.arm_ratio.type, level: 'amber', text: `Shoulder balance: amber if ${labelOf(cfg.arm_ratio.numerator)} on the ${cfg.sport === 'custom' ? 'dominant' : 'bowling'} arm is below ${pyRound(cfg.arm_ratio.amber_below * 100)}% of ${labelOf(cfg.arm_ratio.denominator)}.`, amberBelowPct: pyRound(cfg.arm_ratio.amber_below * 100) });
   }
   if (cfg.groin_ratio && (has(cfg.groin_ratio.numerator) && has(cfg.groin_ratio.denominator) || cfg.sport === 'custom')) {
-    rules.push({ type: 'groin_risk', level: 'amber', text: `Groin balance: amber if ${labelOf(cfg.groin_ratio.numerator)} is below ${pyRound(cfg.groin_ratio.amber_below * 100)}% of ${labelOf(cfg.groin_ratio.denominator)}.`, amberBelowPct: pyRound(cfg.groin_ratio.amber_below * 100) });
+    const reference = referenceOf(cfg, cfg.groin_ratio.citation);
+    rules.push({ type: 'groin_risk', level: 'amber', text: `Groin balance: amber if ${labelOf(cfg.groin_ratio.numerator)} is below ${pyRound(cfg.groin_ratio.amber_below * 100)}% of ${labelOf(cfg.groin_ratio.denominator)}.`, amberBelowPct: pyRound(cfg.groin_ratio.amber_below * 100), ...(reference ? { reference } : {}) });
   }
   return rules;
 };
@@ -312,10 +362,8 @@ const sportMethodology = (sport) => {
     sport, name: SPORTS[sport], configVersion: cfg.config_version,
     interim: isInterim(sport, cfg), notes: notesFor(sport, cfg),
     tests, stats,
-    benchmarkSources: tests.map(t => benchmarkSource({
-      key: t.key, label: t.label, kind: t.benchmark.type === 'vald_age_sex' ? 'vald' : 'manual',
-      pending: t.benchmark.type === 'pending', source: t.benchmark.source
-    })),
+    benchmarkSources: tests.map(t => benchmarkSource({ key: t.key, label: t.label, citation: t.benchmark.citation })),
+    otherReferences: otherReferences(cfg, { hasSprint: tests.some(t => t.key.startsWith('sprint_')), flags: flagRules(cfg, labelOf) }),
     flagOnlyTests: tests.filter(t => !t.feedsOvr).map(t => t.key),
     valdBands: valdBands(cfg),
     ovr: ovrRules(cfg),
@@ -339,10 +387,11 @@ const customMethodology = () => {
   const labelOf = (k) => info(k).label;
   const manualTests = lib.map(t => {
     const from = loadConfig(t.benchmarkFrom);
+    const citation = citationOf(from, from.tests[t.key]);
     return {
       key: t.key, label: t.label, unit: t.unit, what: TEXT.tests[t.key] || null, stat: t.stat,
       normsFrom: SPORTS[t.benchmarkFrom], pending: t.benchmarkPending,
-      interim: isInterim(t.benchmarkFrom, from), source: sourceFor(t.benchmarkFrom, from, t.key),
+      interim: citation.basis === 'interim', citation,
       handTimingAddSeconds: t.key.startsWith('sprint_') ? cfg.hand_timing_offset_s : null
     };
   });
@@ -352,8 +401,9 @@ const customMethodology = () => {
     notes: 'A custom assessment uses the tests chosen for that session. Manual tests use the same research norms as our sport batteries (interim where those are interim); VALD tests use VALD\'s age-and-sex bands.',
     manualTests,
     benchmarkSources: manualTests
-      .map(t => benchmarkSource({ key: t.key, label: `${t.label} (${t.normsFrom} norms)`, kind: 'manual', pending: t.pending, source: t.source }))
-      .concat([benchmarkSource({ key: 'vald', label: 'VALD tests (Dynamo, HumanTrak)', kind: 'vald' })]),
+      .map(t => benchmarkSource({ key: t.key, label: `${t.label} (${t.normsFrom} norms)`, citation: t.citation }))
+      .concat([benchmarkSource({ key: 'vald', label: 'VALD tests (Dynamo, HumanTrak)', citation: citationOf(cfg, { source: 'vald' }) })]),
+    otherReferences: otherReferences(cfg, { hasSprint: true, flags: flagRules(cfg, labelOf) }),
     statRule: 'VALD tests count towards the stat chosen for them in our VALD test mapping (standard battery tests keep their usual stat, for example Knee Extension counts towards Power). VALD tests with no stat are shown on the report but not scored. Inside a stat, every test counts equally.',
     statWeights: STAT_ORDER.map(s => ({ key: s, label: STAT_LABELS[s], description: TEXT.stats[s], ovrWeight: cfg.stat_weights[s] })),
     valdBands: valdBands(cfg),
@@ -402,4 +452,4 @@ const reportBreakdown = (report) => {
   };
 };
 
-module.exports = { methodology, reportBreakdown, explain, workedExample, SPORTS, BAND_TEXT };
+module.exports = { methodology, reportBreakdown, explain, workedExample, citationOf, formatReference, SPORTS, BAND_TEXT, INTERIM_LABEL, VALD_LABEL };

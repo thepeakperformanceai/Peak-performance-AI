@@ -144,7 +144,8 @@ const buildCustomConfig = ({ testsIn = [], benchmarkSport = 'football', mappings
       const src = all[from].tests[key];
       tests[key] = {
         source: 'manual', bilateral: false, stat: src.stat, stat_weight: 1.0, plausible: src.plausible,
-        ...(src.benchmark_pending ? { benchmark_pending: true } : {}), benchmark_from: from
+        ...(src.benchmark_pending ? { benchmark_pending: true } : {}), benchmark_from: from,
+        ...(src.citation ? { citation: src.citation } : {})
       };
       if (all[from].manual_anchors[key]) anchors[key] = all[from].manual_anchors[key];
       testInfo[key] = { label: MANUAL_TESTS[key].label, unit: MANUAL_TESTS[key].unit };
@@ -185,6 +186,9 @@ const buildCustomConfig = ({ testsIn = [], benchmarkSport = 'football', mappings
     sport: 'custom',
     benchmark_sport: benchmarkSport,
     hand_timing_offset_s: base.hand_timing_offset_s,
+    hand_timing_citation: base.hand_timing_citation,
+    // Citations shown on the methodology page (never used in scoring).
+    references: Object.assign({}, ...SPORTS.map(sp => all[sp].references || {})),
     score_floor: base.score_floor,
     score_cap: base.score_cap,
     manual_anchors: anchors,

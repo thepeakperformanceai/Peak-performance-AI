@@ -3,6 +3,7 @@
   "sport": "padel",
   "notes": "Interim. Manual-test anchors are approximate, adult male, research-based; replace with sourced or local data. VALD tests use VALD's age-and-sex bands.",
   "hand_timing_offset_s": 0.22,
+  "hand_timing_citation": "mann2015",
   "score_floor": 25,
   "score_cap": 99,
 
@@ -22,16 +23,22 @@
     "19": 15, "20": 16, "21": 16
   },
 
+  "references": {
+    "springer2007": {"authors": "Springer BA, Marin R, Cyhan T, Roberts H, Gill NW", "year": 2007, "title": "Normative values for the unipedal stance test with eyes open and closed", "journal": "Journal of Geriatric Physical Therapy", "volume": "30", "issue": "1", "pages": "8-15", "url": "https://geriatrictoolkit.missouri.edu/balance/Normative_Values_for_the_Unipedal_Stance_Test_Springer-JGPT.pdf"},
+    "mann2015": {"authors": "Mann JB, Ivey PJ, Brechue WF, Mayhew JL", "year": 2015, "title": "Validity and reliability of hand and electronic timing for 40-yd sprint in college football players", "journal": "Journal of Strength and Conditioning Research", "volume": "29", "issue": "6", "pages": "1509-1514", "url": "https://pubmed.ncbi.nlm.nih.gov/25785707/", "note": "81 NCAA Division I players; experienced hand timers were 0.22 s faster than electronic timing."},
+    "tyler2001": {"authors": "Tyler TF, Nicholas SJ, Campbell RJ, McHugh MP", "year": 2001, "title": "The association of hip strength and flexibility with the incidence of adductor muscle strains in professional ice hockey players", "journal": "American Journal of Sports Medicine", "volume": "29", "issue": "2", "pages": "124-128", "url": "https://pubmed.ncbi.nlm.nih.gov/11292035/", "doi": "10.1177/03635465010290020301", "note": "Players were 17 times more likely to sustain an adductor strain when adduction strength was below 80% of abduction strength."}
+  },
+
   "tests": {
-    "sprint_10m":       {"source": "manual", "stat": "speed",     "stat_weight": 1.0, "plausible": [1.40, 3.50]},
-    "ruler_drop":       {"source": "manual", "stat": "reaction",  "stat_weight": 1.0, "plausible": [0, 30]},
-    "beep_test":        {"source": "manual", "stat": "endurance", "stat_weight": 1.0, "plausible": [1.1, 21.0]},
-    "single_leg_stand": {"source": "vald", "bilateral": true,  "stat": "balance", "stat_weight": 1.0, "plausible": [0, 30]},
-    "trunk_rotation":   {"source": "vald", "bilateral": true,  "stat": null, "plausible": [0, 90]},
-    "overhead_squat":   {"source": "vald", "bilateral": false, "stat": null, "plausible": null},
-    "shoulder_er":      {"source": "vald", "bilateral": true,  "dynamo": true, "stat": "power", "stat_weight": 1.0, "plausible": [20, 1500]},
-    "hip_abduction":    {"source": "vald", "bilateral": true,  "dynamo": true, "stat": "power", "stat_weight": 1.0, "plausible": [50, 3000]},
-    "hip_adduction":    {"source": "vald", "bilateral": true,  "dynamo": true, "stat": "power", "stat_weight": 1.0, "plausible": [50, 3000]}
+    "sprint_10m":       {"source": "manual", "stat": "speed",     "stat_weight": 1.0, "plausible": [1.40, 3.50], "citation": "interim"},
+    "ruler_drop":       {"source": "manual", "stat": "reaction",  "stat_weight": 1.0, "plausible": [0, 30], "citation": "interim"},
+    "beep_test":        {"source": "manual", "stat": "endurance", "stat_weight": 1.0, "plausible": [1.1, 21.0], "citation": "interim"},
+    "single_leg_stand": {"source": "vald", "bilateral": true,  "stat": "balance", "stat_weight": 1.0, "plausible": [0, 30], "citation": {"basis": "vald_norms", "test_reference": "springer2007"}},
+    "trunk_rotation":   {"source": "vald", "bilateral": true,  "stat": null, "plausible": [0, 90], "citation": "vald_norms"},
+    "overhead_squat":   {"source": "vald", "bilateral": false, "stat": null, "plausible": null, "citation": "vald_norms"},
+    "shoulder_er":      {"source": "vald", "bilateral": true,  "dynamo": true, "stat": "power", "stat_weight": 1.0, "plausible": [20, 1500], "citation": "vald_norms"},
+    "hip_abduction":    {"source": "vald", "bilateral": true,  "dynamo": true, "stat": "power", "stat_weight": 1.0, "plausible": [50, 3000], "citation": "vald_norms"},
+    "hip_adduction":    {"source": "vald", "bilateral": true,  "dynamo": true, "stat": "power", "stat_weight": 1.0, "plausible": [50, 3000], "citation": "vald_norms"}
   },
 
   "stat_weights": {"reaction": 20, "speed": 20, "agility": 25, "power": 15, "balance": 10, "endurance": 10},
@@ -40,7 +47,7 @@
   "lsi": {"amber_below": 90, "red_below": 85, "power_cap": 75},
   "flags": {"sls_side_diff_s": 10, "trunk_rotation_min_deg": 40, "trunk_rotation_side_diff_deg": 10},
   "dominant_arm_tests": ["shoulder_er"],
-  "groin_ratio": {"numerator": "hip_adduction", "denominator": "hip_abduction", "amber_below": 0.8},
+  "groin_ratio": {"numerator": "hip_adduction", "denominator": "hip_abduction", "amber_below": 0.8, "citation": "tyler2001"},
 
   "ovr_min_stats": 3,
   "ovr_min_weight_share": 0.5,

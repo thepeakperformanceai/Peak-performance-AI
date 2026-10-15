@@ -1,10 +1,7 @@
 {
   "_comment": "Words only for the public 'How we score' pages: no scores, weights, anchors or thresholds. Every one of those comes from the config files the engine uses (football_v1.json, padel_v1.json, cricket_v1.json, card_tiers.json). Padel and cricket notes and sources come from their configs; football's config must stay identical to the Python engine's, so its notes live here.",
   "football": {
-    "notes": "Interim: the manual-test norms are approximate, research-based and for adult men. They will be replaced with sourced or local data. VALD tests use VALD's own age-and-sex bands.",
-    "sources": {
-      "ruler_drop": "Davis (2000) rating bands for the ruler drop test (16-19 years, general population)."
-    }
+    "notes": "Interim: the manual-test norms are approximate, research-based and for adult men. They will be replaced with sourced or local data. VALD tests use VALD's own age-and-sex bands."
   },
   "tests": {
     "sprint_10m": "How quickly the athlete gets going: a 10 metre dash from a standing start.",

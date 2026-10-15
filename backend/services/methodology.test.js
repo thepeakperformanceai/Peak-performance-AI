@@ -8,7 +8,7 @@ const assert = require('node:assert/strict');
 const fs = require('fs');
 const path = require('path');
 const { loadConfig, scoreSession, pyRound } = require('../scoring/scoring');
-const { methodology, reportBreakdown, explain } = require('./methodology.service');
+const { methodology, reportBreakdown, explain, INTERIM_LABEL, VALD_LABEL } = require('./methodology.service');
 const { buildCustomConfig } = require('./customAssessment.service');
 const TIERS = require('../scoring/card_tiers.json');
 
@@ -181,15 +181,72 @@ test('benchmark sources: a study is named only when the config cites one; otherw
     assert.ok(m.benchmarkSources.length, sport);
     for (const b of m.benchmarkSources) {
       assert.ok(['study', 'vald', 'interim', 'pending'].includes(b.basis), `${sport} ${b.key}`);
-      if (b.basis === 'study') assert.ok(b.source, `${sport} ${b.key}`);
-      if (b.basis === 'interim' || b.basis === 'pending') assert.equal(b.source, null, `${sport} ${b.key}`);
+      if (b.basis === 'study') assert.ok(b.reference && b.reference.title, `${sport} ${b.key}`);
+      else assert.equal(b.reference, null, `${sport} ${b.key}`);
+      if (b.basis === 'interim') assert.equal(b.citation, INTERIM_LABEL, `${sport} ${b.key}`);
+      if (b.basis === 'vald') assert.equal(b.citation, VALD_LABEL, `${sport} ${b.key}`);
     }
     if (m.tests) {
       for (const t of m.tests) {
         const b = m.benchmarkSources.find(x => x.key === t.key);
-        const expected = t.benchmark.type === 'vald_age_sex' ? 'vald' : t.benchmark.type === 'pending' ? 'pending' : t.benchmark.source ? 'study' : 'interim';
+        const expected = t.benchmark.type === 'vald_age_sex' ? 'vald' : t.benchmark.type === 'pending' ? 'pending' : t.benchmark.citation.reference ? 'study' : 'interim';
         assert.equal(b.basis, expected, `${sport} ${t.key}`);
       }
     }
   }
+});
+
+test('citations: every test has one, every reference it names exists, and the page shows the config\'s reference', () => {
+  for (const sport of SPORTS) {
+    const cfg = loadConfig(sport);
+    const refs = cfg.references || {};
+    const named = [cfg.hand_timing_citation, cfg.groin_ratio && cfg.groin_ratio.citation].filter(Boolean);
+    for (const [key, d] of Object.entries(cfg.tests)) {
+      assert.ok(d.citation, `${sport} ${key} has no citation`);
+      const c = typeof d.citation === 'string' ? { basis: d.citation } : d.citation;
+      assert.ok(['interim', 'pending', 'vald_norms', 'study'].includes(c.basis), `${sport} ${key}`);
+      assert.equal(c.basis === 'vald_norms', d.source === 'vald', `${sport} ${key}: VALD tests use VALD norms`);
+      if (c.reference) named.push(c.reference);
+      if (c.test_reference) named.push(c.test_reference);
+    }
+    for (const id of named) {
+      for (const f of ['authors', 'year', 'title', 'journal']) assert.ok(refs[id] && refs[id][f], `${sport}: reference ${id} needs ${f}`);
+    }
+    const m = methodology(sport);
+    const shown = [
+      ...m.benchmarkSources.flatMap(b => [b.reference, b.testReference]),
+      ...m.otherReferences.map(o => o.reference)
+    ].filter(Boolean);
+    for (const r of shown) {
+      const { id, text, ...fields } = r;
+      assert.deepEqual(fields, refs[id], `${sport}: ${id} on the page matches the config`);
+    }
+  }
+});
+
+test('citations: Springer on single leg stand, Mann on hand timing, Tyler on the padel groin flag', () => {
+  for (const sport of SPORTS) {
+    const m = methodology(sport);
+    const sls = m.tests.find(t => t.key === 'single_leg_stand');
+    if (sls) {
+      assert.equal(sls.benchmark.citation.label, VALD_LABEL);
+      assert.equal(sls.benchmark.citation.testReference.id, 'springer2007');
+      assert.equal(sls.benchmark.citation.testReference.year, 2007);
+    }
+    for (const t of m.tests.filter(x => x.key.startsWith('sprint_'))) {
+      assert.equal(t.handTimingReference.id, 'mann2015', `${sport} ${t.key}`);
+      assert.equal(t.benchmark.citation.label, INTERIM_LABEL, `${sport} ${t.key}`);
+    }
+    for (const k of ['beep_test', 'ruler_drop']) {
+      const t = m.tests.find(x => x.key === k);
+      if (t) assert.equal(t.benchmark.citation.label, INTERIM_LABEL, `${sport} ${k}`);
+    }
+  }
+  const groin = methodology('padel').flags.find(f => f.type === 'groin_risk');
+  assert.equal(groin.reference.id, 'tyler2001');
+  assert.ok(methodology('padel').otherReferences.some(o => o.reference.id === 'tyler2001'));
+  assert.ok(methodology('football').otherReferences.some(o => o.reference.id === 'mann2015'));
+  const custom = methodology('custom');
+  assert.ok(custom.otherReferences.some(o => o.reference.id === 'mann2015'));
+  for (const t of custom.manualTests) assert.ok(t.citation && t.citation.label, t.key);
 });

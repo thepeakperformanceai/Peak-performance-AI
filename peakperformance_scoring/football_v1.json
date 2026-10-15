@@ -2,6 +2,7 @@
   "config_version": "football-v1.1",
   "sport": "football",
   "hand_timing_offset_s": 0.22,
+  "hand_timing_citation": "mann2015",
   "score_floor": 25,
   "score_cap": 99,
 
@@ -22,16 +23,21 @@
     "19": 15, "20": 16, "21": 16
   },
 
+  "references": {
+    "springer2007": {"authors": "Springer BA, Marin R, Cyhan T, Roberts H, Gill NW", "year": 2007, "title": "Normative values for the unipedal stance test with eyes open and closed", "journal": "Journal of Geriatric Physical Therapy", "volume": "30", "issue": "1", "pages": "8-15", "url": "https://geriatrictoolkit.missouri.edu/balance/Normative_Values_for_the_Unipedal_Stance_Test_Springer-JGPT.pdf"},
+    "mann2015": {"authors": "Mann JB, Ivey PJ, Brechue WF, Mayhew JL", "year": 2015, "title": "Validity and reliability of hand and electronic timing for 40-yd sprint in college football players", "journal": "Journal of Strength and Conditioning Research", "volume": "29", "issue": "6", "pages": "1509-1514", "url": "https://pubmed.ncbi.nlm.nih.gov/25785707/", "note": "81 NCAA Division I players; experienced hand timers were 0.22 s faster than electronic timing."}
+  },
+
   "tests": {
-    "sprint_10m":      {"source": "manual", "stat": "speed",     "stat_weight": 0.6, "plausible": [1.40, 3.50]},
-    "sprint_30m":      {"source": "manual", "stat": "speed",     "stat_weight": 0.4, "plausible": [3.50, 8.00]},
-    "ruler_drop":      {"source": "manual", "stat": "reaction",  "stat_weight": 1.0, "plausible": [0, 30]},
-    "beep_test":       {"source": "manual", "stat": "endurance", "stat_weight": 1.0, "plausible": [1.1, 21.0]},
-    "single_leg_stand":{"source": "vald", "bilateral": true,  "stat": "balance", "stat_weight": 1.0, "plausible": [0, 30]},
-    "trunk_rotation":  {"source": "vald", "bilateral": true,  "stat": null, "plausible": [0, 90]},
-    "overhead_squat":  {"source": "vald", "bilateral": false, "stat": null, "plausible": null},
-    "hip_extension":   {"source": "vald", "bilateral": true,  "dynamo": true, "stat": "power", "stat_weight": 0.5, "plausible": [50, 3000]},
-    "knee_extension":  {"source": "vald", "bilateral": true,  "dynamo": true, "stat": "power", "stat_weight": 0.5, "plausible": [50, 3000]}
+    "sprint_10m":      {"source": "manual", "stat": "speed",     "stat_weight": 0.6, "plausible": [1.40, 3.50], "citation": "interim"},
+    "sprint_30m":      {"source": "manual", "stat": "speed",     "stat_weight": 0.4, "plausible": [3.50, 8.00], "citation": "interim"},
+    "ruler_drop":      {"source": "manual", "stat": "reaction",  "stat_weight": 1.0, "plausible": [0, 30], "citation": "interim"},
+    "beep_test":       {"source": "manual", "stat": "endurance", "stat_weight": 1.0, "plausible": [1.1, 21.0], "citation": "interim"},
+    "single_leg_stand":{"source": "vald", "bilateral": true,  "stat": "balance", "stat_weight": 1.0, "plausible": [0, 30], "citation": {"basis": "vald_norms", "test_reference": "springer2007"}},
+    "trunk_rotation":  {"source": "vald", "bilateral": true,  "stat": null, "plausible": [0, 90], "citation": "vald_norms"},
+    "overhead_squat":  {"source": "vald", "bilateral": false, "stat": null, "plausible": null, "citation": "vald_norms"},
+    "hip_extension":   {"source": "vald", "bilateral": true,  "dynamo": true, "stat": "power", "stat_weight": 0.5, "plausible": [50, 3000], "citation": "vald_norms"},
+    "knee_extension":  {"source": "vald", "bilateral": true,  "dynamo": true, "stat": "power", "stat_weight": 0.5, "plausible": [50, 3000], "citation": "vald_norms"}
   },
 
   "stat_weights": {"speed": 25, "power": 20, "agility": 20, "endurance": 20, "balance": 10, "reaction": 5},
