@@ -119,9 +119,14 @@ app.use((req, res) => {
 });
 
 const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => {
-  console.log(`PeakPerformance backend running on port ${PORT}`);
+// HOST is optional. Set HOST=127.0.0.1 to accept connections from this
+// server only (e.g. a private preview copy); unset, it listens as before.
+const HOST = process.env.HOST;
+const onListen = () => {
+  console.log(`PeakPerformance backend running on ${HOST ? `${HOST}:` : 'port '}${PORT}`);
   console.log(`AI Provider: ${process.env.AI_PROVIDER}`);
-});
+};
+if (HOST) app.listen(PORT, HOST, onListen);
+else app.listen(PORT, onListen);
 
 module.exports = app;

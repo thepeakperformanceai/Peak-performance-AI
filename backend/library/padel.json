@@ -1,37 +1,67 @@
 {
-  "library_version": "padel-library-v1.0",
+  "library_version": "padel-library-v1.1",
   "sport": "padel",
   "source": "docs/library/padel.md (Oct 18, 2026)",
-  "notes": "One entry per padel test. The engine reads this file to pick the athlete's top 3 priorities, their role lines, fixes, role drills and retest window. Gemini only rewords the text it is given. Scores come from the existing scoring engine, unchanged. Left/right and ratio rules use the library's own percentages on the raw left/right results. Rules marked proposed need DPT sign-off; engine_note says where the engine's data can't follow the library exactly.",
-
+  "notes": "One entry per padel test. The engine reads this file to pick the athlete's top 3 priorities, their role lines, fixes, role drills and retest window. Gemini only rewords the text it is given. Scores come from the existing scoring engine, unchanged. Left/right and ratio rules use the library's own percentages on the raw left/right results. Rules marked proposed need DPT sign-off; engine_note says where the engine's data can't follow the library exactly. plain_name, weapon (headline and body) and rule note templates are PeakPerformance wording added for the report, not text from padel.md.",
   "target": {
     "score": 75,
     "label": "Gold",
     "text": "Tier target is the Gold line (score 75). Priorities are ranked by score points below 75, biggest gap first; ties keep library order."
   },
   "tiers": [
-    { "key": "gold", "label": "Gold", "min_score": 75 },
-    { "key": "silver", "label": "Silver", "min_score": 65 },
-    { "key": "bronze", "label": "Bronze", "min_score": 0 }
+    {
+      "key": "gold",
+      "label": "Gold",
+      "min_score": 75
+    },
+    {
+      "key": "silver",
+      "label": "Silver",
+      "min_score": 65
+    },
+    {
+      "key": "bronze",
+      "label": "Bronze",
+      "min_score": 0
+    }
   ],
-
   "sides": {
-    "RIGHT": { "label": "Drive", "lines": ["drive", "every"] },
-    "LEFT":  { "label": "Revés", "lines": ["reves", "every"] },
-    "BOTH":  { "label": "Both",  "lines": ["drive", "reves", "every"] }
+    "RIGHT": {
+      "label": "Drive",
+      "lines": [
+        "drive",
+        "every"
+      ]
+    },
+    "LEFT": {
+      "label": "Revés",
+      "lines": [
+        "reves",
+        "every"
+      ]
+    },
+    "BOTH": {
+      "label": "Both",
+      "lines": [
+        "drive",
+        "reves",
+        "every"
+      ]
+    }
   },
-  "line_labels": { "drive": "Drive", "reves": "Revés", "every": "Every player" },
-
+  "line_labels": {
+    "drive": "Drive",
+    "reves": "Revés",
+    "every": "Every player"
+  },
   "plan": {
     "weeks": 6,
     "text": "One combined 6-week plan: every selected fix runs from week 1. A fix shorter than 6 weeks switches to that test's maintain fix (where the library has one) for the remaining weeks."
   },
-
   "rebuild": {
     "text": "Want to be coached through it? PeakPerformance Rebuild is a one-month plan with two sessions a week with our team: testing, healing and strengthening.",
     "url": "REBUILD_URL"
   },
-
   "tests": [
     {
       "key": "sprint_10m",
@@ -44,18 +74,42 @@
         "every": "Padel is won at the net. After every lob you have to sprint back in and take it again before your opponents do."
       },
       "rules": [
-        { "when": { "type": "score_below_target" }, "fix": "A", "text": "Score below tier target → show Fix A: first-step power." },
-        { "when": { "type": "score_at_least_target" }, "fix": "B", "text": "At or above Gold → show Fix B: keep it sharp." }
+        {
+          "when": {
+            "type": "score_below_target"
+          },
+          "fix": "A",
+          "text": "Score below tier target → show Fix A: first-step power."
+        },
+        {
+          "when": {
+            "type": "score_at_least_target"
+          },
+          "fix": "B",
+          "text": "At or above Gold → show Fix B: keep it sharp."
+        }
       ],
       "fixes": {
-        "A": { "title": "first-step power", "kind": "main", "weeks": 6, "frequency": "2 sessions a week", "exercises": [
-          "Falling starts over 5 metres: 6 reps, full rest.",
-          "Split-step then sprint on a partner's call: 6 reps.",
-          "Split squats: 3 sets of 8 each leg."
-        ] },
-        "B": { "title": "keep it sharp", "kind": "maintain", "weeks": null, "frequency": "once a week", "exercises": [
-          "Split-step reaction sprints over 5 metres: 6 reps."
-        ] }
+        "A": {
+          "title": "first-step power",
+          "kind": "main",
+          "weeks": 6,
+          "frequency": "2 sessions a week",
+          "exercises": [
+            "Falling starts over 5 metres: 6 reps, full rest.",
+            "Split-step then sprint on a partner's call: 6 reps.",
+            "Split squats: 3 sets of 8 each leg."
+          ]
+        },
+        "B": {
+          "title": "keep it sharp",
+          "kind": "maintain",
+          "weeks": null,
+          "frequency": "once a week",
+          "exercises": [
+            "Split-step reaction sprints over 5 metres: 6 reps."
+          ]
+        }
       },
       "maintain_fix": "B",
       "role_drills": {
@@ -64,7 +118,12 @@
         "every": "Back-to-net sprints: from the back glass to the net and split-step. 6 reps."
       },
       "retest_weeks": 6,
-      "retest_note": null
+      "retest_note": null,
+      "plain_name": "10m sprint",
+      "weapon": {
+        "headline": "Quick off the mark",
+        "body": "you are quick over the first few steps"
+      }
     },
     {
       "key": "cod_505",
@@ -77,20 +136,45 @@
         "every": "Every point is short bursts with sudden stops. The faster you brake and re-accelerate, the more balls you reach on balance."
       },
       "rules": [
-        { "when": { "type": "score_below_target" }, "fix": "A", "text": "Time slower than tier target → show Fix A: brake and turn." },
-        { "when": { "type": "not_measured" }, "fix": "B", "also": true, "proposed": true,
+        {
+          "when": {
+            "type": "score_below_target"
+          },
+          "fix": "A",
+          "text": "Time slower than tier target → show Fix A: brake and turn."
+        },
+        {
+          "when": {
+            "type": "not_measured"
+          },
+          "fix": "B",
+          "also": true,
+          "proposed": true,
           "text": "Slower turning off one foot than the other (if timed both ways, more than 5%, proposed) → also show Fix B: even both turns.",
-          "engine_note": "The 5-0-5 is not in the current padel scoring battery, and one time is recorded, not one per turning foot." }
+          "engine_note": "The 5-0-5 is not in the current padel scoring battery, and one time is recorded, not one per turning foot."
+        }
       ],
       "fixes": {
-        "A": { "title": "brake and turn", "kind": "main", "weeks": 6, "frequency": "2 sessions a week", "exercises": [
-          "Deceleration drills: sprint 5 metres, stop in two steps and hold. 6 reps.",
-          "5-0-5 practice at 80% effort, focusing on a low turn: 6 reps.",
-          "Lateral lunges: 3 sets of 8 each side."
-        ] },
-        "B": { "title": "even both turns", "kind": "addon", "weeks": null, "frequency": null, "exercises": [
-          "Two extra turns off your weaker foot in each session."
-        ] }
+        "A": {
+          "title": "brake and turn",
+          "kind": "main",
+          "weeks": 6,
+          "frequency": "2 sessions a week",
+          "exercises": [
+            "Deceleration drills: sprint 5 metres, stop in two steps and hold. 6 reps.",
+            "5-0-5 practice at 80% effort, focusing on a low turn: 6 reps.",
+            "Lateral lunges: 3 sets of 8 each side."
+          ]
+        },
+        "B": {
+          "title": "even both turns",
+          "kind": "addon",
+          "weeks": null,
+          "frequency": null,
+          "exercises": [
+            "Two extra turns off your weaker foot in each session."
+          ]
+        }
       },
       "maintain_fix": null,
       "role_drills": {
@@ -99,7 +183,12 @@
         "every": "Partner-call change of direction over 5 metres: 8 reps."
       },
       "retest_weeks": 6,
-      "retest_note": null
+      "retest_note": null,
+      "plain_name": "5-0-5 turn test",
+      "weapon": {
+        "headline": "Sharp stop and turn",
+        "body": "you brake and turn fast"
+      }
     },
     {
       "key": "ruler_drop",
@@ -112,17 +201,41 @@
         "every": "At the net, exchanges happen in fractions of a second. The faster player wins the reflex volley."
       },
       "rules": [
-        { "when": { "type": "score_below_target" }, "fix": "A", "text": "Catch distance worse than tier target → show Fix A: sharpen reactions." },
-        { "when": { "type": "score_at_least_target" }, "fix": "B", "text": "At or above Gold → show Fix B: keep it sharp." }
+        {
+          "when": {
+            "type": "score_below_target"
+          },
+          "fix": "A",
+          "text": "Catch distance worse than tier target → show Fix A: sharpen reactions."
+        },
+        {
+          "when": {
+            "type": "score_at_least_target"
+          },
+          "fix": "B",
+          "text": "At or above Gold → show Fix B: keep it sharp."
+        }
       ],
       "fixes": {
-        "A": { "title": "sharpen reactions", "kind": "main", "weeks": 4, "frequency": "3 short sessions a week", "exercises": [
-          "Reaction ball against a wall: 3 rounds of 60 seconds.",
-          "Partner drops: a partner drops a ball without warning; catch it before the second bounce. 3 sets of 10."
-        ] },
-        "B": { "title": "keep it sharp", "kind": "maintain", "weeks": null, "frequency": "once a week", "exercises": [
-          "Fast volley rallies at the net once a week."
-        ] }
+        "A": {
+          "title": "sharpen reactions",
+          "kind": "main",
+          "weeks": 4,
+          "frequency": "3 short sessions a week",
+          "exercises": [
+            "Reaction ball against a wall: 3 rounds of 60 seconds.",
+            "Partner drops: a partner drops a ball without warning; catch it before the second bounce. 3 sets of 10."
+          ]
+        },
+        "B": {
+          "title": "keep it sharp",
+          "kind": "maintain",
+          "weeks": null,
+          "frequency": "once a week",
+          "exercises": [
+            "Fast volley rallies at the net once a week."
+          ]
+        }
       },
       "maintain_fix": "B",
       "role_drills": {
@@ -131,12 +244,17 @@
         "every": "Quick-fire volleys at the net with a partner, both at the net. 3 rounds of 30 seconds."
       },
       "retest_weeks": 4,
-      "retest_note": "Reaction improves fastest, so it's often the first stat that moves."
+      "retest_note": "Reaction improves fastest, so it's often the first stat that moves.",
+      "plain_name": "ruler-drop catch",
+      "weapon": {
+        "headline": "Fast hands at the net",
+        "body": "your reactions are sharp"
+      }
     },
     {
       "key": "overhead_squat",
       "name": "Overhead Squat",
-      "measures": "Movement (HumanTrak)",
+      "measures": "Movement",
       "what_we_measured": "How well your ankles, hips, upper back and shoulders work together as you squat with your arms overhead.",
       "role_lines": {
         "drive": "Low balls at your feet, especially the chiquita and low volleys, need you to get down without losing your posture.",
@@ -144,26 +262,68 @@
         "every": "Defending from the back means staying low for long rallies. Good squat mechanics let you stay low without tiring your back."
       },
       "rules": [
-        { "when": { "type": "observation", "key": "overhead_squat_fault", "equals": "heels_knees" }, "fix": "A", "text": "Heels lifting or knees caving → show Fix A: ankles and hips." },
-        { "when": { "type": "observation", "key": "overhead_squat_fault", "equals": "arms_back" }, "fix": "B", "text": "Arms dropping forward or the lower back arching → show Fix B: shoulders and upper back." },
-        { "when": { "type": "observation", "key": "overhead_squat_fault", "equals": "clean" }, "fix": "C", "text": "Clean pattern → show Fix C: maintain." }
+        {
+          "when": {
+            "type": "observation",
+            "key": "overhead_squat_fault",
+            "equals": "heels_knees"
+          },
+          "fix": "A",
+          "text": "Heels lifting or knees caving → show Fix A: ankles and hips."
+        },
+        {
+          "when": {
+            "type": "observation",
+            "key": "overhead_squat_fault",
+            "equals": "arms_back"
+          },
+          "fix": "B",
+          "text": "Arms dropping forward or the lower back arching → show Fix B: shoulders and upper back."
+        },
+        {
+          "when": {
+            "type": "observation",
+            "key": "overhead_squat_fault",
+            "equals": "clean"
+          },
+          "fix": "C",
+          "text": "Clean pattern → show Fix C: maintain."
+        }
       ],
       "needs_observation": "overhead_squat_fault",
       "missing_observation_text": "The fault pattern was not recorded at testing, so the fix is chosen with your coach: ankles and hips, or shoulders and upper back.",
       "fixes": {
-        "A": { "title": "ankles and hips", "kind": "main", "weeks": 4, "frequency": "daily, 5–10 minutes", "exercises": [
-          "Knee-to-wall ankle stretch: 2 sets of 10 each side.",
-          "Goblet squat holds at the bottom: 3 holds of 30 seconds.",
-          "Banded lateral walks: 2 sets of 12 steps each way."
-        ] },
-        "B": { "title": "shoulders and upper back", "kind": "main", "weeks": 4, "frequency": "daily", "exercises": [
-          "Foam roller extensions on the upper back: 10 slow reps.",
-          "Wall slides: 2 sets of 10.",
-          "Open book stretch: 2 sets of 10 each side."
-        ] },
-        "C": { "title": "maintain", "kind": "maintain", "weeks": null, "frequency": "every warm-up", "exercises": [
-          "Overhead squats with a stick in every warm-up: 1 set of 8."
-        ] }
+        "A": {
+          "title": "ankles and hips",
+          "kind": "main",
+          "weeks": 4,
+          "frequency": "daily, 5–10 minutes",
+          "exercises": [
+            "Knee-to-wall ankle stretch: 2 sets of 10 each side.",
+            "Goblet squat holds at the bottom: 3 holds of 30 seconds.",
+            "Banded lateral walks: 2 sets of 12 steps each way."
+          ]
+        },
+        "B": {
+          "title": "shoulders and upper back",
+          "kind": "main",
+          "weeks": 4,
+          "frequency": "daily",
+          "exercises": [
+            "Foam roller extensions on the upper back: 10 slow reps.",
+            "Wall slides: 2 sets of 10.",
+            "Open book stretch: 2 sets of 10 each side."
+          ]
+        },
+        "C": {
+          "title": "maintain",
+          "kind": "maintain",
+          "weeks": null,
+          "frequency": "every warm-up",
+          "exercises": [
+            "Overhead squats with a stick in every warm-up: 1 set of 8."
+          ]
+        }
       },
       "maintain_fix": "C",
       "role_drills": {
@@ -172,12 +332,17 @@
         "every": "Defensive stance holds from the back glass: 3 holds of 20 seconds."
       },
       "retest_weeks": 4,
-      "retest_note": null
+      "retest_note": null,
+      "plain_name": "overhead squat",
+      "weapon": {
+        "headline": "Low and tall when it counts",
+        "body": "your ankles, hips, upper back and shoulders work well together when you squat with your arms overhead"
+      }
     },
     {
       "key": "trunk_rotation",
       "name": "Trunk Rotation",
-      "measures": "Mobility (HumanTrak)",
+      "measures": "Mobility",
       "what_we_measured": "How far your upper body turns to each side while your hips stay still.",
       "role_lines": {
         "drive": "Your forehand and your drive off the glass get their power from turning your shoulders against your hips. Limited rotation means swinging with just your arm.",
@@ -185,20 +350,46 @@
         "every": "Getting out of the corner and playing balls off the back glass means turning fast while your feet are still set."
       },
       "rules": [
-        { "when": { "type": "side_gap_pct_over", "pct": 10 }, "fix": "A", "proposed": true,
-          "text": "One side more than 10% less than the other (proposed) → show Fix A: even it out." },
-        { "when": { "type": "both_sides_below_target" }, "fix": "B", "text": "Both sides below tier target → show Fix B: open up the upper back." }
+        {
+          "when": {
+            "type": "side_gap_pct_over",
+            "pct": 10
+          },
+          "fix": "A",
+          "proposed": true,
+          "text": "One side more than 10% less than the other (proposed) → show Fix A: even it out.",
+          "note": "Your {weaker} side turns {pct}% less than your {stronger} side."
+        },
+        {
+          "when": {
+            "type": "both_sides_below_target"
+          },
+          "fix": "B",
+          "text": "Both sides below tier target → show Fix B: open up the upper back."
+        }
       ],
       "fixes": {
-        "A": { "title": "even it out", "kind": "main", "weeks": 4, "frequency": "daily, 5 minutes", "exercises": [
-          "Open book stretch toward the tighter side: 2 sets of 10, plus one extra set on that side.",
-          "Seated rotations with a stick across your shoulders: 2 sets of 10 each side."
-        ] },
-        "B": { "title": "open up the upper back", "kind": "main", "weeks": 4, "frequency": "daily", "exercises": [
-          "Foam roller extensions on the upper back: 10 slow reps.",
-          "Open book: 2 sets of 10 each side.",
-          "Half-kneeling band rotations: 3 sets of 10 each side."
-        ] }
+        "A": {
+          "title": "even it out",
+          "kind": "main",
+          "weeks": 4,
+          "frequency": "daily, 5 minutes",
+          "exercises": [
+            "Open book stretch toward the tighter side: 2 sets of 10, plus one extra set on that side.",
+            "Seated rotations with a stick across your shoulders: 2 sets of 10 each side."
+          ]
+        },
+        "B": {
+          "title": "open up the upper back",
+          "kind": "main",
+          "weeks": 4,
+          "frequency": "daily",
+          "exercises": [
+            "Foam roller extensions on the upper back: 10 slow reps.",
+            "Open book: 2 sets of 10 each side.",
+            "Half-kneeling band rotations: 3 sets of 10 each side."
+          ]
+        }
       },
       "maintain_fix": null,
       "role_drills": {
@@ -207,7 +398,18 @@
         "every": "Back-glass feeds: let the ball come off the glass, turn and play it out. 10 each side."
       },
       "retest_weeks": 4,
-      "retest_note": null
+      "retest_note": null,
+      "plain_name": "trunk rotation test",
+      "weapon": {
+        "headline": "Free shoulder turn",
+        "body": "your upper body turns freely, {evenness}",
+        "evenness": {
+          "even": "almost the same to each side",
+          "fair": "fairly even to each side",
+          "uneven": "turning further to your {side} by {pct}%",
+          "one_side": "measured on one side only"
+        }
+      }
     },
     {
       "key": "single_leg_stand",
@@ -220,22 +422,49 @@
         "every": "Padel is full of quick stops on one foot, and ankle sprains are among the most common injuries in the sport. Good balance is your first protection."
       },
       "rules": [
-        { "when": { "type": "either_side_below_target" }, "fix": "A", "text": "Sway above tier target on either leg → show Fix A: build balance.",
-          "engine_note": "The engine records time held (seconds) per leg, not sway, so each leg's score is used." },
-        { "when": { "type": "side_gap_pct_over", "pct": 20 }, "fix": "B", "also": true, "proposed": true,
+        {
+          "when": {
+            "type": "either_side_below_target"
+          },
+          "fix": "A",
+          "text": "Sway above tier target on either leg → show Fix A: build balance.",
+          "engine_note": "The engine records time held (seconds) per leg, not sway, so each leg's score is used."
+        },
+        {
+          "when": {
+            "type": "side_gap_pct_over",
+            "pct": 20
+          },
+          "fix": "B",
+          "also": true,
+          "proposed": true,
           "text": "One leg clearly worse than the other (more than 20% more sway, proposed) → also show Fix B: even it out. Ask about past ankle sprains on that side.",
           "engine_note": "Sway isn't recorded: one leg's time held more than 20% below the other is used instead.",
-          "coach_note": "Ask about past ankle sprains on that side." }
+          "coach_note": "Ask about past ankle sprains on that side.",
+          "note": "Your {weaker} leg held on for {pct}% less time than your {stronger} leg."
+        }
       ],
       "fixes": {
-        "A": { "title": "build balance", "kind": "main", "weeks": 4, "frequency": "daily, 5 minutes", "exercises": [
-          "Single-leg stands, eyes open then closed: 3 holds of 30 seconds each leg.",
-          "Single-leg stands on a cushion or folded towel: 3 holds of 30 seconds each leg.",
-          "Single-leg reaches in three directions: 2 sets of 6 each leg."
-        ] },
-        "B": { "title": "even it out", "kind": "addon", "weeks": null, "frequency": null, "exercises": [
-          "One extra hold on your weaker leg in every exercise."
-        ] }
+        "A": {
+          "title": "build balance",
+          "kind": "main",
+          "weeks": 4,
+          "frequency": "daily, 5 minutes",
+          "exercises": [
+            "Single-leg stands, eyes open then closed: 3 holds of 30 seconds each leg.",
+            "Single-leg stands on a cushion or folded towel: 3 holds of 30 seconds each leg.",
+            "Single-leg reaches in three directions: 2 sets of 6 each leg."
+          ]
+        },
+        "B": {
+          "title": "even it out",
+          "kind": "addon",
+          "weeks": null,
+          "frequency": null,
+          "exercises": [
+            "One extra hold on your weaker leg in every exercise."
+          ]
+        }
       },
       "maintain_fix": null,
       "role_drills": {
@@ -244,12 +473,23 @@
         "every": "Single-leg stand while bouncing a ball on your racket: 3 holds of 20 seconds each leg."
       },
       "retest_weeks": 4,
-      "retest_note": null
+      "retest_note": null,
+      "plain_name": "one-leg balance test",
+      "weapon": {
+        "headline": "Steady on one leg",
+        "body": "you stay steady on one leg with your eyes closed, {evenness}",
+        "evenness": {
+          "even": "almost the same on each leg",
+          "fair": "fairly even on each leg",
+          "uneven": "steadier on your {side} leg by {pct}%",
+          "one_side": "measured on one leg only"
+        }
+      }
     },
     {
       "key": "shoulder_er",
       "name": "Shoulder External Rotation Strength",
-      "measures": "Strength (Dynamo)",
+      "measures": "Strength",
       "what_we_measured": "The strength of the muscles at the back of each shoulder that rotate your arm outward.",
       "role_lines": {
         "drive": "Your forehand and serve are fast arm swings that have to stop cleanly. The back of the shoulder does the braking, rally after rally.",
@@ -257,24 +497,63 @@
         "every": "A strong, balanced shoulder lets you swing freely without your body quietly holding back. It also takes load off the elbow, which is where padel elbow starts."
       },
       "rules": [
-        { "when": { "type": "racket_side_below_target" }, "fix": "A", "text": "Strength relative to bodyweight below tier target on your racket arm → show Fix A: strengthen the back of the shoulder.",
-          "engine_note": "The racket arm's score against VALD's age-and-sex bands is used, not strength relative to bodyweight." },
-        { "when": { "type": "racket_side_weaker_pct_over", "pct": 10 }, "fix": "B", "also": true, "proposed": true,
-          "text": "Racket arm more than 10% weaker than the other arm (proposed) → also show Fix B: close the gap." },
-        { "when": { "type": "otherwise" }, "fix": "C", "text": "Strong and balanced → show Fix C: maintain." }
+        {
+          "when": {
+            "type": "racket_side_below_target"
+          },
+          "fix": "A",
+          "text": "Strength relative to bodyweight below tier target on your racket arm → show Fix A: strengthen the back of the shoulder.",
+          "engine_note": "The racket arm's score against VALD's age-and-sex bands is used, not strength relative to bodyweight."
+        },
+        {
+          "when": {
+            "type": "racket_side_weaker_pct_over",
+            "pct": 10
+          },
+          "fix": "B",
+          "also": true,
+          "proposed": true,
+          "text": "Racket arm more than 10% weaker than the other arm (proposed) → also show Fix B: close the gap.",
+          "note": "Your racket arm is {pct}% weaker than your other arm."
+        },
+        {
+          "when": {
+            "type": "otherwise"
+          },
+          "fix": "C",
+          "text": "Strong and balanced → show Fix C: maintain."
+        }
       ],
       "fixes": {
-        "A": { "title": "strengthen the back of the shoulder", "kind": "main", "weeks": 6, "frequency": "3 sessions a week", "exercises": [
-          "Side-lying external rotation with a light dumbbell: 3 sets of 12–15.",
-          "Band external rotation with the arm at shoulder height (90/90): 3 sets of 12.",
-          "Prone Y and T raises: 2 sets of 10 in the warm-up."
-        ] },
-        "B": { "title": "close the gap", "kind": "addon", "weeks": null, "frequency": null, "exercises": [
-          "One extra set on your racket arm for each exercise."
-        ] },
-        "C": { "title": "maintain", "kind": "maintain", "weeks": null, "frequency": "twice a week", "exercises": [
-          "Band external rotation, 2 sets of 15, twice a week."
-        ] }
+        "A": {
+          "title": "strengthen the back of the shoulder",
+          "kind": "main",
+          "weeks": 6,
+          "frequency": "3 sessions a week",
+          "exercises": [
+            "Side-lying external rotation with a light dumbbell: 3 sets of 12–15.",
+            "Band external rotation with the arm at shoulder height (90/90): 3 sets of 12.",
+            "Prone Y and T raises: 2 sets of 10 in the warm-up."
+          ]
+        },
+        "B": {
+          "title": "close the gap",
+          "kind": "addon",
+          "weeks": null,
+          "frequency": null,
+          "exercises": [
+            "One extra set on your racket arm for each exercise."
+          ]
+        },
+        "C": {
+          "title": "maintain",
+          "kind": "maintain",
+          "weeks": null,
+          "frequency": "twice a week",
+          "exercises": [
+            "Band external rotation, 2 sets of 15, twice a week."
+          ]
+        }
       },
       "maintain_fix": "C",
       "role_drills": {
@@ -283,12 +562,23 @@
         "every": "Stop and tell us if you feel pain on the outside of your elbow; don't play through it."
       },
       "retest_weeks": 6,
-      "retest_note": null
+      "retest_note": null,
+      "plain_name": "shoulder strength test",
+      "weapon": {
+        "headline": "A shoulder built for overheads",
+        "body": "the back of your shoulders is strong and {evenness}",
+        "evenness": {
+          "even": "almost even, left vs right",
+          "fair": "fairly even, left vs right",
+          "uneven": "stronger on your {side} side by {pct}%",
+          "one_side": "measured on one side only"
+        }
+      }
     },
     {
       "key": "hip_abduction",
       "name": "Hip Abduction Strength",
-      "measures": "Strength (Dynamo)",
+      "measures": "Strength",
       "what_we_measured": "The strength of the muscles on the outside of each hip that push your leg out to the side.",
       "role_lines": {
         "drive": "Pushing off sideways to cover the middle starts here. Strong outer hips mean a faster first lateral step.",
@@ -296,24 +586,63 @@
         "every": "They keep your pelvis level and your knee pointing straight on every lunge and stop, which protects your knees."
       },
       "rules": [
-        { "when": { "type": "score_below_target" }, "fix": "A", "text": "Strength relative to bodyweight below tier target → show Fix A: build hip strength.",
-          "engine_note": "The engine's score against VALD's age-and-sex bands is used, not strength relative to bodyweight." },
-        { "when": { "type": "side_gap_pct_over", "pct": 10 }, "fix": "B", "also": true, "proposed": true,
-          "text": "One side more than 10% weaker than the other (proposed) → also show Fix B: close the gap." },
-        { "when": { "type": "otherwise" }, "fix": "C", "text": "Strong and even → show Fix C: maintain." }
+        {
+          "when": {
+            "type": "score_below_target"
+          },
+          "fix": "A",
+          "text": "Strength relative to bodyweight below tier target → show Fix A: build hip strength.",
+          "engine_note": "The engine's score against VALD's age-and-sex bands is used, not strength relative to bodyweight."
+        },
+        {
+          "when": {
+            "type": "side_gap_pct_over",
+            "pct": 10
+          },
+          "fix": "B",
+          "also": true,
+          "proposed": true,
+          "text": "One side more than 10% weaker than the other (proposed) → also show Fix B: close the gap.",
+          "note": "Your {weaker} side is {pct}% weaker than your {stronger} side."
+        },
+        {
+          "when": {
+            "type": "otherwise"
+          },
+          "fix": "C",
+          "text": "Strong and even → show Fix C: maintain."
+        }
       ],
       "fixes": {
-        "A": { "title": "build hip strength", "kind": "main", "weeks": 6, "frequency": "3 sessions a week", "exercises": [
-          "Side-lying leg raises: 3 sets of 15 each side, slow on the way down.",
-          "Banded lateral walks: 3 sets of 12 steps each way.",
-          "Side planks with top-leg raise: 3 sets of 8 each side."
-        ] },
-        "B": { "title": "close the gap", "kind": "addon", "weeks": null, "frequency": null, "exercises": [
-          "One extra set of each exercise on the weaker side."
-        ] },
-        "C": { "title": "maintain", "kind": "maintain", "weeks": null, "frequency": "every warm-up", "exercises": [
-          "Banded lateral walks in every warm-up."
-        ] }
+        "A": {
+          "title": "build hip strength",
+          "kind": "main",
+          "weeks": 6,
+          "frequency": "3 sessions a week",
+          "exercises": [
+            "Side-lying leg raises: 3 sets of 15 each side, slow on the way down.",
+            "Banded lateral walks: 3 sets of 12 steps each way.",
+            "Side planks with top-leg raise: 3 sets of 8 each side."
+          ]
+        },
+        "B": {
+          "title": "close the gap",
+          "kind": "addon",
+          "weeks": null,
+          "frequency": null,
+          "exercises": [
+            "One extra set of each exercise on the weaker side."
+          ]
+        },
+        "C": {
+          "title": "maintain",
+          "kind": "maintain",
+          "weeks": null,
+          "frequency": "every warm-up",
+          "exercises": [
+            "Banded lateral walks in every warm-up."
+          ]
+        }
       },
       "maintain_fix": "C",
       "role_drills": {
@@ -322,12 +651,23 @@
         "every": "Lateral shuffles between cones: 4 runs of 6 metres each way."
       },
       "retest_weeks": 6,
-      "retest_note": "Read this alongside Hip Adduction: the balance between the two matters as much as either number."
+      "retest_note": "Read this alongside Hip Adduction: the balance between the two matters as much as either number.",
+      "plain_name": "outer-hip strength test",
+      "weapon": {
+        "headline": "Fast first step to the middle",
+        "body": "your outer hips are strong and {evenness}",
+        "evenness": {
+          "even": "almost even, left vs right",
+          "fair": "fairly even, left vs right",
+          "uneven": "stronger on your {side} side by {pct}%",
+          "one_side": "measured on one side only"
+        }
+      }
     },
     {
       "key": "hip_adduction",
       "name": "Hip Adduction Strength",
-      "measures": "Strength (Dynamo)",
+      "measures": "Strength",
       "what_we_measured": "The strength of the inner thigh (groin) muscles that pull your leg back toward the middle, on each side.",
       "role_lines": {
         "drive": "Pulling yourself back to the centre after a wide ball uses these muscles. Strong adductors mean a faster recovery step.",
@@ -335,24 +675,66 @@
         "every": "Groin strains are common in sports with sudden sideways stops. A strong groin, roughly as strong as the outer hip, is the best protection."
       },
       "rules": [
-        { "when": { "type": "same_side_ratio_below", "denominator": "hip_abduction", "ratio": 0.8 }, "fix": "A", "proposed": true,
-          "text": "Adduction less than 80% of abduction on the same side (proposed) → show Fix A: strengthen the groin." },
-        { "when": { "type": "side_gap_pct_over", "pct": 10 }, "fix": "B", "also": true, "proposed": true,
-          "text": "One side more than 10% weaker than the other (proposed) → also show Fix B: close the gap." },
-        { "when": { "type": "otherwise" }, "fix": "C", "text": "Balanced and even → show Fix C: maintain." }
+        {
+          "when": {
+            "type": "same_side_ratio_below",
+            "denominator": "hip_abduction",
+            "ratio": 0.8
+          },
+          "fix": "A",
+          "proposed": true,
+          "text": "Adduction less than 80% of abduction on the same side (proposed) → show Fix A: strengthen the groin.",
+          "note": "On your {side} side, your groin is {pct}% as strong as your outer hip. We want it at {target}% or more."
+        },
+        {
+          "when": {
+            "type": "side_gap_pct_over",
+            "pct": 10
+          },
+          "fix": "B",
+          "also": true,
+          "proposed": true,
+          "text": "One side more than 10% weaker than the other (proposed) → also show Fix B: close the gap.",
+          "note": "Your {weaker} side is {pct}% weaker than your {stronger} side."
+        },
+        {
+          "when": {
+            "type": "otherwise"
+          },
+          "fix": "C",
+          "text": "Balanced and even → show Fix C: maintain."
+        }
       ],
       "fixes": {
-        "A": { "title": "strengthen the groin", "kind": "main", "weeks": 6, "frequency": "3 sessions a week", "exercises": [
-          "Copenhagen plank, short lever (knee on the bench): 3 holds of 15–20 seconds each side.",
-          "Side-lying inner leg raises: 3 sets of 12 each side.",
-          "Ball squeezes between the knees: 3 holds of 10 seconds."
-        ] },
-        "B": { "title": "close the gap", "kind": "addon", "weeks": null, "frequency": null, "exercises": [
-          "One extra set on your weaker side for each exercise."
-        ] },
-        "C": { "title": "maintain", "kind": "maintain", "weeks": null, "frequency": "twice a week", "exercises": [
-          "Copenhagen plank twice a week: 2 holds of 20 seconds each side."
-        ] }
+        "A": {
+          "title": "strengthen the groin",
+          "kind": "main",
+          "weeks": 6,
+          "frequency": "3 sessions a week",
+          "exercises": [
+            "Copenhagen plank, short lever (knee on the bench): 3 holds of 15–20 seconds each side.",
+            "Side-lying inner leg raises: 3 sets of 12 each side.",
+            "Ball squeezes between the knees: 3 holds of 10 seconds."
+          ]
+        },
+        "B": {
+          "title": "close the gap",
+          "kind": "addon",
+          "weeks": null,
+          "frequency": null,
+          "exercises": [
+            "One extra set on your weaker side for each exercise."
+          ]
+        },
+        "C": {
+          "title": "maintain",
+          "kind": "maintain",
+          "weeks": null,
+          "frequency": "twice a week",
+          "exercises": [
+            "Copenhagen plank twice a week: 2 holds of 20 seconds each side."
+          ]
+        }
       },
       "maintain_fix": "C",
       "role_drills": {
@@ -361,7 +743,18 @@
         "every": "Warm up your groin with leg swings side to side before every match: 10 each leg."
       },
       "retest_weeks": 6,
-      "retest_note": null
+      "retest_note": null,
+      "plain_name": "groin strength test",
+      "weapon": {
+        "headline": "Quick recovery to the centre",
+        "body": "your groin muscles are strong and {evenness}",
+        "evenness": {
+          "even": "almost even, left vs right",
+          "fair": "fairly even, left vs right",
+          "uneven": "stronger on your {side} side by {pct}%",
+          "one_side": "measured on one side only"
+        }
+      }
     }
   ]
 }

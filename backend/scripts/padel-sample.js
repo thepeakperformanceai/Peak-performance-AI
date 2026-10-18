@@ -5,9 +5,9 @@
 //
 //   node scripts/padel-sample.js [out.json] [--prose]
 //
-// Without --prose the report uses the library's own text (what ships when
-// Gemini is unavailable or rejected). With --prose it uses sample friendly
-// wording that is run through the same checks Gemini's answer must pass.
+// Without --prose the report uses the coach text built in code (what ships
+// when Gemini is unavailable or rejected). With --prose it uses a sample
+// polish that is run through the same checks Gemini's answer must pass.
 
 const fs = require('fs');
 const { forSport } = require('../services/scoredReport.service');
@@ -32,19 +32,23 @@ const RESULTS_IN = {
   }
 };
 
-// Sample wording for --prose: only words plus numbers copied from the payload.
-const sampleProse = (p) => JSON.stringify({
-  weapons: [
-    `${p.first_name}, your hands are your secret weapon: a ${p.weapons[0].result} catch puts your reactions at ${p.weapons[0].tier} level, so you win the quick-fire exchanges at the net.`,
-    `Your outer hips are strong (${p.weapons[1].result}), so your first lateral step to cover the middle is fast and your knees stay straight on every lunge.`
-  ],
-  priorities: p.priorities.map((x, i) => [
-    `Your overhead squat scored ${x.result.replace(' (HumanTrak score)', '')} (${x.next_tier}). Getting low to dig out chiquitas and low volleys without losing posture is your job on the drive side, and better squat mechanics let you stay low through long rallies without tiring your back.`,
-    `Your 10m sprint was ${x.result}, just ${x.next_tier}. On the drive side you chase balls off the side glass; a quicker first few steps means arriving balanced, and after every lob it's the race back to the net.`,
-    `Your groin strength came in at ${x.result} (${x.next_tier}). As the drive player, these muscles pull you back to the centre after every wide ball, and a strong groin, roughly as strong as your outer hip, is your best protection in sudden sideways stops.`
-  ][i]),
-  planIntro: `${p.first_name}, here is one plan that works on all three at once. Train it for ${p.plan.weeks} weeks, then we retest on ${p.plan.retest_date} to show you how far you've moved.`
-});
+// Sample polish for --prose: warmer versions of the coach text, using only
+// numbers that are in the payload (the same checks Gemini's answer must pass).
+const sampleProse = (p) => {
+  const n = p.first_name;
+  return JSON.stringify({
+    weapons: [
+      `${n}, your hands are a real weapon. A ${p.weapons[0].result} catch means that on the drive side you meet fast, low balls through the middle early and punch the volley instead of just blocking it.`,
+      `${n}, your outer hips are strong and almost even, left vs right. That's where your first sideways push to cover the middle comes from, so you get there fast.`
+    ],
+    priorities: [
+      `${n}, as the drive player you dig out chiquitas and low volleys at your feet, and you need to get down there without losing your posture. Every player also has to stay low through long defensive rallies at the back. Better squat mechanics let you do both without tiring your back.`,
+      `${n}, on the drive side you cover the middle and chase balls off the side glass. Quicker first steps mean you arrive balanced instead of stretching, and after every lob it's a race back to the net.`,
+      `${n}, on your left side your groin is only 67% as strong as your outer hip, and we want 80% or more. Your left side is also 20% weaker than your right. These are the muscles that pull you back to the centre after a wide ball, and a strong groin is your best protection in sudden sideways stops.`
+    ],
+    planIntro: `${n}, one plan works on all three at once. Give it ${p.plan.weeks} weeks, then we retest on ${p.plan.retest_date} and show you how far you've come.`
+  });
+};
 
 const main = async () => {
   const [out = 'padel-sample.json'] = process.argv.slice(2).filter(a => !a.startsWith('--'));

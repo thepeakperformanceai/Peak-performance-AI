@@ -78,62 +78,61 @@ const sectionLabel = (txt, extra = '') =>
 const pill = (text, fg, bg) =>
   `<span style="display:inline-block;font-size:9.5px;font-weight:700;letter-spacing:0.6px;color:${fg};background:${bg};border-radius:5px;padding:3px 7px 4px;white-space:nowrap">${esc(text)}</span>`
 
+// The one plain number under a weapon's headline: a time or distance, or a score.
+const numberLabel = (w) => (w.number.isScore ? `out of 99 · ${w.tier}` : w.tier)
+
 function weaponCard(w, prose) {
   const t = tierColour(w.tier)
   return `<div style="flex:1;box-sizing:border-box;border-radius:14px;padding:14px 16px;background:${t.band};min-height:150px">
-    <div style="display:flex;justify-content:space-between;align-items:flex-start">
-      <div style="font-size:10px;font-weight:700;letter-spacing:1.5px;color:${t.soft}">${esc(String(w.measures).toUpperCase())}</div>
-      ${pill(w.tier.toUpperCase(), '#ffffff', t.deep)}
+    <div style="font-size:10px;font-weight:700;letter-spacing:1.5px;color:${t.soft}">${esc(String(w.plainName).toUpperCase())}</div>
+    <div style="font-family:${DISPLAY};font-size:27px;line-height:1.02;letter-spacing:0.5px;color:${t.ink};margin-top:4px">${esc(w.headline)}</div>
+    <div style="display:flex;align-items:baseline;gap:8px;margin-top:6px">
+      <span style="font-family:${DISPLAY};font-size:34px;line-height:1;color:${t.ink}">${esc(w.number.value)}</span>
+      <span style="font-size:10.5px;font-weight:700;color:${t.soft}">${esc(numberLabel(w))}</span>
     </div>
-    <div style="font-family:${DISPLAY};font-size:23px;letter-spacing:0.5px;color:${t.ink};margin-top:2px">${esc(w.name)}</div>
-    <div style="font-family:${DISPLAY};font-size:38px;line-height:1;color:${t.ink}">${esc(w.result)}</div>
     <div style="font-size:11px;line-height:1.45;color:${t.ink};margin-top:6px">${esc(prose)}</div>
   </div>`
 }
 
-function priorityBlock(p, prose, useProse) {
+function priorityBlock(p, prose) {
   const t = tierColour(p.tier)
-  const lines = useProse
-    ? `<div style="font-size:11.5px;line-height:1.5;color:${TXT}">${esc(prose)}</div>`
-    : p.lines.map(l => `<div style="font-size:11px;line-height:1.45;margin-top:3px"><b style="color:${MUTED}">${esc(l.label)}:</b> ${esc(l.text)}</div>`).join('')
   return `<div style="display:flex;gap:14px;padding:12px 0;border-top:1px solid ${RULE}">
     <div style="flex:0 0 42px;height:42px;border-radius:21px;background:${TXT};color:#ffffff;font-family:${DISPLAY};font-size:28px;line-height:44px;text-align:center">${p.rank}</div>
     <div style="flex:1">
       <div style="display:flex;align-items:baseline;justify-content:space-between;gap:10px">
         <div style="font-family:${DISPLAY};font-size:24px;letter-spacing:0.5px">${esc(p.name)}</div>
-        <div style="white-space:nowrap">${pill(`${p.tier.toUpperCase()} · ${p.score}`, t.ink, t.track)}</div>
+        <div style="white-space:nowrap">${pill(p.tier.toUpperCase(), t.ink, t.track)}</div>
       </div>
-      <div style="display:flex;flex-wrap:wrap;align-items:baseline;gap:10px;margin:2px 0 6px">
-        <span style="font-size:13px;font-weight:700">Your result: ${esc(p.result)}</span>
-        ${p.nextTier ? `<span style="font-size:11px;font-weight:600;color:${t.deep}">${esc(p.nextTier.text)}</span>` : ''}
-      </div>
-      ${lines}
+      <div style="font-size:12.5px;font-weight:700;line-height:1.4;margin:2px 0 5px">${esc(p.scoreLine)}</div>
+      <div style="font-size:11.5px;line-height:1.5;color:${TXT}">${esc(prose)}</div>
     </div>
   </div>`
 }
+
+// Small print under the priorities: tests that couldn't be ranked.
+export const unrankedNotes = (ar) => [
+  ar.notTested?.length ? `Not tested this session, so not ranked: ${ar.notTested.join(', ')}.` : '',
+  ar.notInBattery?.length ? `Not part of this report yet: ${ar.notInBattery.join(', ')}.` : '',
+].filter(Boolean)
 
 /** Page 1: "What it means for your game". */
 export function padelReportPage1Html(report) {
   const ar = report.reportContent?.athleteReport
   if (!ar) return ''
   const prose = ar.prose || {}
-  const useProse = prose.source === 'gemini'
   const weapons = ar.weapons.length
-    ? `<div style="display:flex;gap:14px">${ar.weapons.map((w, i) => weaponCard(w, useProse ? prose.weapons[i] : w.whatWeMeasured)).join('')}</div>`
+    ? `<div style="display:flex;gap:14px">${ar.weapons.map((w, i) => weaponCard(w, prose.weapons?.[i] || '')).join('')}</div>`
     : `<div style="font-size:12px;color:${MUTED}">No scored tests yet.</div>`
   const priorities = ar.priorities.length
-    ? ar.priorities.map((p, i) => priorityBlock(p, prose.priorities?.[i], useProse)).join('')
+    ? ar.priorities.map((p, i) => priorityBlock(p, prose.priorities?.[i] || '')).join('')
     : `<div style="font-size:12px;color:${MUTED};padding:10px 0">Every scored test is at Gold or above: nothing below target to prioritise.</div>`
-  const notTested = [
-    ar.notTested?.length ? `Not tested this session (not ranked, never estimated): ${ar.notTested.join(', ')}.` : '',
-    ar.notInBattery?.length ? `Not in the current padel scoring battery: ${ar.notInBattery.join(', ')}.` : '',
-  ].filter(Boolean).map(t => `<div style="font-size:9.5px;color:${FAINT};margin-top:6px">${esc(t)}</div>`).join('')
+  const notes = unrankedNotes(ar).map(t => `<div style="font-size:9.5px;color:${FAINT};margin-top:6px">${esc(t)}</div>`).join('')
   return pageShell(report, 1, 'What it means for your game', `FOR ${String(ar.side.label).toUpperCase()}-SIDE PLAYERS · ${String(ar.firstName).toUpperCase()}`, `
     ${sectionLabel('Your weapons', `<span style="font-size:10.5px;color:${FAINT}">your two best results</span>`)}
     ${weapons}
     ${sectionLabel('Your top 3 priorities', `<span style="font-size:10.5px;color:${FAINT}">biggest gap to Gold first</span>`)}
     ${priorities}
-    ${notTested}`)
+    ${notes}`)
 }
 
 /** Page 2: "How to improve". */
@@ -177,7 +176,7 @@ export function padelReportPage2Html(report) {
     <div style="display:flex;gap:14px;margin-top:16px">
       <div style="flex:0 0 220px;box-sizing:border-box;border-radius:14px;padding:14px 16px;background:${t.band}">
         <div style="font-size:10px;font-weight:700;letter-spacing:1.5px;color:${t.soft}">RETEST</div>
-        <div style="font-family:${DISPLAY};font-size:30px;line-height:1.05;color:${t.ink};margin-top:4px">${esc(longDate(ar.retest.date))}</div>
+        <div style="font-family:${DISPLAY};font-size:30px;line-height:1.05;color:${t.ink};margin-top:4px">${esc(ar.retest.dateText || longDate(ar.retest.date))}</div>
         <div style="font-size:10.5px;color:${t.ink};margin-top:4px">${esc(ar.retest.weeks)} weeks after testing</div>
       </div>
       <div style="flex:1;box-sizing:border-box;border-radius:14px;padding:14px 18px;background:${TXT};color:#ffffff">

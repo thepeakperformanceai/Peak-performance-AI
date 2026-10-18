@@ -4,34 +4,31 @@
 //   engine scores (scoring.js) + library/padel.json
 //     -> buildAthleteReport: weapons, top 3 priorities, role lines, fixes,
 //        combined 6-week plan, retest date (all chosen here, in code)
-//     -> narrateAthleteReport: Gemini rewords the chosen text into friendly
-//        prose with the athlete's name and numbers. It never picks tests,
-//        exercises or thresholds, and an answer with a number that is not in
-//        its payload, or anything that looks like an exercise prescription,
-//        is rejected. After MAX_ATTEMPTS the library text is used as is.
+//     -> coachProse: full coach sentences from the athlete's name, numbers
+//        and the library lines; the report reads well with this alone.
+//     -> narrateAthleteReport: Gemini only polishes that text. It never
+//        picks tests, exercises or thresholds; an answer with a number not
+//        in its payload, an exercise prescription or a device name is
+//        rejected, and after MAX_ATTEMPTS the coach text is used.
 //
 // Scores are the existing engine's, read as they are; nothing here changes
 // how they are calculated. Ranking: score points below the Gold line (75),
 // biggest gap first; ties keep library order. Left/right and ratio rules use
 // the library's own percentages on the raw results. Athlete-facing gaps are
-// to the NEXT tier, in the test's own units where the engine's scale can be
-// read backwards.
+// to the NEXT tier: in seconds or cm for timed tests, in score points for
+// the rest. No device names or device units reach the athlete.
 
 const LIBRARY = require('../library/padel.json');
 const { findUnsupportedNumbers } = require('./scoredReport.service');
 const { scoreFromVald } = require('../scoring/scoring');
 const aiEngine = require('./aiEngine.service');
 
-const UNITS = {
-  sprint_10m: { unit: 's', dp: 2, lowerIsBetter: true },
-  cod_505: { unit: 's', dp: 2, lowerIsBetter: true },
-  ruler_drop: { unit: 'cm', dp: 1, lowerIsBetter: true },
-  overhead_squat: { unit: '', dp: 0 },
-  trunk_rotation: { unit: '°', dp: 0 },
-  single_leg_stand: { unit: 's', dp: 1 },
-  shoulder_er: { unit: 'N', dp: 0 },
-  hip_abduction: { unit: 'N', dp: 0 },
-  hip_adduction: { unit: 'N', dp: 0 }
+// Timed tests are shown in their own units; every other test as its score
+// out of 99, so no device units (newtons, composite scores) reach the athlete.
+const MANUAL_UNITS = {
+  sprint_10m: { word: 'seconds', dp: 2 },
+  cod_505: { word: 'seconds', dp: 2 },
+  ruler_drop: { word: 'cm', dp: 1 }
 };
 
 const OBSERVATIONS = { overhead_squat_fault: ['heels_knees', 'arms_back', 'clean'] };
@@ -40,7 +37,16 @@ const isSet = (v) => v !== undefined && v !== null;
 const roundTo = (x, dp) => Math.round(x * 10 ** dp) / 10 ** dp;
 // Smallest step in the test's units that still covers the gap.
 const ceilTo = (x, dp) => Math.ceil(x * 10 ** dp - 1e-9) / 10 ** dp;
-const withUnit = (v, unit) => (unit === '°' ? `${v}°` : unit ? `${v} ${unit}` : `${v}`);
+const points = (n) => `${n} point${n === 1 ? '' : 's'}`;
+const lowerFirst = (s) => s.charAt(0).toLowerCase() + s.slice(1);
+const joinList = (xs) => (xs.length < 2 ? xs.join('') : `${xs.slice(0, -1).join(', ')} and ${xs[xs.length - 1]}`);
+
+const DAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+const longDate = (iso) => {
+  const d = new Date(`${iso}T00:00:00Z`);
+  return `${DAYS[d.getUTCDay()]} ${d.getUTCDate()} ${MONTHS[d.getUTCMonth()]} ${d.getUTCFullYear()}`;
+};
 
 // ---------- tiers ----------
 
@@ -52,7 +58,7 @@ const nextTierOf = (score) => {
   return above.length ? above[above.length - 1] : null;
 };
 
-// ---------- reading the engine's scales backwards ----------
+// ---------- reading a timed test's scale backwards ----------
 
 // Raw value that scores exactly `target`, by straight-line interpolation
 // between the scale's own points (xs raw, ss scores). Null outside the scale.
@@ -67,69 +73,57 @@ const invert = (xs, ss, target) => {
   return null;
 };
 
-const valdEdges = (c) => [c[0] - (c[1] - c[0]), c[0], c[1], c[2], c[3], c[3] + (c[3] - c[2])];
-
-/**
- * Raw result that would score `target` on this test, or null when the
- * engine's scale can't be read backwards (VALD band label only).
- */
-const rawForScore = (key, target, sessionTest, cfg, timing) => {
+/** Raw time or distance that would score `target` on a timed test (null for other tests). */
+const rawForScore = (key, target, cfg, timing) => {
   const tdef = cfg.tests[key];
-  if (tdef.source === 'manual') {
-    const pts = [...cfg.manual_anchors[key]].sort((a, b) => a[1] - b[1]);
-    let raw = invert(pts.map(p => p[0]), pts.map(p => p[1]), target);
-    if (raw === null) return null;
-    // Hand-timed sprints are scored with the offset added; give the hand time.
-    if (key.startsWith('sprint_') && timing === 'hand') raw -= cfg.hand_timing_offset_s;
-    return raw;
-  }
-  const cutoffs = sessionTest && sessionTest.cutoffs;
-  if (!cutoffs || cutoffs.length !== 4) return null;
-  let edges = valdEdges(cutoffs);
-  const hib = isSet(sessionTest.higher_is_better) ? sessionTest.higher_is_better : true;
-  if (!hib) {
-    const x = invert(edges.map(e => -e).reverse(), cfg.vald_band_edge_scores, target);
-    return x === null ? null : -x;
-  }
-  return invert(edges, cfg.vald_band_edge_scores, target);
+  if (!tdef || tdef.source !== 'manual' || !cfg.manual_anchors[key]) return null;
+  const pts = [...cfg.manual_anchors[key]].sort((a, b) => a[1] - b[1]);
+  let raw = invert(pts.map(p => p[0]), pts.map(p => p[1]), target);
+  if (raw === null) return null;
+  // Hand-timed sprints are scored with the offset added; give the hand time.
+  if (key.startsWith('sprint_') && timing === 'hand') raw -= cfg.hand_timing_offset_s;
+  return raw;
 };
 
-// ---------- one test's result, in words the athlete can read ----------
+// ---------- one test's result, as a coach would say it ----------
 
-const resultText = (key, t) => {
-  const u = UNITS[key];
-  if (isSet(t.raw_left) || isSet(t.raw_right)) {
-    const parts = [];
-    if (isSet(t.raw_left)) parts.push(`left ${withUnit(t.raw_left, u.unit)}`);
-    if (isSet(t.raw_right)) parts.push(`right ${withUnit(t.raw_right, u.unit)}`);
-    return parts.join(', ');
-  }
-  if (key === 'overhead_squat') return `${t.raw} (HumanTrak score)`;
-  return withUnit(t.raw, u.unit) + (t.timing === 'hand' ? ' (hand-timed)' : '');
+// The one number the athlete sees: a time or distance, or a score out of 99.
+const plainNumber = (key, t) => {
+  const u = MANUAL_UNITS[key];
+  if (u) return { value: `${t.raw} ${u.word}${t.timing === 'hand' ? ' (hand-timed)' : ''}`, isScore: false };
+  return { value: String(t.score), isScore: true };
 };
 
-const nextTierInfo = (key, t, sessionTest, cfg, timing) => {
+// How even left and right are, in the test's own words from the library
+// ("almost even, left vs right", "steadier on your left leg by 24%").
+const evenness = (t, words) => {
+  if (!words) return '';
+  const l = t.raw_left, r = t.raw_right;
+  if (!isSet(l) || !isSet(r) || Math.max(l, r) <= 0) return words.one_side;
+  const pct = Math.round((1 - Math.min(l, r) / Math.max(l, r)) * 100);
+  if (pct < 5) return words.even;
+  if (pct <= 10) return words.fair;
+  return words.uneven.replace('{side}', l > r ? 'left' : 'right').replace('{pct}', pct);
+};
+
+// "You scored 60 on the overhead squat. Silver starts at 65, so you're 5 points away."
+const scoreLineOf = (entry, t, cfg, timing) => {
+  const u = MANUAL_UNITS[entry.key];
+  const first = u
+    ? `Your ${entry.plain_name} was ${t.raw} ${u.word}${t.timing === 'hand' ? ' (hand-timed)' : ''}.`
+    : `You scored ${t.score} on the ${entry.plain_name}.`;
   const next = nextTierOf(t.score);
-  if (!next) return null;
-  const u = UNITS[key];
-  const points = roundTo(next.min_score - t.score, 1);
-  const rawTarget = rawForScore(key, next.min_score, sessionTest, cfg, timing);
-  const bilateral = isSet(t.raw_left) || isSet(t.raw_right);
+  if (!next) return { text: `${first} That's ${tierOf(t.score).label} level.`, nextTier: null };
+  const pts = roundTo(next.min_score - t.score, 1);
+  const rawTarget = u ? rawForScore(entry.key, next.min_score, cfg, timing) : null;
   if (rawTarget === null) {
-    return { tier: next.label, points, text: `${points} points from ${next.label}` };
+    return { text: `${first} ${next.label} starts at ${next.min_score}, so you're ${points(pts)} away.`, nextTier: { tier: next.label, points: pts } };
   }
   const target = roundTo(rawTarget, u.dp);
-  if (bilateral) {
-    return { tier: next.label, points, rawTarget: target, text: `${next.label} starts at about ${withUnit(target, u.unit)} each side` };
-  }
-  // A composite score has no unit: say where the next tier starts instead.
-  if (!u.unit) {
-    return { tier: next.label, points, rawTarget: target, text: `${next.label} starts at a HumanTrak score of ${target}` };
-  }
   const gap = ceilTo(Math.abs(t.raw - rawTarget), u.dp);
   return {
-    tier: next.label, points, rawTarget: target, rawGap: gap,
-    text: `${withUnit(gap, u.unit)} from ${next.label}`
+    text: `${first} ${next.label} starts at ${target} ${u.word}, so you're ${gap} ${u.word} away.`,
+    nextTier: { tier: next.label, points: pts, rawTarget: target, rawGap: gap }
   };
 };
 
@@ -194,6 +188,7 @@ const selectFixes = (entry, ctx) => {
   return { rules, pending: null };
 };
 
+const OWN_LINE = { RIGHT: 'drive', LEFT: 'reves', BOTH: 'every' };
 const linesFor = (side, block) =>
   LIBRARY.sides[side].lines.map(who => ({ who, label: LIBRARY.line_labels[who], text: block[who] }));
 
@@ -263,6 +258,38 @@ const addWeeks = (isoDate, weeks) => {
   return d.toISOString().slice(0, 10);
 };
 
+// ---------- rule sentences ----------
+
+// A plain sentence for a left/right or ratio rule that fired, from the
+// rule's note template in the library; null when the rule has none.
+const ruleNote = (rule, ctx) => {
+  if (!rule.note) return null;
+  const { t, session, byName } = ctx;
+  const fill = (vars) => rule.note.replace(/\{(\w+)\}/g, (_, k) => vars[k]);
+  const when = rule.when;
+  if (when.type === 'side_gap_pct_over') {
+    const weaker = t.raw_left < t.raw_right ? 'left' : 'right';
+    const stronger = weaker === 'left' ? 'right' : 'left';
+    const pct = Math.round((1 - t[`raw_${weaker}`] / t[`raw_${stronger}`]) * 100);
+    return fill({ weaker, stronger, pct });
+  }
+  if (when.type === 'racket_side_weaker_pct_over') {
+    const racket = session.athlete.dominant_hand === 'L' ? 'left' : 'right';
+    const other = racket === 'left' ? 'right' : 'left';
+    return fill({ pct: Math.round((1 - t[`raw_${racket}`] / t[`raw_${other}`]) * 100) });
+  }
+  if (when.type === 'same_side_ratio_below') {
+    const den = byName[when.denominator];
+    const ratios = ['left', 'right']
+      .filter(s => isSet(t[`raw_${s}`]) && isSet(den[`raw_${s}`]) && den[`raw_${s}`] > 0)
+      .map(s => ({ side: s, ratio: t[`raw_${s}`] / den[`raw_${s}`] }))
+      .sort((a, b) => a.ratio - b.ratio);
+    const low = ratios[0];
+    return fill({ side: low.side, pct: Math.round(low.ratio * 100), target: Math.round(when.ratio * 100) });
+  }
+  return null;
+};
+
 // ---------- the report ----------
 
 /**
@@ -279,18 +306,19 @@ const buildAthleteReport = ({ profile, scored, session, cfg }) => {
     .map((entry, order) => ({ entry, order, t: byName[entry.key] }))
     .filter(r => r.t && r.t.status === 'completed' && isSet(r.t.score))
     .map(r => {
-      const sessionTest = session.tests[r.entry.key];
-      const tier = tierOf(r.t.score);
+      const line = scoreLineOf(r.entry, r.t, cfg, timing);
       return {
         ...r,
         view: {
           key: r.entry.key,
           name: r.entry.name,
+          plainName: r.entry.plain_name,
           measures: r.entry.measures,
-          result: resultText(r.entry.key, r.t),
+          number: plainNumber(r.entry.key, r.t),
           score: r.t.score,
-          tier: tier.label,
-          nextTier: nextTierInfo(r.entry.key, r.t, sessionTest, cfg, timing)
+          tier: tierOf(r.t.score).label,
+          scoreLine: line.text,
+          nextTier: line.nextTier
         }
       };
     });
@@ -316,6 +344,7 @@ const buildAthleteReport = ({ profile, scored, session, cfg }) => {
       gapToTarget: roundTo(target - r.t.score, 1),
       whatWeMeasured: r.entry.what_we_measured,
       lines: linesFor(side, r.entry.role_lines),
+      ruleNotes: rules.map(rule => ruleNote(rule, ctx)).filter(Boolean),
       fixes,
       coachNotes: rules.map(rule => rule.coach_note).filter(Boolean),
       ...(pending ? { fixPending: pending } : {}),
@@ -327,6 +356,7 @@ const buildAthleteReport = ({ profile, scored, session, cfg }) => {
   // Retest: when the longest of the chosen fixes ends (all tests done if no priorities).
   const windows = (priorities.length ? priorities : results.map(r => ({ retestWeeks: r.entry.retest_weeks }))).map(p => p.retestWeeks);
   const retestWeeks = windows.length ? Math.max(...windows) : LIBRARY.plan.weeks;
+  const retestDate = addWeeks(profile.testDate, retestWeeks);
 
   const tested = new Set(results.map(r => r.entry.key));
   const inBattery = (e) => !!cfg.tests[e.key];
@@ -337,10 +367,16 @@ const buildAthleteReport = ({ profile, scored, session, cfg }) => {
     firstName: String(profile.name || '').trim().split(/\s+/)[0] || 'Athlete',
     side: { key: side, label: LIBRARY.sides[side].label },
     target: { score: target, label: LIBRARY.target.label },
-    weapons: weapons.map(w => ({ ...w.view, whatWeMeasured: w.entry.what_we_measured })),
+    weapons: weapons.map(w => ({
+      ...w.view,
+      headline: w.entry.weapon.headline,
+      body: w.entry.weapon.body.replace('{evenness}', evenness(w.t, w.entry.weapon.evenness)),
+      // The athlete's own line for this test (Every player when they play both sides).
+      line: linesFor(side, w.entry.role_lines).find(l => l.who === OWN_LINE[side])
+    })),
     priorities,
     plan: buildPlan(priorities, side),
-    retest: { weeks: retestWeeks, date: addWeeks(profile.testDate, retestWeeks) },
+    retest: { weeks: retestWeeks, date: retestDate, dateText: longDate(retestDate) },
     notTested: LIBRARY.tests.filter(e => inBattery(e) && !tested.has(e.key)).map(e => e.name),
     // Library tests the scoring engine doesn't score yet (e.g. 5-0-5): never ranked.
     notInBattery: LIBRARY.tests.filter(e => !inBattery(e)).map(e => e.name),
@@ -348,47 +384,74 @@ const buildAthleteReport = ({ profile, scored, session, cfg }) => {
   };
 };
 
-// ---------- Gemini: words only ----------
+// ---------- the coach's words (complete without Gemini) ----------
+
+// A library line as part of a sentence: "On the drive side, you cover ...".
+const LINE_LEAD = { drive: 'On the drive side, ', reves: 'On the revés side, ' };
+const asSentence = (l, many) => {
+  const text = l.text.replace(/^They /, 'These muscles ');
+  if (l.who === 'every') return `${many ? 'And for every player, ' : 'For every player, '}${lowerFirst(text)}`;
+  return `${LINE_LEAD[l.who]}${lowerFirst(text)}`;
+};
+const withName = (name, sentences) => `${name}, ${lowerFirst(sentences[0])}${sentences.length > 1 ? ` ${sentences.slice(1).join(' ')}` : ''}`;
+
+/**
+ * Full coach sentences from the athlete's name, their numbers and the
+ * library lines. This is the report's text whenever Gemini is unavailable
+ * or rejected, and the text Gemini is asked to polish.
+ */
+const coachProse = (ar) => {
+  const name = ar.firstName;
+  const n = ar.priorities.length;
+  return {
+    weapons: ar.weapons.map(w => withName(name, [`${w.body.charAt(0).toUpperCase()}${w.body.slice(1)}.`, asSentence(w.line, false)])),
+    priorities: ar.priorities.map(p => withName(name, [...p.ruleNotes, ...p.lines.map(l => asSentence(l, p.lines.length > 1))])),
+    planIntro: n
+      ? `${name}, this plan trains your top ${n === 1 ? 'priority' : `${n} priorities`} together: ${joinList(ar.priorities.map(p => p.plainName.replace(/ test$/, '')))}. Stick with it for ${ar.plan.weeks} weeks, then we retest on ${ar.retest.dateText} to measure how far you've moved.`
+      : `${name}, nothing is below Gold right now. Keep training, and we retest on ${ar.retest.dateText}.`
+  };
+};
+
+// ---------- Gemini: polish only ----------
 
 const MAX_ATTEMPTS = 3;
 
-const SYSTEM_PROMPT = `You are a padel coach at PeakPerformance.pk rewording an athlete's report into friendly, encouraging prose.
+const SYSTEM_PROMPT = `You are a padel coach at PeakPerformance.pk polishing the wording of an athlete's report.
 
-The tests, results, gaps and role lines in the payload were chosen in code. Your job is words only.
+Every piece of text in the payload is already complete and correct. It was chosen and written in code. Your job is only to make it read more warmly and naturally, like a coach talking to this athlete.
 
 RULES (all mandatory):
 1. Use only numbers present in the payload, copied exactly. Never compute, round, estimate or invent a number.
 2. Never add, name or suggest an exercise, drill, set, rep, hold or training load. Never change which tests are weapons or priorities, or their order.
-3. Address the athlete by their first name (payload.first_name) and speak to them as "you".
-4. For each weapon, say in one or two sentences what the result means for their game. Mention the raw result.
-5. For each priority, rewrite its role lines (lines[]) into two or three sentences for this athlete, keeping their meaning. Mention the raw result and the next-tier gap text (next_tier) exactly as given. Do not drop a role line.
+3. Keep every fact and every role line's meaning from coach_text. Don't drop anything; don't add claims.
+4. Address the athlete by their first name (payload.first_name) and speak to them as "you".
+5. Never mention testing devices or brands (no "HumanTrak", "Dynamo" or "VALD") and never use newtons or other device units.
 6. No diagnoses, injuries or injury predictions; describe weaknesses as things to build.
-7. Plain English. No markdown.
+7. Plain English. No markdown. Keep each text about as long as its coach_text.
 
 Return ONLY one JSON object, no markdown, in exactly this shape:
 {
-  "weapons": ["one string per weapon, same order"],
-  "priorities": ["one string per priority, same order"],
-  "planIntro": "one or two sentences introducing the 6-week plan and the retest date"
+  "weapons": ["polished coach_text for each weapon, same order"],
+  "priorities": ["polished coach_text for each priority, same order"],
+  "planIntro": "polished plan.intro"
 }`;
 
 // What Gemini sees: only the chosen text and the athlete's numbers.
-const buildNarrationPayload = (ar) => ({
-  first_name: ar.firstName,
-  playing_side: ar.side.label,
-  weapons: ar.weapons.map(w => ({ test: w.name, result: w.result, tier: w.tier })),
-  priorities: ar.priorities.map(p => ({
-    test: p.name,
-    result: p.result,
-    tier: p.tier,
-    next_tier: p.nextTier ? p.nextTier.text : null,
-    lines: p.lines.map(l => `${l.label}: ${l.text}`)
-  })),
-  plan: { weeks: ar.plan.weeks, retest_weeks: ar.retest.weeks, retest_date: ar.retest.date }
-});
+const buildNarrationPayload = (ar) => {
+  const plain = coachProse(ar);
+  return {
+    first_name: ar.firstName,
+    playing_side: ar.side.label,
+    weapons: ar.weapons.map((w, i) => ({ test: w.plainName, headline: w.headline, result: w.number.value, coach_text: plain.weapons[i] })),
+    priorities: ar.priorities.map((p, i) => ({ test: p.plainName, score_line: p.scoreLine, coach_text: plain.priorities[i] })),
+    plan: { weeks: ar.plan.weeks, retest_date: ar.retest.dateText, intro: plain.planIntro }
+  };
+};
 
 // Anything that reads like a prescription is not Gemini's to write.
 const PRESCRIPTION = /\b(?:sets?|reps?|repetitions?|holds?|rounds?)\s+of\b|\b\d+\s*(?:x|×)\s*\d+|\b\d+\s+(?:sets|reps|repetitions|holds|rounds)\b/i;
+// No device names or device units in anything the athlete reads.
+const DEVICE_WORDS = /\b(?:humantrak|dynamo|vald|newtons?)\b|\d\s*N\b/i;
 
 const stripFences = (text) => {
   let t = String(text || '').replace(/```json\s*/gi, '').replace(/```\s*/g, '').trim();
@@ -409,24 +472,18 @@ const problemsWith = (prose, payload) => {
   const bad = findUnsupportedNumbers({ strings }, payload);
   if (bad.length) out.push(`it used numbers that are not in the payload: ${bad.join(', ')}`);
   if (strings.some(s => PRESCRIPTION.test(s))) out.push('it wrote an exercise prescription (sets, reps, holds or rounds); exercises are not yours to write');
+  if (strings.some(s => DEVICE_WORDS.test(s))) out.push('it named a testing device or a device unit (HumanTrak, Dynamo, VALD, newtons)');
   return out;
 };
 
-// The library's own words, used when Gemini is unavailable or rejected.
-const libraryProse = (ar) => ({
-  weapons: ar.weapons.map(w => `${w.name}: ${w.result}. ${w.tier} level.`),
-  priorities: ar.priorities.map(p =>
-    `${p.name}: ${p.result}${p.nextTier ? ` (${p.nextTier.text})` : ''}. ${p.lines.map(l => `${l.label}: ${l.text}`).join(' ')}`),
-  planIntro: `Your ${ar.plan.weeks}-week plan combines the fixes for your top priorities. Retest on ${ar.retest.date}.`
-});
-
 /**
- * Adds ar.prose (Gemini's wording, or the library's text) and returns ar.
- * Never throws for a bad or missing AI answer: the report still goes out.
+ * Adds ar.prose and returns ar: Gemini's polish when it passes every check,
+ * otherwise the coach text built in code. Never throws for a bad or missing
+ * AI answer: the report still goes out, and still reads like a coach.
  */
 const narrateAthleteReport = async (ar, { callModel = aiEngine.callGemini } = {}) => {
   const payload = buildNarrationPayload(ar);
-  const base = `Reword this padel athlete report.\n\nPAYLOAD:\n${JSON.stringify(payload, null, 2)}`;
+  const base = `Polish the wording of this padel athlete report.\n\nPAYLOAD:\n${JSON.stringify(payload, null, 2)}`;
   let prompt = base;
   let lastProblem = '';
   for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
@@ -459,7 +516,7 @@ const narrateAthleteReport = async (ar, { callModel = aiEngine.callGemini } = {}
     console.warn(`[padel report] Gemini attempt ${attempt} rejected: ${lastProblem}`);
     prompt = `${base}\n\nYour previous answer was rejected because ${problems.join('; and ')}. Rewrite it.`;
   }
-  ar.prose = { ...libraryProse(ar), source: 'library', reason: lastProblem };
+  ar.prose = { ...coachProse(ar), source: 'coach', reason: lastProblem };
   return ar;
 };
 
@@ -482,7 +539,8 @@ module.exports = {
   buildAthleteReport,
   buildNarrationPayload,
   narrateAthleteReport,
-  libraryProse,
+  coachProse,
+  DEVICE_WORDS,
   cleanObservations,
   problemsWith
 };

@@ -102,13 +102,37 @@ test('side: Drive and Revés see their lines plus Every player; Both sees all li
   assert.ok(!drills('LEFT').includes('Drive') && drills('LEFT').includes('Revés'));
 });
 
+const priority = (ar, key) => ar.priorities.find(p => p.key === key);
+// Strong everywhere except the tests a case wants ranked.
+const base = () => {
+  const s = copy(SESSION);
+  s.tests.sprint_10m.value = 1.80;
+  s.tests.overhead_squat.value = 80;
+  s.tests.hip_adduction = STRONG_HIPS;
+  s.tests.hip_abduction = STRONG_HIPS;
+  return s;
+};
+
 // ---------- weapons and ranking ----------
 
-test('weapons: the two best scores', () => {
+test('weapons: the two best scores, led by what they mean on court, then one plain number', () => {
   const ar = build();
   assert.deepEqual(ar.weapons.map(w => [w.key, w.score, w.tier]), [['ruler_drop', 82, 'Gold'], ['hip_abduction', 76.6, 'Gold']]);
-  assert.equal(ar.weapons[0].result, '12 cm');
-  assert.equal(ar.weapons[1].result, 'left 300 N, right 290 N');
+  assert.deepEqual(ar.weapons.map(w => w.headline), ['Fast hands at the net', 'Fast first step to the middle']);
+  assert.deepEqual(ar.weapons.map(w => w.number), [{ value: '12 cm', isScore: false }, { value: '76.6', isScore: true }]);
+  // Hip abduction 300 / 290: about 3% apart.
+  assert.equal(ar.weapons[1].body, 'your outer hips are strong and almost even, left vs right');
+  assert.equal(ar.weapons[1].line.label, 'Drive');
+});
+
+test('weapons: evenness in the test\'s own words', () => {
+  const s = copy(SESSION);
+  s.tests.ruler_drop.value = 28;
+  s.tests.hip_abduction = { status: 'completed', left: 330, right: 280, cutoffs: [100, 180, 260, 340] };   // 15% apart
+  s.tests.single_leg_stand = { status: 'completed', left: 24, right: 28, cutoffs: [3, 8, 15, 25] };       // 14% apart
+  const bodies = Object.fromEntries(build(s).weapons.map(w => [w.key, w.body]));
+  assert.equal(bodies.hip_abduction, 'your outer hips are strong and stronger on your left side by 15%');
+  assert.equal(bodies.single_leg_stand, 'you stay steady on one leg with your eyes closed, steadier on your right leg by 14%');
 });
 
 test('priorities: biggest gap in score points below 75 first, top 3, weapons excluded', () => {
@@ -145,47 +169,63 @@ test('priorities: fewer than 3 when fewer tests are below 75; missing tests are 
 
 // ---------- next tier ----------
 
-test('next tier: raw gap in the test\'s units to the NEXT tier, not to Gold', () => {
+test('score line: a timed test in seconds, with the gap to the NEXT tier (not to Gold)', () => {
   const p = build().priorities.find(x => x.key === 'sprint_10m');      // 2.05 s, Bronze; Silver at 65 = 2.0123 s
   assert.equal(p.tier, 'Bronze');
-  assert.deepEqual(p.nextTier, { tier: 'Silver', points: 4.2, rawTarget: 2.01, rawGap: 0.04, text: '0.04 s from Silver' });
+  assert.equal(p.scoreLine, 'Your 10m sprint was 2.05 seconds. Silver starts at 2.01 seconds, so you\'re 0.04 seconds away.');
+  assert.deepEqual(p.nextTier, { tier: 'Silver', points: 4.2, rawTarget: 2.01, rawGap: 0.04 });
   const s = copy(SESSION);
   s.tests.sprint_10m.value = 1.99;                                    // Silver -> Gold at 75 (1.93 s)
-  assert.equal(build(s).priorities.find(x => x.key === 'sprint_10m').nextTier.text, '0.06 s from Gold');
+  assert.equal(build(s).priorities.find(x => x.key === 'sprint_10m').scoreLine,
+    'Your 10m sprint was 1.99 seconds. Gold starts at 1.93 seconds, so you\'re 0.06 seconds away.');
 });
 
-test('next tier: hand-timed sprints give the hand time; Gold has none; bilateral and composite say where it starts', () => {
+test('score line: other tests as a score, said like a coach; hand-timed sprints give the hand time', () => {
+  const ar = build();
+  assert.equal(ar.priorities.find(x => x.key === 'overhead_squat').scoreLine,
+    'You scored 60 on the overhead squat. Silver starts at 65, so you\'re 5 points away.');
+  assert.equal(ar.priorities.find(x => x.key === 'hip_adduction').scoreLine,
+    'You scored 63.4 on the groin strength test. Silver starts at 65, so you\'re 1.6 points away.');
   const s = copy(SESSION);
   s.timing_method = 'hand';
   s.tests.sprint_10m.value = 1.83;                                    // +0.22 = 2.05 s
-  const p = build(s).priorities.find(x => x.key === 'sprint_10m');
-  assert.equal(p.result, '1.83 s (hand-timed)');
-  assert.equal(p.nextTier.text, '0.04 s from Silver');
-  const ar = build();
-  assert.equal(ar.weapons[0].nextTier, null);
-  assert.equal(ar.priorities.find(x => x.key === 'hip_adduction').nextTier.text, 'Silver starts at about 233 N each side');
-  assert.equal(ar.priorities.find(x => x.key === 'overhead_squat').nextTier.text, 'Silver starts at a HumanTrak score of 60');
+  assert.equal(build(s).priorities.find(x => x.key === 'sprint_10m').scoreLine,
+    'Your 10m sprint was 1.83 seconds (hand-timed). Silver starts at 1.79 seconds, so you\'re 0.04 seconds away.');
 });
 
-test('next tier: VALD band only (no cut-offs) gives score points, never a made-up raw target', () => {
+test('score line: band-only results use the score too; 1 point is singular', () => {
   const s = copy(SESSION);
   s.tests.overhead_squat = { status: 'completed', value: 55, band: 'below' };   // midpoint 48
-  const p = build(s).priorities.find(x => x.key === 'overhead_squat');
-  assert.deepEqual(p.nextTier, { tier: 'Silver', points: 17, text: '17 points from Silver' });
+  assert.equal(build(s).priorities.find(x => x.key === 'overhead_squat').scoreLine,
+    'You scored 48 on the overhead squat. Silver starts at 65, so you\'re 17 points away.');
+  s.tests.overhead_squat = { status: 'completed', value: 59, cutoffs: [30, 50, 65, 80] };              // score 64
+  assert.match(build(s).priorities.find(x => x.key === 'overhead_squat').scoreLine, /so you're 1 point away\.$/);
+});
+
+test('athlete-facing text never names a device or a device unit, on any side', () => {
+  for (const position of ['RIGHT', 'LEFT', 'BOTH']) {
+    const ar = build(SESSION, { ...PROFILE, position });
+    const shown = JSON.stringify([
+      ar.weapons.map(w => [w.plainName, w.headline, w.number, w.body, w.measures]),
+      ar.priorities.map(p => [p.name, p.plainName, p.scoreLine, p.ruleNotes, p.measures]),
+      R.coachProse(ar)
+    ]);
+    assert.equal(R.DEVICE_WORDS.test(shown), false, `${position}: ${shown.match(R.DEVICE_WORDS)}`);
+  }
+});
+
+test('rule sentences: the library\'s left/right and ratio rules, in plain words with the athlete\'s numbers', () => {
+  assert.deepEqual(build().priorities.find(p => p.key === 'hip_adduction').ruleNotes, [
+    'On your left side, your groin is 67% as strong as your outer hip. We want it at 80% or more.',
+    'Your left side is 20% weaker than your right side.'
+  ]);
+  const ar = build(base());
+  assert.deepEqual(priority(ar, 'shoulder_er').ruleNotes, ['Your racket arm is 13% weaker than your other arm.']);
+  assert.deepEqual(priority(ar, 'single_leg_stand').ruleNotes, ['Your left leg held on for 57% less time than your right leg.']);
+  assert.deepEqual(priority(ar, 'trunk_rotation').ruleNotes, ['Your left side turns 24% less than your right side.']);
 });
 
 // ---------- fixes: the library's rules ----------
-
-const priority = (ar, key) => ar.priorities.find(p => p.key === key);
-// Strong everywhere except the tests a case wants ranked.
-const base = () => {
-  const s = copy(SESSION);
-  s.tests.sprint_10m.value = 1.80;
-  s.tests.overhead_squat.value = 80;
-  s.tests.hip_adduction = STRONG_HIPS;
-  s.tests.hip_abduction = STRONG_HIPS;
-  return s;
-};
 
 test('hip adduction: below 80% of abduction on the SAME side -> Fix A; >10% side gap -> also Fix B', () => {
   // Left 200 / 300 = 67% (right 250 / 290 = 86%); left 20% weaker than right.
@@ -276,13 +316,13 @@ test('plan: role drills for the athlete\'s side, never repeated', () => {
 });
 
 test('retest: test date plus the longest window among the priorities', () => {
-  assert.deepEqual(build().retest, { weeks: 6, date: '2026-11-29' });
+  assert.deepEqual(build().retest, { weeks: 6, date: '2026-11-29', dateText: 'Sunday 29 November 2026' });
   const s = base();                                                   // only 4-week tests ranked
   s.tests.shoulder_er = { status: 'completed', left: 230, right: 228, cutoffs: [60, 100, 150, 220] };
   s.tests.overhead_squat.value = 55;
   const ar = build(s);
   assert.ok(ar.priorities.length && ar.priorities.every(p => p.retestWeeks === 4), ar.priorities.map(p => p.key).join());
-  assert.deepEqual(ar.retest, { weeks: 4, date: '2026-11-15' });
+  assert.deepEqual(ar.retest, { weeks: 4, date: '2026-11-15', dateText: 'Sunday 15 November 2026' });
 });
 
 // ---------- Gemini: words only ----------
@@ -292,19 +332,54 @@ const payloadOf = (prompt) => JSON.parse(prompt.split('PAYLOAD:\n')[1].split('\n
 
 const goodProse = (payload) => JSON.stringify({
   weapons: payload.weapons.map(w => `Ali, your ${w.test} result of ${w.result} is a real weapon.`),
-  priorities: payload.priorities.map(p => `Ali, your ${p.test} came in at ${p.result}${p.next_tier ? `, ${p.next_tier}` : ''}. This matters on the drive side.`),
+  priorities: payload.priorities.map(p => `Ali, ${p.score_line} This matters on the drive side.`),
   planIntro: `Six weeks of focused work, then we retest on ${payload.plan.retest_date}.`
 });
 
-test('narration: Gemini sees only the chosen text and numbers; wording kept when it passes', async () => {
+test('coach text (no Gemini needed): full sentences with the name, the numbers and every library line', () => {
+  const ar = build();
+  const c = R.coachProse(ar);
+  assert.equal(c.weapons[1], 'Ali, your outer hips are strong and almost even, left vs right. On the drive side, pushing off sideways to cover the middle starts here. Strong outer hips mean a faster first lateral step.');
+  assert.equal(c.priorities[2], 'Ali, on your left side, your groin is 67% as strong as your outer hip. We want it at 80% or more. ' +
+    'Your left side is 20% weaker than your right side. On the drive side, pulling yourself back to the centre after a wide ball uses these muscles. ' +
+    'Strong adductors mean a faster recovery step. And for every player, groin strains are common in sports with sudden sideways stops. ' +
+    'A strong groin, roughly as strong as the outer hip, is the best protection.');
+  assert.equal(c.planIntro, 'Ali, this plan trains your top 3 priorities together: overhead squat, 10m sprint and groin strength. Stick with it for 6 weeks, then we retest on Sunday 29 November 2026 to measure how far you\'ve moved.');
+  // Every role line for the athlete's side is in the text.
+  for (const [i, p] of ar.priorities.entries()) {
+    for (const l of p.lines) assert.ok(c.priorities[i].includes(l.text.slice(1, 40)), `${p.key} ${l.label}`);
+  }
+  // "They keep your pelvis level..." reads as "these muscles keep..." mid-sentence.
+  const s = base();
+  s.tests.hip_abduction = { status: 'completed', left: 220, right: 180, cutoffs: [100, 180, 260, 340] };
+  const ab = build(s, { ...PROFILE, position: 'BOTH' });
+  const i = ab.priorities.findIndex(p => p.key === 'hip_abduction');
+  assert.match(R.coachProse(ab).priorities[i], /And for every player, these muscles keep your pelvis level/);
+});
+
+test('narration: Gemini only polishes the coach text, and sees no exercises', async () => {
   const ar = build();
   let seen;
   await R.narrateAthleteReport(ar, { callModel: async (sys, p) => { seen = payloadOf(p); return goodProse(seen); } });
   assert.equal(ar.prose.source, 'gemini');
   assert.equal(seen.first_name, 'Ali');
-  assert.deepEqual(seen.priorities.map(p => p.test), ar.priorities.map(p => p.name));
+  assert.deepEqual(seen.priorities.map(p => p.coach_text), R.coachProse(ar).priorities);
   assert.equal(JSON.stringify(seen).includes('Copenhagen'), false);    // exercises are never sent
   assert.match(R.SYSTEM_PROMPT, /Never add, name or suggest an exercise/);
+  assert.match(R.SYSTEM_PROMPT, /Never mention testing devices/);
+});
+
+test('narration: device names in Gemini\'s answer are rejected', async () => {
+  const ar = build();
+  let calls = 0;
+  await R.narrateAthleteReport(ar, { callModel: async (sys, p) => {
+    calls++;
+    const ok = JSON.parse(goodProse(payloadOf(p)));
+    if (calls === 1) ok.priorities[0] = 'Your HumanTrak result shows room to grow.';
+    return JSON.stringify(ok);
+  } });
+  assert.equal(calls, 2);
+  assert.equal(ar.prose.source, 'gemini');
 });
 
 test('narration: invented numbers and exercise prescriptions are rejected, then retried', async () => {
@@ -322,13 +397,13 @@ test('narration: invented numbers and exercise prescriptions are rejected, then 
   assert.equal(ar.prose.attempts, 3);
 });
 
-test('narration: after repeated rejection, or no AI, the library text is used', async () => {
+test('narration: after repeated rejection, or no AI, the coach text is used', async () => {
   const ar = build();
   await R.narrateAthleteReport(ar, { callModel: async () => '{"weapons": ["about 99"], "priorities": [], "planIntro": ""}' });
-  assert.equal(ar.prose.source, 'library');
-  assert.deepEqual(ar.prose, { ...R.libraryProse(ar), source: 'library', reason: ar.prose.reason });
+  assert.equal(ar.prose.source, 'coach');
+  assert.deepEqual(ar.prose, { ...R.coachProse(ar), source: 'coach', reason: ar.prose.reason });
   const ar2 = build();
   await R.narrateAthleteReport(ar2, { callModel: async () => { throw new Error('no key'); } });
-  assert.equal(ar2.prose.source, 'library');
-  assert.match(ar2.prose.priorities[0], /^Overhead Squat: 55 \(HumanTrak score\) \(Silver starts at a HumanTrak score of 60\)\. Drive: /);
+  assert.equal(ar2.prose.source, 'coach');
+  assert.match(ar2.prose.priorities[0], /^Ali, on the drive side, low balls at your feet/);
 });
