@@ -303,7 +303,12 @@ export function buildPadelReportPdf(report, opts = {}) {
   ;['TEST', 'YOUR RESULT', 'LEVEL', 'NEXT STEP'].forEach((h, i) => doc.text(h, cols[i], y + 3, { charSpace: 0.3 }))
   y += 5
   for (const r of ar.fullResults || []) {
-    ensure(9)
+    const betterText = r.better ? `Better score: ${r.better}` : ''
+    // Wrapped once, in the body font, leaving room for the bold lead-in.
+    font(8.2, 'normal', TXT)
+    const betterLines = betterText ? wrap(betterText, CW - 3) : []
+    const betterH = betterLines.length * lineH(8.2)
+    ensure(9 + betterH)
     doc.setDrawColor(RULE)
     doc.setLineWidth(0.25)
     doc.line(M, y, W - M, y)
@@ -317,7 +322,19 @@ export function buildPadelReportPdf(report, opts = {}) {
     pill(r.tier.toUpperCase(), cols[2] + pw, y + 2.4, c.ink, c.track)
     font(9, 'normal', MUTED)
     doc.text(r.next, cols[3], y + 5.6)
-    y += 8.5
+    y += 8
+    if (betterText) {
+      // "Better score:" in the tier colour, then the line itself.
+      font(8.2, 'bold', c.deep)
+      const lead = 'Better score: '
+      const lines = betterLines
+      doc.text(lead, M, y + 8.2 * PT)
+      const lw = doc.getTextWidth(lead)
+      font(8.2, 'normal', TXT)
+      doc.text(lines[0].slice(lead.length), M + lw, y + 8.2 * PT)
+      lines.slice(1).forEach((ln, i) => doc.text(ln, M, y + 8.2 * PT + (i + 1) * lineH(8.2)))
+      y += betterH + 1.5
+    }
   }
   y += 3
   para('Timed tests are shown in seconds or centimetres; every other test as a score out of 99. Gold starts at 75, Silver at 65.', M, y, CW, 7.5, 'normal', FAINT)

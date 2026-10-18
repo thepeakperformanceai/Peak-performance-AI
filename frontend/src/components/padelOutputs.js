@@ -194,11 +194,11 @@ export function padelReportPage3Html(report, pageNo = 3) {
   const rows = (ar.fullResults || []).map(r => {
     const c = tierColour(r.tier)
     return `<tr>
-      <td style="padding:9px 8px 9px 0;border-top:1px solid ${RULE};font-size:12px;font-weight:700">${esc(r.test)}</td>
-      <td style="padding:9px 8px;border-top:1px solid ${RULE};font-size:12px;white-space:nowrap">${esc(r.result)}</td>
-      <td style="padding:9px 8px;border-top:1px solid ${RULE}">${pill(r.tier.toUpperCase(), c.ink, c.track)}</td>
-      <td style="padding:9px 0 9px 8px;border-top:1px solid ${RULE};font-size:11.5px;color:${MUTED}">${esc(r.next)}</td>
-    </tr>`
+      <td style="padding:9px 8px 2px 0;border-top:1px solid ${RULE};font-size:12px;font-weight:700">${esc(r.test)}</td>
+      <td style="padding:9px 8px 2px;border-top:1px solid ${RULE};font-size:12px;white-space:nowrap">${esc(r.result)}</td>
+      <td style="padding:9px 8px 2px;border-top:1px solid ${RULE}">${pill(r.tier.toUpperCase(), c.ink, c.track)}</td>
+      <td style="padding:9px 0 2px 8px;border-top:1px solid ${RULE};font-size:11.5px;color:${MUTED}">${esc(r.next)}</td>
+    </tr>${r.better ? `<tr><td colspan="4" style="padding:0 0 9px;font-size:10.5px;line-height:1.4;color:${TXT}"><span style="color:${c.deep};font-weight:700">Better score:</span> ${esc(r.better)}</td></tr>` : ''}`
   }).join('')
   const th = (txt, extra = '') => `<th style="text-align:left;padding:0 8px 6px ${extra};font-size:9px;font-weight:700;letter-spacing:1.2px;color:${FAINT}">${txt}</th>`
   return pageShell(report, pageNo, 'Your full results', `EVERY TEST YOU DID · ${String(ar.firstName).toUpperCase()}`, `

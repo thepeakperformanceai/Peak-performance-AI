@@ -1,8 +1,8 @@
 {
-  "library_version": "padel-library-v1.3",
+  "library_version": "padel-library-v1.4",
   "sport": "padel",
   "source": "docs/library/padel.md (Oct 18, 2026)",
-  "notes": "One entry per padel test. The engine reads this file to pick the athlete's top 3 priorities, their role lines, fixes, role drills and retest window. Gemini only rewords the text it is given. Scores come from the existing scoring engine, unchanged. Left/right and ratio rules use the library's own percentages on the raw left/right results. Rules marked proposed need DPT sign-off; engine_note says where the engine's data can't follow the library exactly. plain_name, weapon (headline and body), improve (what a better score changes on court; kept for review, not shown in the report yet) and rule note templates are PeakPerformance wording added for the report, not text from padel.md.",
+  "notes": "One entry per padel test. The engine reads this file to pick the athlete's top 3 priorities, their role lines, fixes, role drills and retest window. Gemini only rewords the text it is given. Scores come from the existing scoring engine, unchanged. Left/right and ratio rules use the library's own percentages on the raw left/right results. Rules marked proposed need DPT sign-off; engine_note says where the engine's data can't follow the library exactly. plain_name, weapon (headline and body), improve (what a better score changes on court; one line per result on page 3: Drive or Revés line for that side, Every player for Both) and rule note templates are PeakPerformance wording added for the report, not text from padel.md.",
   "draft_notice": "Draft – pending clinical review",
   "draft_notice_help": "Shown in the footer of every page of the padel athlete report. Set draft_notice to null (or \"\") to switch it off; applies to reports generated after the change.",
   "target": {

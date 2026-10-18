@@ -361,7 +361,8 @@ const buildAthleteReport = ({ profile, scored, session, cfg }) => {
   const tested = new Set(results.map(r => r.entry.key));
   const inBattery = (e) => !!cfg.tests[e.key];
 
-  // "Your full results": one plain line per test that was actually done.
+  // "Your full results": one plain line per test that was actually done, with
+  // one "better score" line: the Drive or Revés line, or Every player for Both.
   const fullResults = results.map(r => ({
     key: r.entry.key,
     test: r.entry.plain_name.charAt(0).toUpperCase() + r.entry.plain_name.slice(1),
@@ -371,7 +372,8 @@ const buildAthleteReport = ({ profile, scored, session, cfg }) => {
       ? r.view.nextTier.rawGap !== undefined
         ? `${r.view.nextTier.rawGap} ${MANUAL_UNITS[r.entry.key].word} from ${r.view.nextTier.tier}`
         : `${points(r.view.nextTier.points)} from ${r.view.nextTier.tier}`
-      : 'At the top tier'
+      : 'At the top tier',
+    better: r.entry.improve[OWN_LINE[side]]
   }));
 
   return {

@@ -293,13 +293,24 @@ test('full results: one plain line per test actually done, in library order; tes
   const ar = build();
   assert.deepEqual(ar.fullResults.map(r => r.key), ['sprint_10m', 'ruler_drop', 'overhead_squat', 'trunk_rotation',
     'single_leg_stand', 'shoulder_er', 'hip_abduction', 'hip_adduction']);           // no 5-0-5 (not done)
-  assert.deepEqual(ar.fullResults[0], { key: 'sprint_10m', test: '10m sprint', result: '2.05 seconds', tier: 'Bronze', next: '0.04 seconds from Silver' });
-  assert.deepEqual(ar.fullResults.find(r => r.key === 'hip_adduction'),
-    { key: 'hip_adduction', test: 'Groin strength test', result: '63.4 out of 99', tier: 'Bronze', next: '1.6 points from Silver' });
+  const sprintLib = LIB.tests.find(t => t.key === 'sprint_10m').improve;
+  assert.deepEqual(ar.fullResults[0], { key: 'sprint_10m', test: '10m sprint', result: '2.05 seconds', tier: 'Bronze', next: '0.04 seconds from Silver', better: sprintLib.drive });
+  const { better, ...hipAdd } = ar.fullResults.find(r => r.key === 'hip_adduction');
+  assert.deepEqual(hipAdd, { key: 'hip_adduction', test: 'Groin strength test', result: '63.4 out of 99', tier: 'Bronze', next: '1.6 points from Silver' });
+  assert.equal(better, LIB.tests.find(t => t.key === 'hip_adduction').improve.drive);
   assert.equal(ar.fullResults.find(r => r.key === 'ruler_drop').next, 'At the top tier');
   const s = copy(SESSION);
   s.tests.trunk_rotation = { status: 'injured' };
   assert.equal(build(s).fullResults.some(r => r.key === 'trunk_rotation'), false);
+});
+
+test('full results: one "better score" line each: Drive line, Revés line, or Every player for Both', () => {
+  const sprint = (position) => build(SESSION, { ...PROFILE, position }).fullResults.find(r => r.key === 'sprint_10m').better;
+  const lib = LIB.tests.find(t => t.key === 'sprint_10m').improve;
+  assert.equal(sprint('RIGHT'), lib.drive);
+  assert.equal(sprint('LEFT'), lib.reves);
+  assert.equal(sprint('BOTH'), lib.every);
+  for (const r of build().fullResults) assert.ok(r.better && r.better.length, r.key);
 });
 
 test('full results and draft notice: plain words, no device names', () => {
