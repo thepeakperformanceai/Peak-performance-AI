@@ -67,7 +67,7 @@ const pageShell = (report, pageNo, title, kicker, inner) => {
   <div style="padding:14px 44px 0">${inner}</div>
   <div style="position:absolute;left:44px;right:44px;bottom:18px;border-top:1px solid ${RULE};padding-top:8px;display:flex;justify-content:space-between;font-size:8.5px;color:${FAINT}">
     <span>Every number comes from your test results. Priorities are ranked by score points below Gold (75); left/right and ratio rules come from the PeakPerformance padel library.</span>
-    <span style="white-space:nowrap;margin-left:12px">peakperformance.pk · ${esc(ar.libraryVersion || '')}</span>
+    <span style="white-space:nowrap;margin-left:12px">${ar.draftNotice ? `<b style="color:#9f1d14">${esc(ar.draftNotice)}</b> · ` : ''}peakperformance.pk · ${esc(ar.libraryVersion || '')}</span>
   </div>
 </div>`
 }
@@ -187,42 +187,29 @@ export function padelReportPage2Html(report, pageNo = 2) {
     </div>`)
 }
 
-// One test's block on the "test by test" pages.
-function testBlock(t) {
-  const c = t.tier ? tierColour(t.tier) : null
-  return `<div style="padding:10px 0;border-top:1px solid ${RULE}">
-    <div style="display:flex;align-items:baseline;justify-content:space-between;gap:10px">
-      <div style="font-family:${DISPLAY};font-size:21px;letter-spacing:0.5px;color:${t.status === 'scored' ? TXT : FAINT}">${esc(t.name)}</div>
-      <div style="white-space:nowrap">${c ? pill(t.tier.toUpperCase(), c.ink, c.track) : pill('NOT TESTED', FAINT, '#f1eee8')}</div>
-    </div>
-    <div style="font-size:11.5px;font-weight:700;line-height:1.4;margin:2px 0 5px;color:${t.status === 'scored' ? TXT : MUTED}">${esc(t.scoreLine || t.statusLine)}</div>
-    <div style="display:flex;gap:16px">
-      <div style="flex:1"><div style="font-size:9px;font-weight:700;letter-spacing:1.2px;color:${FAINT}">WHAT IT MEANS FOR YOUR GAME</div>
-        <div style="font-size:10.5px;line-height:1.45;margin-top:2px">${esc(t.meaning)}</div></div>
-      <div style="flex:1"><div style="font-size:9px;font-weight:700;letter-spacing:1.2px;color:${c ? c.deep : FAINT}">${esc(t.improveTitle.toUpperCase())}</div>
-        <div style="font-size:10.5px;line-height:1.45;margin-top:2px">${esc(t.improve)}</div></div>
-    </div>
-  </div>`
-}
-
-// Tests per on-screen page: fewer when the athlete plays both sides (three lines each).
-const testsPerPage = (ar) => (ar.side?.key === 'BOTH' ? 3 : 4)
-
-/** "Your game, test by test": every padel test, on as many pages as it needs. */
-export function padelTestByTestPagesHtml(report, firstPage = 2) {
+/** Page 3: "Your full results": one line per test that was actually done. */
+export function padelReportPage3Html(report, pageNo = 3) {
   const ar = report.reportContent?.athleteReport
-  if (!ar?.testByTest?.length) return []
-  const per = testsPerPage(ar)
-  const pages = []
-  for (let i = 0; i < ar.testByTest.length; i += per) {
-    pages.push(pageShell(report, firstPage + pages.length, i ? 'Your game, test by test (continued)' : 'Your game, test by test',
-      `EVERY TEST · ${String(ar.side.label).toUpperCase()} SIDE`, ar.testByTest.slice(i, i + per).map(testBlock).join('')))
-  }
-  return pages
+  if (!ar) return ''
+  const rows = (ar.fullResults || []).map(r => {
+    const c = tierColour(r.tier)
+    return `<tr>
+      <td style="padding:9px 8px 9px 0;border-top:1px solid ${RULE};font-size:12px;font-weight:700">${esc(r.test)}</td>
+      <td style="padding:9px 8px;border-top:1px solid ${RULE};font-size:12px;white-space:nowrap">${esc(r.result)}</td>
+      <td style="padding:9px 8px;border-top:1px solid ${RULE}">${pill(r.tier.toUpperCase(), c.ink, c.track)}</td>
+      <td style="padding:9px 0 9px 8px;border-top:1px solid ${RULE};font-size:11.5px;color:${MUTED}">${esc(r.next)}</td>
+    </tr>`
+  }).join('')
+  const th = (txt, extra = '') => `<th style="text-align:left;padding:0 8px 6px ${extra};font-size:9px;font-weight:700;letter-spacing:1.2px;color:${FAINT}">${txt}</th>`
+  return pageShell(report, pageNo, 'Your full results', `EVERY TEST YOU DID · ${String(ar.firstName).toUpperCase()}`, `
+    <table style="width:100%;border-collapse:collapse;margin-top:6px">
+      <thead><tr>${th('TEST', '0')}${th('YOUR RESULT')}${th('LEVEL')}${th('NEXT STEP')}</tr></thead>
+      <tbody>${rows}</tbody>
+    </table>
+    <div style="font-size:9.5px;color:${FAINT};margin-top:12px">Timed tests are shown in seconds or centimetres; every other test as a score out of 99. Gold starts at 75, Silver at 65.</div>`)
 }
 
-export const padelReportPagesHtml = (report) => {
-  if (!report.reportContent?.athleteReport) return []
-  const tests = padelTestByTestPagesHtml(report, 2)
-  return [padelReportPage1Html(report), ...tests, padelReportPage2Html(report, 2 + tests.length)]
-}
+export const padelReportPagesHtml = (report) =>
+  report.reportContent?.athleteReport
+    ? [padelReportPage1Html(report), padelReportPage2Html(report, 2), padelReportPage3Html(report, 3)]
+    : []

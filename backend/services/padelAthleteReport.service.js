@@ -361,24 +361,19 @@ const buildAthleteReport = ({ profile, scored, session, cfg }) => {
   const tested = new Set(results.map(r => r.entry.key));
   const inBattery = (e) => !!cfg.tests[e.key];
 
-  // Every test in the library: the athlete's result, what it means for their
-  // game (their side's library lines) and what a better score changes on court.
-  const testByTest = LIBRARY.tests.map(entry => {
-    const r = results.find(x => x.entry.key === entry.key);
-    const lines = linesFor(side, entry.role_lines);
-    const status = r ? 'scored' : inBattery(entry) ? 'not_tested' : 'not_in_report';
-    return {
-      key: entry.key,
-      name: entry.name,
-      plainName: entry.plain_name,
-      status,
-      ...(r ? { score: r.t.score, tier: r.view.tier, scoreLine: r.view.scoreLine } : {}),
-      statusLine: status === 'not_tested' ? 'Not tested this session.' : status === 'not_in_report' ? 'Not part of this report yet.' : null,
-      meaning: lines.map(l => asSentence(l, lines.length > 1)).join(' '),
-      improveTitle: r && r.t.score >= target ? 'What it gives you on court' : r ? 'What a better score gets you' : 'Why it matters',
-      improve: LIBRARY.sides[side].lines.map(who => entry.improve[who]).join(' ')
-    };
-  });
+  // "Your full results": one plain line per test that was actually done.
+  const fullResults = results.map(r => ({
+    key: r.entry.key,
+    test: r.entry.plain_name.charAt(0).toUpperCase() + r.entry.plain_name.slice(1),
+    result: r.view.number.isScore ? `${r.view.number.value} out of 99` : r.view.number.value,
+    tier: r.view.tier,
+    next: r.view.nextTier
+      ? r.view.nextTier.rawGap !== undefined
+        ? `${r.view.nextTier.rawGap} ${MANUAL_UNITS[r.entry.key].word} from ${r.view.nextTier.tier}`
+        : `${points(r.view.nextTier.points)} from ${r.view.nextTier.tier}`
+      : 'At the top tier'
+  }));
+
   return {
     libraryVersion: LIBRARY.library_version,
     configVersion: scored.config_version,
@@ -394,13 +389,15 @@ const buildAthleteReport = ({ profile, scored, session, cfg }) => {
       line: linesFor(side, w.entry.role_lines).find(l => l.who === OWN_LINE[side])
     })),
     priorities,
-    testByTest,
+    fullResults,
     plan: buildPlan(priorities, side),
     retest: { weeks: retestWeeks, date: retestDate, dateText: longDate(retestDate) },
     notTested: LIBRARY.tests.filter(e => inBattery(e) && !tested.has(e.key)).map(e => e.name),
     // Library tests the scoring engine doesn't score yet (e.g. 5-0-5): never ranked.
     notInBattery: LIBRARY.tests.filter(e => !inBattery(e)).map(e => e.name),
-    rebuild: { ...LIBRARY.rebuild }
+    rebuild: { ...LIBRARY.rebuild },
+    // Footer on every page while the library is under clinical review (library: draft_notice).
+    draftNotice: LIBRARY.draft_notice || null
   };
 };
 

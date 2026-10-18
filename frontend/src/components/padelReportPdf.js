@@ -3,6 +3,7 @@
 // Same content as the on-screen pages in padelOutputs.js, from
 // reportContent.athleteReport; every number is the engine's.
 //
+// Three pages: what it means for your game, how to improve, your full results.
 // Pure module (only jsPDF), so it also runs in Node for checks and samples.
 
 import { jsPDF } from 'jspdf'
@@ -74,6 +75,11 @@ export function buildPadelReportPdf(report, opts = {}) {
     font(6.8, 'normal', FAINT)
     doc.text('Every number comes from your test results. Priorities are ranked by score points below Gold (75).', M, FOOT + 4)
     doc.text(`peakperformance.pk · ${ar.libraryVersion || ''}`, W - M, FOOT + 4, { align: 'right' })
+    // Library setting draft_notice: on every page until clinical review is done.
+    if (ar.draftNotice) {
+      font(7.5, 'bold', '#9f1d14')
+      doc.text(ar.draftNotice, W / 2, FOOT + 8.5, { align: 'center' })
+    }
   }
 
   const newPage = (title, kicker) => {
@@ -189,43 +195,6 @@ export function buildPadelReportPdf(report, opts = {}) {
   ].filter(Boolean)
   for (const n of notes) { ensure(5); y += 1 + para(n, M, y, CW, 7.5, 'normal', FAINT) }
 
-  // ---------- your game, test by test ----------
-
-  if (ar.testByTest?.length) {
-    newPage('Your game, test by test', `EVERY TEST · ${String(ar.side.label).toUpperCase()} SIDE`)
-    const gap = 6, colW = (CW - gap) / 2
-    for (const tt of ar.testByTest) {
-      const scored = tt.status === 'scored'
-      const c = tt.tier ? tierByLabel(tt.tier) : null
-      const block = (top, draw) => {
-        let yy = top + 2.5
-        font(12, 'bold', scored ? TXT : FAINT)
-        if (draw) doc.text(tt.name, M, yy + 4.3)
-        yy += 6.3
-        yy += para(tt.scoreLine || tt.statusLine, M, yy, CW - 24, 9, 'bold', scored ? TXT : MUTED, draw) + 1.2
-        const col = (x, title, text, color) => {
-          font(6.8, 'bold', color)
-          if (draw) doc.text(title, x, yy + 2.4, { charSpace: 0.3 })
-          return 3.6 + para(text, x, yy + 3.6, colW, 8.4, 'normal', TXT, draw)
-        }
-        const h = Math.max(
-          col(M, 'WHAT IT MEANS FOR YOUR GAME', tt.meaning, FAINT),
-          col(M + colW + gap, tt.improveTitle.toUpperCase(), tt.improve, c ? c.deep : FAINT)
-        )
-        return yy + h + 2.5 - top
-      }
-      const h = block(0, false)
-      ensure(h)
-      doc.setDrawColor(RULE)
-      doc.setLineWidth(0.25)
-      doc.line(M, y, W - M, y)
-      if (c) pill(tt.tier.toUpperCase(), W - M, y + 2.6, c.ink, c.track)
-      else pill('NOT TESTED', W - M, y + 2.6, FAINT, '#f1eee8')
-      block(y, true)
-      y += h
-    }
-  }
-
   // ---------- page 2: how to improve ----------
 
   newPage('How to improve', `ONE COMBINED ${ar.plan.weeks}-WEEK PLAN`)
@@ -325,6 +294,33 @@ export function buildPadelReportPdf(report, opts = {}) {
   const url = ar.rebuild?.url || ''
   if (/^https?:\/\//.test(url)) doc.link(bx, by, bwid, 6, { url })
   y += boxH
+
+  // ---------- page 3: your full results ----------
+
+  newPage('Your full results', `EVERY TEST YOU DID · ${String(ar.firstName).toUpperCase()}`)
+  const cols = [M, M + 70, M + 108, M + 130]          // test, result, level, next step
+  font(6.8, 'bold', FAINT)
+  ;['TEST', 'YOUR RESULT', 'LEVEL', 'NEXT STEP'].forEach((h, i) => doc.text(h, cols[i], y + 3, { charSpace: 0.3 }))
+  y += 5
+  for (const r of ar.fullResults || []) {
+    ensure(9)
+    doc.setDrawColor(RULE)
+    doc.setLineWidth(0.25)
+    doc.line(M, y, W - M, y)
+    font(9.5, 'bold', TXT)
+    doc.text(r.test, cols[0], y + 5.6)
+    font(9.5, 'normal', TXT)
+    doc.text(r.result, cols[1], y + 5.6)
+    const c = tierByLabel(r.tier)
+    font(7.5, 'bold', c.ink)
+    const pw = doc.getTextWidth(r.tier.toUpperCase()) + 4
+    pill(r.tier.toUpperCase(), cols[2] + pw, y + 2.4, c.ink, c.track)
+    font(9, 'normal', MUTED)
+    doc.text(r.next, cols[3], y + 5.6)
+    y += 8.5
+  }
+  y += 3
+  para('Timed tests are shown in seconds or centimetres; every other test as a score out of 99. Gold starts at 75, Silver at 65.', M, y, CW, 7.5, 'normal', FAINT)
 
   footer()
   return doc

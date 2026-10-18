@@ -208,7 +208,7 @@ test('athlete-facing text never names a device or a device unit, on any side', (
     const shown = JSON.stringify([
       ar.weapons.map(w => [w.plainName, w.headline, w.number, w.body, w.measures]),
       ar.priorities.map(p => [p.name, p.plainName, p.scoreLine, p.ruleNotes, p.measures]),
-      ar.testByTest,
+      ar.fullResults,
       R.coachProse(ar)
     ]);
     assert.equal(R.DEVICE_WORDS.test(shown), false, `${position}: ${shown.match(R.DEVICE_WORDS)}`);
@@ -287,33 +287,29 @@ test('observations: only known values are kept', () => {
   assert.deepEqual(R.cleanObservations(undefined), {});
 });
 
-// ---------- test by test ----------
+// ---------- your full results ----------
 
-test('test by test: every library test in library order, with its result or why there is none', () => {
+test('full results: one plain line per test actually done, in library order; tests not done are skipped', () => {
   const ar = build();
-  assert.deepEqual(ar.testByTest.map(t => t.key), LIB.tests.map(t => t.key));
-  const by = Object.fromEntries(ar.testByTest.map(t => [t.key, t]));
-  assert.equal(by.sprint_10m.scoreLine, ar.priorities.find(p => p.key === 'sprint_10m').scoreLine);
-  assert.equal(by.sprint_10m.improveTitle, 'What a better score gets you');
-  assert.equal(by.ruler_drop.improveTitle, 'What it gives you on court');      // already Gold
-  assert.deepEqual([by.cod_505.status, by.cod_505.statusLine, by.cod_505.improveTitle], ['not_in_report', 'Not part of this report yet.', 'Why it matters']);
-  assert.equal(by.cod_505.score, undefined);
+  assert.deepEqual(ar.fullResults.map(r => r.key), ['sprint_10m', 'ruler_drop', 'overhead_squat', 'trunk_rotation',
+    'single_leg_stand', 'shoulder_er', 'hip_abduction', 'hip_adduction']);           // no 5-0-5 (not done)
+  assert.deepEqual(ar.fullResults[0], { key: 'sprint_10m', test: '10m sprint', result: '2.05 seconds', tier: 'Bronze', next: '0.04 seconds from Silver' });
+  assert.deepEqual(ar.fullResults.find(r => r.key === 'hip_adduction'),
+    { key: 'hip_adduction', test: 'Groin strength test', result: '63.4 out of 99', tier: 'Bronze', next: '1.6 points from Silver' });
+  assert.equal(ar.fullResults.find(r => r.key === 'ruler_drop').next, 'At the top tier');
   const s = copy(SESSION);
   s.tests.trunk_rotation = { status: 'injured' };
-  assert.deepEqual([build(s).testByTest.find(t => t.key === 'trunk_rotation').status, build(s).testByTest.find(t => t.key === 'trunk_rotation').statusLine], ['not_tested', 'Not tested this session.']);
+  assert.equal(build(s).fullResults.some(r => r.key === 'trunk_rotation'), false);
 });
 
-test('test by test: the athlete\'s side picks the lines; Both gets all three', () => {
-  const sprint = (position) => build(SESSION, { ...PROFILE, position }).testByTest.find(t => t.key === 'sprint_10m');
-  const lib = LIB.tests.find(t => t.key === 'sprint_10m');
-  assert.equal(sprint('RIGHT').improve, `${lib.improve.drive} ${lib.improve.every}`);
-  assert.equal(sprint('LEFT').improve, `${lib.improve.reves} ${lib.improve.every}`);
-  assert.equal(sprint('BOTH').improve, `${lib.improve.drive} ${lib.improve.reves} ${lib.improve.every}`);
-  assert.match(sprint('LEFT').meaning, /^On the revés side, you chase most of the lobs/);
-  assert.match(sprint('LEFT').meaning, /And for every player, padel is won at the net\./);
+test('full results and draft notice: plain words, no device names', () => {
+  const ar = build();
+  assert.equal(R.DEVICE_WORDS.test(JSON.stringify(ar.fullResults)), false);
+  assert.equal(ar.draftNotice, 'Draft – pending clinical review');
+  assert.equal(LIB.draft_notice, ar.draftNotice);                     // one setting: library/padel.json draft_notice
 });
 
-test('test by test: the "better score" lines are words only, never numbers', () => {
+test('library: the "better score" lines are kept for review, words only', () => {
   for (const t of LIB.tests) {
     assert.deepEqual(Object.keys(t.improve).sort(), ['drive', 'every', 'reves'], t.key);
     for (const line of Object.values(t.improve)) assert.equal(/\d/.test(line), false, `${t.key}: ${line}`);
