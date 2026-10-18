@@ -22,7 +22,7 @@
 
 const LIBRARY = require('../library/padel.json');
 const { findUnsupportedNumbers } = require('./scoredReport.service');
-const { scoreFromVald } = require('../scoring/scoring');
+const { scoreFromVald, pyRound } = require('../scoring/scoring');
 const aiEngine = require('./aiEngine.service');
 
 // Timed tests are shown in their own units; every other test as its score
@@ -52,6 +52,10 @@ const longDate = (iso) => {
 // ---------- tiers ----------
 
 const TIERS = [...LIBRARY.tiers].sort((a, b) => b.min_score - a.min_score);
+// The score the athlete sees: a whole number, rounded exactly as the OVR card
+// rounds its OVR and stats. Tiers and gaps are worked out from this number.
+const shownScore = (t) => pyRound(t.score);
+
 const tierOf = (score) => (isSet(score) ? TIERS.find(t => score >= t.min_score) : null);
 // The tier above the athlete's: Bronze -> Silver, Silver -> Gold, Gold -> none.
 const nextTierOf = (score) => {
@@ -92,7 +96,7 @@ const rawForScore = (key, target, cfg, timing) => {
 const plainNumber = (key, t) => {
   const u = MANUAL_UNITS[key];
   if (u) return { value: `${t.raw} ${u.word}${t.timing === 'hand' ? ' (hand-timed)' : ''}`, isScore: false };
-  return { value: String(t.score), isScore: true };
+  return { value: String(shownScore(t)), isScore: true };
 };
 
 // How even left and right are, in the test's own words from the library
@@ -112,10 +116,10 @@ const scoreLineOf = (entry, t, cfg, timing) => {
   const u = MANUAL_UNITS[entry.key];
   const first = u
     ? `Your ${entry.plain_name} was ${t.raw} ${u.word}${t.timing === 'hand' ? ' (hand-timed)' : ''}.`
-    : `You scored ${t.score} on the ${entry.plain_name}.`;
-  const next = nextTierOf(t.score);
-  if (!next) return { text: `${first} That's ${tierOf(t.score).label} level.`, nextTier: null };
-  const pts = roundTo(next.min_score - t.score, 1);
+    : `You scored ${shownScore(t)} on the ${entry.plain_name}.`;
+  const next = nextTierOf(shownScore(t));
+  if (!next) return { text: `${first} That's ${tierOf(shownScore(t)).label} level.`, nextTier: null };
+  const pts = next.min_score - shownScore(t);
   const rawTarget = u ? rawForScore(entry.key, next.min_score, cfg, timing) : null;
   if (rawTarget === null) {
     return { text: `${first} ${next.label} starts at ${next.min_score}, so you're ${points(pts)} away.`, nextTier: { tier: next.label, points: pts } };
@@ -316,8 +320,8 @@ const buildAthleteReport = ({ profile, scored, session, cfg }) => {
           plainName: r.entry.plain_name,
           measures: r.entry.measures,
           number: plainNumber(r.entry.key, r.t),
-          score: r.t.score,
-          tier: tierOf(r.t.score).label,
+          score: shownScore(r.t),
+          tier: tierOf(shownScore(r.t)).label,
           scoreLine: line.text,
           nextTier: line.nextTier
         }
@@ -331,7 +335,7 @@ const buildAthleteReport = ({ profile, scored, session, cfg }) => {
   // Priorities: biggest gap in score points below the target, top 3.
   const target = LIBRARY.target.score;
   const ranked = results
-    .filter(r => !weaponKeys.has(r.entry.key) && r.t.score < target)
+    .filter(r => !weaponKeys.has(r.entry.key) && shownScore(r.t) < target)
     .sort((a, b) => (target - b.t.score) - (target - a.t.score) || a.order - b.order)
     .slice(0, 3);
 
@@ -342,7 +346,7 @@ const buildAthleteReport = ({ profile, scored, session, cfg }) => {
     return {
       rank: i + 1,
       ...r.view,
-      gapToTarget: roundTo(target - r.t.score, 1),
+      gapToTarget: target - shownScore(r.t),
       whatWeMeasured: r.entry.what_we_measured,
       lines: linesFor(side, r.entry.role_lines),
       ruleNotes: rules.map(rule => ruleNote(rule, ctx)).filter(Boolean),
@@ -370,9 +374,7 @@ const buildAthleteReport = ({ profile, scored, session, cfg }) => {
     result: r.view.number.isScore ? `${r.view.number.value} out of 99` : r.view.number.value,
     tier: r.view.tier,
     next: r.view.nextTier
-      ? r.view.nextTier.rawGap !== undefined
-        ? `${r.view.nextTier.rawGap} ${MANUAL_UNITS[r.entry.key].word} from ${r.view.nextTier.tier}`
-        : `${points(r.view.nextTier.points)} from ${r.view.nextTier.tier}`
+      ? `${points(r.view.nextTier.points)} from ${r.view.nextTier.tier}`
       : 'At the top tier',
     better: r.entry.improve[OWN_LINE[side]]
   }));

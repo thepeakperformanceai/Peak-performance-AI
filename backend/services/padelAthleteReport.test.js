@@ -82,12 +82,16 @@ test('library: sides match the padel court-side field; tiers and target match th
 
 // ---------- scores come from the engine, unchanged ----------
 
-test('scores: every score in the report is the engine\'s own number', () => {
+test('scores: every score is the engine\'s own number, rounded to a whole number exactly as the OVR card rounds', () => {
+  const { pyRound } = require('../scoring/scoring');
   const scored = scoreSession(SESSION, cfg);
   const ar = R.buildAthleteReport({ profile: PROFILE, scored, session: SESSION, cfg });
   for (const x of [...ar.weapons, ...ar.priorities]) {
-    assert.equal(x.score, scored.tests.find(t => t.name === x.key).score, x.key);
+    assert.equal(x.score, pyRound(scored.tests.find(t => t.name === x.key).score), x.key);
+    assert.ok(Number.isInteger(x.score), x.key);
   }
+  assert.equal(pyRound(73.5), 74);                                    // same tie rule as the card (73.5 -> 74, 72.5 -> 72)
+  assert.equal(pyRound(72.5), 72);
   assert.deepEqual(scoreSession(SESSION, cfg), scored);                 // building the report changes nothing
 });
 
@@ -117,9 +121,9 @@ const base = () => {
 
 test('weapons: the two best scores, led by what they mean on court, then one plain number', () => {
   const ar = build();
-  assert.deepEqual(ar.weapons.map(w => [w.key, w.score, w.tier]), [['ruler_drop', 82, 'Gold'], ['hip_abduction', 76.6, 'Gold']]);
+  assert.deepEqual(ar.weapons.map(w => [w.key, w.score, w.tier]), [['ruler_drop', 82, 'Gold'], ['hip_abduction', 77, 'Gold']]);
   assert.deepEqual(ar.weapons.map(w => w.headline), ['Fast hands at the net', 'Fast first step to the middle']);
-  assert.deepEqual(ar.weapons.map(w => w.number), [{ value: '12 cm', isScore: false }, { value: '76.6', isScore: true }]);
+  assert.deepEqual(ar.weapons.map(w => w.number), [{ value: '12 cm', isScore: false }, { value: '77', isScore: true }]);
   // Hip abduction 300 / 290: about 3% apart.
   assert.equal(ar.weapons[1].body, 'your outer hips are strong and almost even, left vs right');
   assert.equal(ar.weapons[1].line.label, 'Drive');
@@ -137,7 +141,7 @@ test('weapons: evenness in the test\'s own words', () => {
 
 test('priorities: biggest gap in score points below 75 first, top 3, weapons excluded', () => {
   const ar = build();
-  assert.deepEqual(ar.priorities.map(p => [p.key, p.gapToTarget]), [['overhead_squat', 15], ['sprint_10m', 14.2], ['hip_adduction', 11.6]]);
+  assert.deepEqual(ar.priorities.map(p => [p.key, p.gapToTarget]), [['overhead_squat', 15], ['sprint_10m', 14], ['hip_adduction', 12]]);
   assert.ok(ar.priorities.every(p => !ar.weapons.some(w => w.key === p.key)));
 });
 
@@ -173,7 +177,7 @@ test('score line: a timed test in seconds, with the gap to the NEXT tier (not to
   const p = build().priorities.find(x => x.key === 'sprint_10m');      // 2.05 s, Bronze; Silver at 65 = 2.0123 s
   assert.equal(p.tier, 'Bronze');
   assert.equal(p.scoreLine, 'Your 10m sprint was 2.05 seconds. Silver starts at 2.01 seconds, so you\'re 0.04 seconds away.');
-  assert.deepEqual(p.nextTier, { tier: 'Silver', points: 4.2, rawTarget: 2.01, rawGap: 0.04 });
+  assert.deepEqual(p.nextTier, { tier: 'Silver', points: 4, rawTarget: 2.01, rawGap: 0.04 });
   const s = copy(SESSION);
   s.tests.sprint_10m.value = 1.99;                                    // Silver -> Gold at 75 (1.93 s)
   assert.equal(build(s).priorities.find(x => x.key === 'sprint_10m').scoreLine,
@@ -185,7 +189,7 @@ test('score line: other tests as a score, said like a coach; hand-timed sprints 
   assert.equal(ar.priorities.find(x => x.key === 'overhead_squat').scoreLine,
     'You scored 60 on the overhead squat. Silver starts at 65, so you\'re 5 points away.');
   assert.equal(ar.priorities.find(x => x.key === 'hip_adduction').scoreLine,
-    'You scored 63.4 on the groin strength test. Silver starts at 65, so you\'re 1.6 points away.');
+    'You scored 63 on the groin strength test. Silver starts at 65, so you\'re 2 points away.');
   const s = copy(SESSION);
   s.timing_method = 'hand';
   s.tests.sprint_10m.value = 1.83;                                    // +0.22 = 2.05 s
@@ -294,14 +298,30 @@ test('full results: one plain line per test actually done, in library order; tes
   assert.deepEqual(ar.fullResults.map(r => r.key), ['sprint_10m', 'ruler_drop', 'overhead_squat', 'trunk_rotation',
     'single_leg_stand', 'shoulder_er', 'hip_abduction', 'hip_adduction']);           // no 5-0-5 (not done)
   const sprintLib = LIB.tests.find(t => t.key === 'sprint_10m').improve;
-  assert.deepEqual(ar.fullResults[0], { key: 'sprint_10m', test: '10m sprint', result: '2.05 seconds', tier: 'Bronze', next: '0.04 seconds from Silver', better: sprintLib.drive });
+  assert.deepEqual(ar.fullResults[0], { key: 'sprint_10m', test: '10m sprint', result: '2.05 seconds', tier: 'Bronze', next: '4 points from Silver', better: sprintLib.drive });
   const { better, ...hipAdd } = ar.fullResults.find(r => r.key === 'hip_adduction');
-  assert.deepEqual(hipAdd, { key: 'hip_adduction', test: 'Groin strength test', result: '63.4 out of 99', tier: 'Bronze', next: '1.6 points from Silver' });
+  assert.deepEqual(hipAdd, { key: 'hip_adduction', test: 'Groin strength test', result: '63 out of 99', tier: 'Bronze', next: '2 points from Silver' });
   assert.equal(better, LIB.tests.find(t => t.key === 'hip_adduction').improve.drive);
   assert.equal(ar.fullResults.find(r => r.key === 'ruler_drop').next, 'At the top tier');
   const s = copy(SESSION);
   s.tests.trunk_rotation = { status: 'injured' };
   assert.equal(build(s).fullResults.some(r => r.key === 'trunk_rotation'), false);
+});
+
+test('full results: whole-number scores and gaps in whole points; tier follows the shown number', () => {
+  const ar = build();
+  for (const r of ar.fullResults) {
+    assert.match(r.next, /^(\d+ points? from (Silver|Gold)|At the top tier)$/, r.key);
+    if (/out of 99/.test(r.result)) assert.match(r.result, /^\d+ out of 99$/, r.key);
+  }
+  assert.equal(ar.fullResults.find(r => r.key === 'single_leg_stand').next, '7 points from Gold');   // 68.1 -> 68
+  assert.equal(ar.fullResults.find(r => r.key === 'trunk_rotation').next, '1 point from Gold');     // 73.5 -> 74
+  // 74.6 shows as 75: Gold, and never a priority with "0 points away".
+  const s = copy(SESSION);
+  s.tests.overhead_squat = { status: 'completed', value: 69.6, cutoffs: [30, 50, 65, 80] };          // 74.6
+  const b = build(s);
+  assert.deepEqual(b.fullResults.find(r => r.key === 'overhead_squat'), { ...b.fullResults.find(r => r.key === 'overhead_squat'), result: '75 out of 99', tier: 'Gold', next: 'At the top tier' });
+  assert.equal(b.priorities.some(p => p.key === 'overhead_squat'), false);
 });
 
 test('full results: one "better score" line each: Drive line, Revés line, or Every player for Both', () => {
