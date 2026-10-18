@@ -72,7 +72,7 @@ const PADEL_TESTS = [
   { key: 'beep_test', label: 'Beep Test', kind: 'beep', group: 'Manual tests', hint: 'Stopped early through injury = Injured, never a low score' },
   { key: 'single_leg_stand', label: 'Single Leg Stand (eyes closed)', kind: 'bilateral', unit: 's', range: [0, 30], step: '0.1', group: 'HumanTrak (from the VALD report)' },
   { key: 'trunk_rotation', label: 'Trunk Rotation', kind: 'bilateral', unit: '°', range: [0, 90], step: '1', group: 'HumanTrak (from the VALD report)' },
-  { key: 'overhead_squat', label: 'Overhead Squat', kind: 'single', unit: 'composite', range: null, step: '1', group: 'HumanTrak (from the VALD report)' },
+  { key: 'overhead_squat', label: 'Overhead Squat', kind: 'single', unit: 'composite', range: null, step: '1', group: 'HumanTrak (from the VALD report)', faults: true },
   { key: 'shoulder_er', label: 'Shoulder External Rotation', kind: 'bilateral', unit: 'N', range: [20, 1500], step: '1', group: 'Dynamo (from the VALD report)' },
   { key: 'hip_abduction', label: 'Hip Abduction', kind: 'bilateral', unit: 'N', range: [50, 3000], step: '1', group: 'Dynamo (from the VALD report)' },
   { key: 'hip_adduction', label: 'Hip Adduction', kind: 'bilateral', unit: 'N', range: [50, 3000], step: '1', group: 'Dynamo (from the VALD report)' },
@@ -148,8 +148,16 @@ const testsFor = (sportKey = 'football', results = {}) => (sportKey === 'custom'
 
 const emptyTest = () => ({
   status: 'completed', value: '', left: '', right: '', level: '', shuttle: '',
-  cutoffs: ['', '', '', ''], band: '', band_left: '', band_right: '',
+  cutoffs: ['', '', '', ''], band: '', band_left: '', band_right: '', fault: '',
 })
+
+// Padel overhead squat: what the tester saw. Picks the library's fix in the
+// padel athlete report; it never changes the score.
+const SQUAT_FAULTS = [
+  { value: 'heels_knees', label: 'Heels lifting or knees caving' },
+  { value: 'arms_back', label: 'Arms dropping forward or lower back arching' },
+  { value: 'clean', label: 'Clean pattern' },
+]
 
 export const emptyResults = (sportKey = 'football') => (sportKey === 'custom'
   ? { timingMethod: '', benchmarkSport: 'football', customTests: [], tests: {} }
@@ -324,6 +332,16 @@ function TestRow({ test, r, set, onRemove }) {
         )}
       </div>
       {done && (test.kind === 'bilateral' || test.kind === 'single') && test.scored !== false && <ValdBenchmark test={test} r={r} set={set} />}
+      {done && test.faults && (
+        <div className="mt-2 flex flex-wrap items-center gap-2">
+          <span className="text-[11px] text-gray-500 w-28">Fault seen</span>
+          <select className="inp w-80" value={r.fault || ''} onChange={e => set({ fault: e.target.value })}>
+            <option value="">Not recorded</option>
+            {SQUAT_FAULTS.map(f => <option key={f.value} value={f.value}>{f.label}</option>)}
+          </select>
+          <span className="text-[11px] text-gray-400">Picks the fix in the athlete report; doesn't change the score</span>
+        </div>
+      )}
     </div>
   )
 }

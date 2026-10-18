@@ -4,6 +4,8 @@ import toast from 'react-hot-toast'
 import { downloadReportPDF } from '../services/api'
 import { footballCardHtml, extraPagesHtml, CARD_WIDTH, sportKeyOf } from '../components/footballCard'
 import ScoreBreakdown from '../components/ScoreBreakdown'
+import { padelReportPagesHtml, PAGE_WIDTH } from '../components/padelOutputs'
+import { downloadPadelReportPdf } from '../services/padelExport'
 import { getBreakdown, createBreakdownLink, deleteBreakdownLink } from '../services/api'
 
 /* Athlete Test Battery Report — 4-page dark card (matches dashboard) */
@@ -160,6 +162,7 @@ function BreakdownSection({ report }) {
 export default function ReportPage() {
   const report = useReportStore(s => s.report)
   const [downloading, setDownloading] = useState(false)
+  const [downloadingAthlete, setDownloadingAthlete] = useState(false)
   if (!report) return <EmptyState />
 
   const rc = report.reportContent || {}
@@ -179,9 +182,24 @@ export default function ReportPage() {
 
   // Football (engine-scored) reports: the one-page player card, identical to the PDF.
   if (engineScored) {
+    // Padel: the two-page athlete report ("What it means for your game" /
+    // "How to improve") under the card, with its own PDF.
+    const athletePages = padelReportPagesHtml(report)
+    const handleAthleteDownload = async () => {
+      setDownloadingAthlete(true)
+      try { await downloadPadelReportPdf(report); toast.success('Athlete report downloaded!') }
+      catch (err) { toast.error(err.message || 'Download failed. Please try again.') }
+      finally { setDownloadingAthlete(false) }
+    }
     return (
       <div style={{ maxWidth: CARD_WIDTH, margin: '0 auto' }}>
-        <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 12 }}>
+        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginBottom: 12 }}>
+          {athletePages.length > 0 && (
+            <button onClick={handleAthleteDownload} disabled={downloadingAthlete}
+              style={{ background: '#1c1f24', color: '#fff', border: 'none', borderRadius: 10, padding: '10px 16px', fontSize: 13, fontWeight: 700, cursor: downloadingAthlete ? 'default' : 'pointer', opacity: downloadingAthlete ? 0.6 : 1, fontFamily: "'IBM Plex Mono', monospace" }}>
+              {downloadingAthlete ? '⏳ Generating…' : '⬇ What it means PDF'}
+            </button>
+          )}
           <button onClick={handleDownload} disabled={downloading}
             style={{ background: ORANGE, color: '#0A0E13', border: 'none', borderRadius: 10, padding: '10px 16px', fontSize: 13, fontWeight: 700, cursor: downloading ? 'default' : 'pointer', opacity: downloading ? 0.6 : 1, fontFamily: "'IBM Plex Mono', monospace" }}>
             {downloading ? '⏳ Generating…' : '⬇ Download PDF'}
@@ -196,6 +214,11 @@ export default function ReportPage() {
           {extraPagesHtml(report).map((html, i) => (
             <div key={i} data-testid="additional-vald-page"
               style={{ width: CARD_WIDTH, marginTop: 24, boxShadow: '0 12px 40px rgba(0,0,0,0.18)', borderRadius: 4 }}
+              dangerouslySetInnerHTML={{ __html: html }} />
+          ))}
+          {athletePages.map((html, i) => (
+            <div key={`athlete-${i}`} data-testid="padel-athlete-report-page"
+              style={{ width: PAGE_WIDTH, marginTop: 24, boxShadow: '0 12px 40px rgba(0,0,0,0.18)', borderRadius: 4 }}
               dangerouslySetInnerHTML={{ __html: html }} />
           ))}
         </div>

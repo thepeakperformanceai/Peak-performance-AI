@@ -9,6 +9,7 @@ const { ownerFilter } = require('../middleware/auth.middleware');
 const { extractDashboardMetrics } = require('../services/metricExtract.service');
 const footballReport = require('../services/footballReport.service');
 const scoredReport = require('../services/scoredReport.service');
+const padelAthleteReport = require('../services/padelAthleteReport.service');
 const customAssessment = require('../services/customAssessment.service');
 const ValdTestMapping = require('../models/ValdTestMapping.model');
 
@@ -245,6 +246,18 @@ const reportResponse = (report, message) => ({
  * current config (so new benchmarks apply) and rewrites the text.
  */
 /**
+ * Padel only: the separate two-page athlete report (weapons, top 3
+ * priorities, 6-week plan), chosen in code from the engine's existing scores
+ * and library/padel.json. Gemini only rewords it; see padelAthleteReport.service.
+ * The player card and its scores are not changed.
+ */
+const addPadelAthleteReport = async ({ reportContent, profile, scored, session, cfg }) => {
+  const ar = padelAthleteReport.buildAthleteReport({ profile, scored, session, cfg });
+  await padelAthleteReport.narrateAthleteReport(ar);
+  reportContent.athleteReport = ar;
+};
+
+/**
  * POST /api/report/padel and /api/report/cricket - reports from manually
  * entered results. Same pipeline as football (scoring engine for every
  * number, Gemini for the words, number check), with each sport's tests,
@@ -267,10 +280,15 @@ const makeScoredReportHandler = (sportKey) => async (req, res, next) => {
     }
 
     const { profile, session } = pipeline.validateInput(profileIn, resultsIn);
+    // Padel: tester observations the library's rules need (overhead squat fault).
+    if (sportKey === 'padel') {
+      session.observations = padelAthleteReport.cleanObservations({ overhead_squat_fault: resultsIn.tests?.overhead_squat?.fault });
+    }
 
     const pdfData = uploadedFiles.length ? await pdfExtractService.processPdfs(uploadedFiles) : [];
 
     const { scored, payload, rawResponse, reportContent } = await pipeline.runPipeline(profile, session);
+    if (sportKey === 'padel') await addPadelAthleteReport({ reportContent, profile, scored, session, cfg: pipeline.cfg });
 
     const report = new Report({
       user: req.user._id,
@@ -436,6 +454,9 @@ const regenerateScoredReport = async (existingReport, res) => {
     additionalVald: existingReport.reportContent?.additionalVald || []
   };
   const { scored, payload, rawResponse, reportContent } = await pipeline.runPipeline(profile, session);
+  if (existingReport.scoringSport === 'padel') {
+    await addPadelAthleteReport({ reportContent, profile, scored, session, cfg: pipeline.cfg });
+  }
 
   existingReport.reportContent = reportContent;
   existingReport.rawAiResponse = rawResponse;
