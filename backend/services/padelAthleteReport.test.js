@@ -76,8 +76,8 @@ test('library: sides match the padel court-side field; tiers and target match th
   assert.deepEqual(Object.keys(LIB.sides).sort(), [...SPORT_PROFILES.padel.positions].sort());
   assert.deepEqual(LIB.tiers.map(t => [t.key, t.min_score]), CARD_TIERS.tiers.map(t => [t.key, t.min_ovr]));
   assert.equal(LIB.target.score, 75);
-  assert.equal(LIB.rebuild.text, 'Want to be coached through it? PeakPerformance Rebuild is a one-month plan with two sessions a week with our team: testing, healing and strengthening.');
-  assert.equal(LIB.rebuild.url, 'REBUILD_URL');
+  assert.equal(LIB.rebuild, undefined);                                // Rebuild offer removed
+  assert.equal(JSON.stringify(LIB).includes('REBUILD_URL'), false);
 });
 
 // ---------- scores come from the engine, unchanged ----------
@@ -162,9 +162,9 @@ test('priorities: fewer than 3 when fewer tests are below 75; missing tests are 
   const ar = build(s);
   assert.deepEqual(ar.weapons.map(w => w.key), ['ruler_drop', 'hip_adduction']);
   assert.deepEqual(ar.priorities.map(p => p.key), ['sprint_10m']);
-  assert.ok(ar.notTested.includes('Hip Abduction Strength') && ar.notTested.includes('Overhead Squat'));
-  assert.deepEqual(ar.notInBattery, ['5-0-5 Agility Test']);
-  assert.equal(ar.notTested.includes('5-0-5 Agility Test'), false);
+  assert.ok(ar.notTested.includes('Hip Abduction Strength') && ar.notTested.includes('Overhead Squat'));   // staff only
+  assert.equal(ar.notInBattery, undefined);                           // athletes never see what wasn't tested
+  assert.equal(JSON.stringify(ar).includes('Not part of this report'), false);
 });
 
 // ---------- next tier ----------
@@ -373,41 +373,73 @@ const payloadOf = (prompt) => JSON.parse(prompt.split('PAYLOAD:\n')[1].split('\n
 
 const goodProse = (payload) => JSON.stringify({
   weapons: payload.weapons.map(w => `Ali, your ${w.test} result of ${w.result} is a real weapon.`),
-  priorities: payload.priorities.map(p => `Ali, ${p.score_line} This matters on the drive side.`),
   planIntro: `Six weeks of focused work, then we retest on ${payload.plan.retest_date}.`
 });
 
-test('coach text (no Gemini needed): full sentences with the name, the numbers and every library line', () => {
+test('coach text (no Gemini needed): the weapon sentences and plan intro, with the name and numbers', () => {
   const ar = build();
   const c = R.coachProse(ar);
-  assert.equal(c.weapons[1], 'Ali, your outer hips are strong and almost even, left vs right. On the drive side, pushing off sideways to cover the middle starts here. Strong outer hips mean a faster first lateral step.');
-  assert.equal(c.priorities[2], 'Ali, on your left side, your groin is 67% as strong as your outer hip. We want it at 80% or more. ' +
-    'Your left side is 20% weaker than your right side. On the drive side, pulling yourself back to the centre after a wide ball uses these muscles. ' +
-    'Strong adductors mean a faster recovery step. And for every player, groin strains are common in sports with sudden sideways stops. ' +
-    'A strong groin, roughly as strong as the outer hip, is the best protection.');
+  assert.deepEqual(Object.keys(c), ['weapons', 'planIntro']);          // role lines never go through Gemini
+  assert.equal(c.weapons[1], 'Ali, your outer hips are strong and almost even, left vs right.');
   assert.equal(c.planIntro, 'Ali, this plan trains your top 3 priorities together: overhead squat, 10m sprint and groin strength. Stick with it for 6 weeks, then we retest on Sunday 29 November 2026 to measure how far you\'ve moved.');
-  // Every role line for the athlete's side is in the text.
-  for (const [i, p] of ar.priorities.entries()) {
-    for (const l of p.lines) assert.ok(c.priorities[i].includes(l.text.slice(1, 40)), `${p.key} ${l.label}`);
-  }
-  // "They keep your pelvis level..." reads as "these muscles keep..." mid-sentence.
-  const s = base();
-  s.tests.hip_abduction = { status: 'completed', left: 220, right: 180, cutoffs: [100, 180, 260, 340] };
-  const ab = build(s, { ...PROFILE, position: 'BOTH' });
-  const i = ab.priorities.findIndex(p => p.key === 'hip_abduction');
-  assert.match(R.coachProse(ab).priorities[i], /And for every player, these muscles keep your pelvis level/);
 });
 
-test('narration: Gemini only polishes the coach text, and sees no exercises', async () => {
+test('role lines: Drive sees Drive + Every player, Revés sees Revés + Every player, Both sees all three', () => {
+  const lib = LIB.tests.find(t => t.key === 'overhead_squat').role_lines;
+  const view = (position) => {
+    const ar = build(SESSION, { ...PROFILE, position });
+    const p = ar.priorities.find(x => x.key === 'overhead_squat');
+    return { lines: p.lines.map(l => [l.label, l.text]), labels: ar.showLineLabels, weapon: ar.weapons.map(w => w.line.label) };
+  };
+  assert.deepEqual(view('RIGHT'), { lines: [['Drive', lib.drive], ['Every player', lib.every]], labels: false, weapon: ['Drive', 'Drive'] });
+  assert.deepEqual(view('LEFT'), { lines: [['Revés', lib.reves], ['Every player', lib.every]], labels: false, weapon: ['Revés', 'Revés'] });
+  assert.deepEqual(view('BOTH'), { lines: [['Drive', lib.drive], ['Revés', lib.reves], ['Every player', lib.every]], labels: true, weapon: ['Every player', 'Every player'] });
+  // A Revés player's report never contains a Drive line, anywhere.
+  const left = build(SESSION, { ...PROFILE, position: 'LEFT' });
+  const driveLines = LIB.tests.flatMap(t => [t.role_lines.drive, t.role_drills.drive, t.improve.drive]);
+  const shown = JSON.stringify([left.weapons, left.priorities.map(p => p.lines), left.fullResults, left.plan.roleDrills, R.coachProse(left)]);
+  for (const d of driveLines) assert.equal(shown.includes(d), false, d);
+});
+
+test('role lines: the playing side from the form reaches the report (padel pipeline + saved session)', () => {
+  const { forSport } = require('./scoredReport.service');
+  const padel = forSport('padel');
+  const { profile, session } = padel.validateInput(
+    { name: 'Sara Malik', dob: '2000-06-15', testDate: '2026-10-12', sex: 'F', position: 'LEFT', dominantHand: 'R', bodyweight: '61' },
+    { timingMethod: 'electronic', tests: { sprint_10m: { status: 'completed', value: '2.05' }, ruler_drop: { status: 'completed', value: '12' },
+      trunk_rotation: { status: 'completed', left: '30', right: '32', cutoffs: ['20', '30', '40', '55'] } } });
+  assert.equal(profile.position, 'LEFT');
+  const ar = R.buildAthleteReport({ profile, scored: scoreSession(session, cfg), session, cfg });
+  assert.equal(ar.side.label, 'Revés');
+  assert.deepEqual(ar.priorities[0].lines.map(l => l.label), ['Revés', 'Every player']);
+});
+
+test('narration: Gemini only polishes the weapon sentences and plan intro, and sees no exercises or role lines', async () => {
   const ar = build();
   let seen;
   await R.narrateAthleteReport(ar, { callModel: async (sys, p) => { seen = payloadOf(p); return goodProse(seen); } });
   assert.equal(ar.prose.source, 'gemini');
   assert.equal(seen.first_name, 'Ali');
-  assert.deepEqual(seen.priorities.map(p => p.coach_text), R.coachProse(ar).priorities);
+  assert.equal(seen.priorities, undefined);
+  assert.deepEqual(seen.weapons.map(w => w.coach_text), R.coachProse(ar).weapons);
   assert.equal(JSON.stringify(seen).includes('Copenhagen'), false);    // exercises are never sent
+  assert.equal(JSON.stringify(seen).includes(ar.priorities[0].lines[0].text), false);
   assert.match(R.SYSTEM_PROMPT, /Never add, name or suggest an exercise/);
   assert.match(R.SYSTEM_PROMPT, /Never mention testing devices/);
+});
+
+test('narration: the other playing side in Gemini\'s answer is rejected', async () => {
+  const ar = build(SESSION, { ...PROFILE, position: 'LEFT' });
+  let calls = 0;
+  await R.narrateAthleteReport(ar, { callModel: async (sys, p) => {
+    calls++;
+    const ok = JSON.parse(goodProse(payloadOf(p)));
+    if (calls === 1) ok.weapons[0] = 'Ali, on the drive side your hands are quick.';
+    return JSON.stringify(ok);
+  } });
+  assert.equal(calls, 2);
+  assert.equal(ar.prose.source, 'gemini');
+  assert.equal(ar.prose.weapons[0].includes('drive'), false);
 });
 
 test('narration: device names in Gemini\'s answer are rejected', async () => {
@@ -416,7 +448,7 @@ test('narration: device names in Gemini\'s answer are rejected', async () => {
   await R.narrateAthleteReport(ar, { callModel: async (sys, p) => {
     calls++;
     const ok = JSON.parse(goodProse(payloadOf(p)));
-    if (calls === 1) ok.priorities[0] = 'Your HumanTrak result shows room to grow.';
+    if (calls === 1) ok.weapons[1] = 'Your Dynamo result is strong.';
     return JSON.stringify(ok);
   } });
   assert.equal(calls, 2);
@@ -430,7 +462,7 @@ test('narration: invented numbers and exercise prescriptions are rejected, then 
     calls++;
     const ok = JSON.parse(goodProse(payloadOf(p)));
     if (calls === 1) ok.weapons[0] = 'You could drop to 9 cm soon.';
-    if (calls === 2) ok.priorities[0] = 'Try Copenhagen planks: 3 sets of 10.';
+    if (calls === 2) ok.planIntro = 'Do Copenhagen planks: 3 sets of 10.';
     return JSON.stringify(ok);
   } });
   assert.equal(calls, 3);
@@ -440,11 +472,11 @@ test('narration: invented numbers and exercise prescriptions are rejected, then 
 
 test('narration: after repeated rejection, or no AI, the coach text is used', async () => {
   const ar = build();
-  await R.narrateAthleteReport(ar, { callModel: async () => '{"weapons": ["about 99"], "priorities": [], "planIntro": ""}' });
+  await R.narrateAthleteReport(ar, { callModel: async () => '{"weapons": ["about 99"], "planIntro": ""}' });
   assert.equal(ar.prose.source, 'coach');
   assert.deepEqual(ar.prose, { ...R.coachProse(ar), source: 'coach', reason: ar.prose.reason });
   const ar2 = build();
   await R.narrateAthleteReport(ar2, { callModel: async () => { throw new Error('no key'); } });
   assert.equal(ar2.prose.source, 'coach');
-  assert.match(ar2.prose.priorities[0], /^Ali, on the drive side, low balls at your feet/);
+  assert.equal(ar2.prose.weapons[0], 'Ali, your reactions are sharp.');
 });

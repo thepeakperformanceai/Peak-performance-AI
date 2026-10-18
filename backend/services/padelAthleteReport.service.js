@@ -4,12 +4,14 @@
 //   engine scores (scoring.js) + library/padel.json
 //     -> buildAthleteReport: weapons, top 3 priorities, role lines, fixes,
 //        combined 6-week plan, retest date (all chosen here, in code)
-//     -> coachProse: full coach sentences from the athlete's name, numbers
-//        and the library lines; the report reads well with this alone.
-//     -> narrateAthleteReport: Gemini only polishes that text. It never
+//     -> coachProse: the coach's sentences (weapons, plan intro) from the
+//        athlete's name and numbers; the report reads well with this alone.
+//        Role lines are printed word for word from the library, for the
+//        athlete's playing side only, and never go through Gemini.
+//     -> narrateAthleteReport: Gemini only polishes coachProse. It never
 //        picks tests, exercises or thresholds; an answer with a number not
-//        in its payload, an exercise prescription or a device name is
-//        rejected, and after MAX_ATTEMPTS the coach text is used.
+//        in its payload, an exercise prescription, a device name or the
+//        other playing side is rejected, and after MAX_ATTEMPTS the coach text is used.
 //
 // Scores are the existing engine's, read as they are; nothing here changes
 // how they are calculated. Ranking: score points below the Gold line (75),
@@ -38,7 +40,6 @@ const roundTo = (x, dp) => Math.round(x * 10 ** dp) / 10 ** dp;
 // Smallest step in the test's units that still covers the gap.
 const ceilTo = (x, dp) => Math.ceil(x * 10 ** dp - 1e-9) / 10 ** dp;
 const points = (n) => `${n} point${n === 1 ? '' : 's'}`;
-const lowerFirst = (s) => s.charAt(0).toLowerCase() + s.slice(1);
 const joinList = (xs) => (xs.length < 2 ? xs.join('') : `${xs.slice(0, -1).join(', ')} and ${xs[xs.length - 1]}`);
 
 const DAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
@@ -382,6 +383,9 @@ const buildAthleteReport = ({ profile, scored, session, cfg }) => {
     athleteName: profile.name,
     firstName: String(profile.name || '').trim().split(/\s+/)[0] || 'Athlete',
     side: { key: side, label: LIBRARY.sides[side].label },
+    // Role lines are printed as short separate lines; labels (Drive / Revés /
+    // Every player) only when more than one side's lines are shown.
+    showLineLabels: LIBRARY.sides[side].lines.length > 2,
     target: { score: target, label: LIBRARY.target.label },
     weapons: weapons.map(w => ({
       ...w.view,
@@ -394,10 +398,8 @@ const buildAthleteReport = ({ profile, scored, session, cfg }) => {
     fullResults,
     plan: buildPlan(priorities, side),
     retest: { weeks: retestWeeks, date: retestDate, dateText: longDate(retestDate) },
+    // For staff only: never shown to the athlete (athletes only see what was tested).
     notTested: LIBRARY.tests.filter(e => inBattery(e) && !tested.has(e.key)).map(e => e.name),
-    // Library tests the scoring engine doesn't score yet (e.g. 5-0-5): never ranked.
-    notInBattery: LIBRARY.tests.filter(e => !inBattery(e)).map(e => e.name),
-    rebuild: { ...LIBRARY.rebuild },
     // Footer on every page while the library is under clinical review (library: draft_notice).
     draftNotice: LIBRARY.draft_notice || null
   };
@@ -405,26 +407,17 @@ const buildAthleteReport = ({ profile, scored, session, cfg }) => {
 
 // ---------- the coach's words (complete without Gemini) ----------
 
-// A library line as part of a sentence: "On the drive side, you cover ...".
-const LINE_LEAD = { drive: 'On the drive side, ', reves: 'On the revés side, ' };
-const asSentence = (l, many) => {
-  const text = l.text.replace(/^They /, 'These muscles ');
-  if (l.who === 'every') return `${many ? 'And for every player, ' : 'For every player, '}${lowerFirst(text)}`;
-  return `${LINE_LEAD[l.who]}${lowerFirst(text)}`;
-};
-const withName = (name, sentences) => `${name}, ${lowerFirst(sentences[0])}${sentences.length > 1 ? ` ${sentences.slice(1).join(' ')}` : ''}`;
-
 /**
- * Full coach sentences from the athlete's name, their numbers and the
- * library lines. This is the report's text whenever Gemini is unavailable
- * or rejected, and the text Gemini is asked to polish.
+ * The coach's own sentences, from the athlete's name and numbers. This is the
+ * report's text whenever Gemini is unavailable or rejected, and the text
+ * Gemini is asked to polish. Role lines are not part of it: they are always
+ * printed word for word from the library, for the athlete's side only.
  */
 const coachProse = (ar) => {
   const name = ar.firstName;
   const n = ar.priorities.length;
   return {
-    weapons: ar.weapons.map(w => withName(name, [`${w.body.charAt(0).toUpperCase()}${w.body.slice(1)}.`, asSentence(w.line, false)])),
-    priorities: ar.priorities.map(p => withName(name, [...p.ruleNotes, ...p.lines.map(l => asSentence(l, p.lines.length > 1))])),
+    weapons: ar.weapons.map(w => `${name}, ${w.body}.`),
     planIntro: n
       ? `${name}, this plan trains your top ${n === 1 ? 'priority' : `${n} priorities`} together: ${joinList(ar.priorities.map(p => p.plainName.replace(/ test$/, '')))}. Stick with it for ${ar.plan.weeks} weeks, then we retest on ${ar.retest.dateText} to measure how far you've moved.`
       : `${name}, nothing is below Gold right now. Keep training, and we retest on ${ar.retest.dateText}.`
@@ -442,7 +435,7 @@ Every piece of text in the payload is already complete and correct. It was chose
 RULES (all mandatory):
 1. Use only numbers present in the payload, copied exactly. Never compute, round, estimate or invent a number.
 2. Never add, name or suggest an exercise, drill, set, rep, hold or training load. Never change which tests are weapons or priorities, or their order.
-3. Keep every fact and every role line's meaning from coach_text. Don't drop anything; don't add claims.
+3. Keep every fact from coach_text. Don't drop anything; don't add claims. Never mention a playing side other than payload.playing_side (a Revés player never reads about the drive side, and the other way round).
 4. Address the athlete by their first name (payload.first_name) and speak to them as "you".
 5. Never mention testing devices or brands (no "HumanTrak", "Dynamo" or "VALD") and never use newtons or other device units.
 6. No diagnoses, injuries or injury predictions; describe weaknesses as things to build.
@@ -451,18 +444,16 @@ RULES (all mandatory):
 Return ONLY one JSON object, no markdown, in exactly this shape:
 {
   "weapons": ["polished coach_text for each weapon, same order"],
-  "priorities": ["polished coach_text for each priority, same order"],
   "planIntro": "polished plan.intro"
 }`;
 
-// What Gemini sees: only the chosen text and the athlete's numbers.
+// What Gemini sees: only the coach's sentences and the athlete's numbers.
 const buildNarrationPayload = (ar) => {
   const plain = coachProse(ar);
   return {
     first_name: ar.firstName,
     playing_side: ar.side.label,
     weapons: ar.weapons.map((w, i) => ({ test: w.plainName, headline: w.headline, result: w.number.value, coach_text: plain.weapons[i] })),
-    priorities: ar.priorities.map((p, i) => ({ test: p.plainName, score_line: p.scoreLine, coach_text: plain.priorities[i] })),
     plan: { weeks: ar.plan.weeks, retest_date: ar.retest.dateText, intro: plain.planIntro }
   };
 };
@@ -471,6 +462,8 @@ const buildNarrationPayload = (ar) => {
 const PRESCRIPTION = /\b(?:sets?|reps?|repetitions?|holds?|rounds?)\s+of\b|\b\d+\s*(?:x|×)\s*\d+|\b\d+\s+(?:sets|reps|repetitions|holds|rounds)\b/i;
 // No device names or device units in anything the athlete reads.
 const DEVICE_WORDS = /\b(?:humantrak|dynamo|vald|newtons?)\b|\d\s*N\b/i;
+// The other side's name, which a one-side player must never read.
+const OTHER_SIDE = { Drive: /\brev[eé]s\b/i, 'Revés': /\bdrive\b/i };
 
 const stripFences = (text) => {
   let t = String(text || '').replace(/```json\s*/gi, '').replace(/```\s*/g, '').trim();
@@ -483,15 +476,16 @@ const stripFences = (text) => {
 const problemsWith = (prose, payload) => {
   const out = [];
   if (!Array.isArray(prose.weapons) || prose.weapons.length !== payload.weapons.length) out.push(`weapons must have ${payload.weapons.length} strings`);
-  if (!Array.isArray(prose.priorities) || prose.priorities.length !== payload.priorities.length) out.push(`priorities must have ${payload.priorities.length} strings`);
   if (typeof prose.planIntro !== 'string' || !prose.planIntro.trim()) out.push('planIntro is missing');
   if (out.length) return out;
-  const strings = [...prose.weapons, ...prose.priorities, prose.planIntro];
+  const strings = [...prose.weapons, prose.planIntro];
   if (strings.some(s => typeof s !== 'string' || !s.trim())) out.push('every string must have text');
   const bad = findUnsupportedNumbers({ strings }, payload);
   if (bad.length) out.push(`it used numbers that are not in the payload: ${bad.join(', ')}`);
   if (strings.some(s => PRESCRIPTION.test(s))) out.push('it wrote an exercise prescription (sets, reps, holds or rounds); exercises are not yours to write');
   if (strings.some(s => DEVICE_WORDS.test(s))) out.push('it named a testing device or a device unit (HumanTrak, Dynamo, VALD, newtons)');
+  const other = OTHER_SIDE[payload.playing_side];
+  if (other && strings.some(s => other.test(s))) out.push(`it mentioned the other playing side; this athlete plays ${payload.playing_side} only`);
   return out;
 };
 
@@ -523,7 +517,6 @@ const narrateAthleteReport = async (ar, { callModel = aiEngine.callGemini } = {}
     }
     const prose = {
       weapons: Array.isArray(parsed.weapons) ? parsed.weapons.map(s => String(s ?? '').trim()) : null,
-      priorities: Array.isArray(parsed.priorities) ? parsed.priorities.map(s => String(s ?? '').trim()) : null,
       planIntro: typeof parsed.planIntro === 'string' ? parsed.planIntro.trim() : ''
     };
     const problems = problemsWith(prose, payload);
@@ -560,6 +553,7 @@ module.exports = {
   narrateAthleteReport,
   coachProse,
   DEVICE_WORDS,
+  OTHER_SIDE,
   cleanObservations,
   problemsWith
 };

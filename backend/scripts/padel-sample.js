@@ -3,7 +3,7 @@
 // made-up athlete, through the real engine, library and checks, with no
 // database and no AI key. Writes JSON for a preview page.
 //
-//   node scripts/padel-sample.js [out.json] [--prose]
+//   node scripts/padel-sample.js [out.json] [--prose] [--side=LEFT|RIGHT|BOTH]
 //
 // Without --prose the report uses the coach text built in code (what ships
 // when Gemini is unavailable or rejected). With --prose it uses a sample
@@ -38,13 +38,8 @@ const sampleProse = (p) => {
   const n = p.first_name;
   return JSON.stringify({
     weapons: [
-      `${n}, your hands are a real weapon. A ${p.weapons[0].result} catch means that on the drive side you meet fast, low balls through the middle early and punch the volley instead of just blocking it.`,
-      `${n}, your outer hips are strong and almost even, left vs right. That's where your first sideways push to cover the middle comes from, so you get there fast.`
-    ],
-    priorities: [
-      `${n}, as the drive player you dig out chiquitas and low volleys at your feet, and you need to get down there without losing your posture. Every player also has to stay low through long defensive rallies at the back. Better squat mechanics let you do both without tiring your back.`,
-      `${n}, on the drive side you cover the middle and chase balls off the side glass. Quicker first steps mean you arrive balanced instead of stretching, and after every lob it's a race back to the net.`,
-      `${n}, on your left side your groin is only 67% as strong as your outer hip, and we want 80% or more. Your left side is also 20% weaker than your right. These are the muscles that pull you back to the centre after a wide ball, and a strong groin is your best protection in sudden sideways stops.`
+      `${n}, your hands are a real weapon: a ${p.weapons[0].result} catch.`,
+      `${n}, your outer hips are strong and almost even, left vs right.`
     ],
     planIntro: `${n}, one plan works on all three at once. Give it ${p.plan.weeks} weeks, then we retest on ${p.plan.retest_date} and show you how far you've come.`
   });
@@ -53,6 +48,8 @@ const sampleProse = (p) => {
 const main = async () => {
   const [out = 'padel-sample.json'] = process.argv.slice(2).filter(a => !a.startsWith('--'));
   const withProse = process.argv.includes('--prose');
+  const sideArg = (process.argv.find(a => a.startsWith('--side=')) || '').split('=')[1];
+  if (sideArg) PROFILE_IN.position = sideArg;
   const padel = forSport('padel');
   const { profile, session } = padel.validateInput(PROFILE_IN, RESULTS_IN);
   session.observations = R.cleanObservations({ overhead_squat_fault: RESULTS_IN.tests.overhead_squat.fault });

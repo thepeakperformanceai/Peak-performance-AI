@@ -1,7 +1,7 @@
 // Padel athlete report as a real-text PDF (selectable, searchable, readable
 // on a phone): drawn with jsPDF's own text and shapes, not a screenshot.
-// Same content as the on-screen pages in padelOutputs.js, from
-// reportContent.athleteReport; every number is the engine's.
+// The report page shows this same PDF, so screen and download always match.
+// Built from reportContent.athleteReport; every number is the engine's.
 //
 // Three pages: what it means for your game, how to improve, your full results.
 // Pure module (only jsPDF), so it also runs in Node for checks and samples.
@@ -10,6 +10,7 @@ import { jsPDF } from 'jspdf'
 
 const W = 210, H = 297, M = 16, CW = W - 2 * M
 const FOOT = H - 14
+const TOP = 31                          // content starts here on every page
 const TXT = '#1c1f24', MUTED = '#5c636e', FAINT = '#8d949e', RULE = '#e7e2d9', BODY = '#fffdf9'
 
 // Flat versions of the card's medal colours (gold 75+, silver 65–74, bronze).
@@ -96,7 +97,7 @@ export function buildPadelReportPdf(report, opts = {}) {
     doc.text(String(report.athleteName || ar.athleteName || '').toUpperCase(), W - M, 17.5, { align: 'right' })
     font(8, 'normal', MUTED)
     doc.text(`${ar.side?.label || SIDE_LABEL[rc.position] || ''} side · OVR ${rc.overallOVR ?? '--'} ${t.label} · tested ${rc.testDate || ''}`, W - M, 22, { align: 'right' })
-    y = 31
+    y = TOP
     if (kicker) {
       font(7.5, 'bold', t.deep)
       doc.text(kicker, M, y, { charSpace: 0.4 })
@@ -144,7 +145,9 @@ export function buildPadelReportPdf(report, opts = {}) {
       font(7.5, 'bold', c.soft)
       if (draw) doc.text(w.number.isScore ? `out of 99 · ${w.tier}` : w.tier, x + pad + nw + 2.5, yy + 6)
       yy += 9
-      yy += para(prose.weapons?.[i] || '', x + pad, yy, bw - 2 * pad, 8.5, 'normal', c.ink, draw)
+      yy += para(prose.weapons?.[i] || '', x + pad, yy, bw - 2 * pad, 8.5, 'bold', c.ink, draw) + 1
+      // The library's line for the athlete's side, word for word.
+      if (w.line) yy += para(w.line.text, x + pad, yy, bw - 2 * pad, 8.5, 'normal', c.ink, draw)
       return yy + pad - top
     }
     const hgt = Math.max(...ar.weapons.map((w, i) => weaponBlock(w, i, M, 0, false)))
@@ -164,19 +167,14 @@ export function buildPadelReportPdf(report, opts = {}) {
   if (!ar.priorities.length) {
     y += para('Every scored test is at Gold or above: nothing below target to prioritise.', M, y, CW, 9, 'normal', MUTED)
   }
-  for (const [i, p] of ar.priorities.entries()) {
+  // Each priority is drawn piece by piece: the heading stays with its score
+  // line, and any line that wouldn't fit above the footer moves to the next page.
+  for (const p of ar.priorities) {
     const x = M + 13, w = CW - 13
-    const textH = (draw, top) => {
-      let yy = top + 2.5
-      font(12.5, 'bold', TXT)
-      if (draw) doc.text(p.name, x, yy + 4.5)
-      yy += 6.5
-      yy += para(p.scoreLine, x, yy, w, 9.5, 'bold', TXT, draw) + 1
-      yy += para(prose.priorities?.[i] || '', x, yy, w, 9, 'normal', TXT, draw)
-      return yy + 2.5 - top
-    }
-    const hgt = textH(false, 0)
-    ensure(hgt)
+    const c = tierByLabel(p.tier)
+    font(9.5, 'bold', TXT)
+    const headH = 9 + wrap(p.scoreLine, w).length * lineH(9.5) + 1.5
+    ensure(headH + lineH(9) * 2)
     doc.setDrawColor(RULE)
     doc.setLineWidth(0.25)
     doc.line(M, y, W - M, y)
@@ -184,16 +182,39 @@ export function buildPadelReportPdf(report, opts = {}) {
     doc.circle(M + 4.5, y + 7, 4.5, 'F')
     font(12, 'bold', '#ffffff')
     doc.text(String(p.rank), M + 4.5, y + 8.6, { align: 'center' })
-    const c = tierByLabel(p.tier)
     pill(p.tier.toUpperCase(), W - M, y + 3, c.ink, c.track)
-    textH(true, y)
-    y += hgt
+    font(12.5, 'bold', TXT)
+    doc.text(p.name, x, y + 7)
+    y += 9
+    y += para(p.scoreLine, x, y, w, 9.5, 'bold', TXT) + 1.5
+    // Left/right and ratio notes, then the role lines: one short line each.
+    const pieces = [
+      ...p.ruleNotes.map(t => ({ text: t, color: c.deep, style: 'bold' })),
+      ...p.lines.map(l => ({ label: ar.showLineLabels ? `${l.label}: ` : '', text: l.text, color: TXT, style: 'normal' }))
+    ]
+    for (const piece of pieces) {
+      const full = `${piece.label || ''}${piece.text}`
+      font(9, piece.style, piece.color)
+      const h = wrap(full, w - 3).length * lineH(9)
+      ensure(h + 1)
+      font(9, 'normal', c.deep)
+      doc.text('•', x, y + 9 * PT)
+      if (piece.label) {
+        // Bold label, then the line (wrapped as one piece).
+        const lines = wrap(full, w - 3)
+        font(9, 'bold', MUTED)
+        doc.text(piece.label, x + 3, y + 9 * PT)
+        const lw = doc.getTextWidth(piece.label)
+        font(9, 'normal', TXT)
+        doc.text(lines[0].slice(piece.label.length), x + 3 + lw, y + 9 * PT)
+        lines.slice(1).forEach((ln, k) => doc.text(ln, x + 3, y + 9 * PT + (k + 1) * lineH(9)))
+      } else {
+        para(piece.text, x + 3, y, w - 3, 9, piece.style, piece.color)
+      }
+      y += h + 1
+    }
+    y += 2
   }
-  const notes = [
-    ar.notTested?.length ? `Not tested this session, so not ranked: ${ar.notTested.join(', ')}.` : '',
-    ar.notInBattery?.length ? `Not part of this report yet: ${ar.notInBattery.join(', ')}.` : '',
-  ].filter(Boolean)
-  for (const n of notes) { ensure(5); y += 1 + para(n, M, y, CW, 7.5, 'normal', FAINT) }
 
   // ---------- page 2: how to improve ----------
 
@@ -223,16 +244,41 @@ export function buildPadelReportPdf(report, opts = {}) {
       return yy + pad - top
     }
     const hgt = Math.max(...phases.map(ph => phaseBlock(ph, M, 0, false)))
-    ensure(hgt)
-    phases.forEach((ph, i) => {
-      const x = M + i * (colW + gap)
-      doc.setFillColor('#ffffff')
-      doc.setDrawColor(RULE)
-      doc.setLineWidth(0.4)
-      doc.roundedRect(x, y, colW, hgt, 2.5, 2.5, 'FD')
-      phaseBlock(ph, x, y, true)
-    })
-    y += hgt + 2
+    if (hgt <= FOOT - 4 - TOP) {
+      ensure(hgt)
+      phases.forEach((ph, i) => {
+        const x = M + i * (colW + gap)
+        doc.setFillColor('#ffffff')
+        doc.setDrawColor(RULE)
+        doc.setLineWidth(0.4)
+        doc.roundedRect(x, y, colW, hgt, 2.5, 2.5, 'FD')
+        phaseBlock(ph, x, y, true)
+      })
+      y += hgt + 2
+    } else {
+      // Too long for one page side by side: one phase after another, each
+      // line moving to the next page if it wouldn't fit above the footer.
+      for (const ph of phases) {
+        ensure(12)
+        font(12, 'bold', t.deep)
+        doc.text(ph.label, M, y + 4)
+        y += 6.5
+        for (const b of ph.blocks) {
+          const head = `${b.test} · ${b.kind === 'addon' ? 'Add on' : 'Fix'} ${b.fix}: ${b.title}${b.frequency ? ` (${b.frequency})` : ''}`
+          ensure(10)
+          y += para(head, M, y, CW, 8.5, 'bold', TXT) + 0.3
+          for (const e of b.exercises) {
+            const text = `${e.text}${e.alsoFor.length ? ` (also covers ${e.alsoFor.join(', ')})` : ''}`
+            font(8.2, 'normal', TXT)
+            ensure(wrap(text, CW - 3).length * lineH(8.2) + 0.4)
+            font(8.2, 'normal', t.deep)
+            doc.text('•', M, y + 8.2 * PT)
+            y += para(text, M + 3, y, CW - 3, 8.2, 'normal', TXT) + 0.4
+          }
+          y += 1.6
+        }
+      }
+    }
   }
 
   for (const p of ar.priorities.filter(q => q.fixPending)) {
@@ -256,17 +302,9 @@ export function buildPadelReportPdf(report, opts = {}) {
     }
   }
 
-  // Retest + Rebuild
+  // Retest date
   y += 4
-  const rw = 56, gap = 5, bw = CW - rw - gap, pad = 4.5
-  const rebuildH = (draw, top) => {
-    let yy = top + pad
-    font(13, 'bold', '#ffffff')
-    if (draw) doc.text('PeakPerformance Rebuild', M + rw + gap + pad, yy + 4.5)
-    yy += 7
-    yy += para(ar.rebuild?.text || '', M + rw + gap + pad, yy, bw - 2 * pad, 9, 'normal', '#e9e4da', draw) + 2
-    return yy + 6 + pad - top
-  }
+  const rw = 80, pad = 4.5
   const retestH = (draw, top) => {
     let yy = top + pad
     font(7, 'bold', t.soft)
@@ -276,23 +314,11 @@ export function buildPadelReportPdf(report, opts = {}) {
     yy += para(`${ar.retest.weeks} weeks after testing`, M + pad, yy, rw - 2 * pad, 8.5, 'normal', t.ink, draw)
     return yy + pad - top
   }
-  const boxH = Math.max(rebuildH(false, 0), retestH(false, 0))
+  const boxH = retestH(false, 0)
   ensure(boxH)
   doc.setFillColor(t.fill)
   doc.roundedRect(M, y, rw, boxH, 3, 3, 'F')
   retestH(true, y)
-  doc.setFillColor(TXT)
-  doc.roundedRect(M + rw + gap, y, bw, boxH, 3, 3, 'F')
-  rebuildH(true, y)
-  // "Book Rebuild" button; clickable once the real link replaces the placeholder.
-  font(8.5, 'bold', TXT)
-  const label = 'BOOK REBUILD'
-  const bx = M + rw + gap + pad, by = y + boxH - pad - 6, bwid = doc.getTextWidth(label) + 8
-  doc.setFillColor('#ffffff')
-  doc.roundedRect(bx, by, bwid, 6, 1.4, 1.4, 'F')
-  doc.text(label, bx + 4, by + 4.2)
-  const url = ar.rebuild?.url || ''
-  if (/^https?:\/\//.test(url)) doc.link(bx, by, bwid, 6, { url })
   y += boxH
 
   // ---------- page 3: your full results ----------

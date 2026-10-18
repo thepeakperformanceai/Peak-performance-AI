@@ -24,4 +24,6 @@ const loadLogo = () => new Promise((resolve) => {
 
 /** The two-page athlete report. The Rebuild button is clickable once its link is set. */
 export const padelReportPdf = async (report) => buildPadelReportPdf(report, { logo: await loadLogo() })
+/** A blob URL of the report PDF, for showing it on the page (revoke when done). */
+export const padelReportPdfUrl = async (report) => URL.createObjectURL((await padelReportPdf(report)).output('blob'))
 export const downloadPadelReportPdf = async (report) => (await padelReportPdf(report)).save(`${fileBase(report, 'Report')}.pdf`)

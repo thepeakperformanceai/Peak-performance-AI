@@ -1,11 +1,10 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useReportStore } from '../store/reportStore'
 import toast from 'react-hot-toast'
 import { downloadReportPDF } from '../services/api'
 import { footballCardHtml, extraPagesHtml, CARD_WIDTH, sportKeyOf } from '../components/footballCard'
 import ScoreBreakdown from '../components/ScoreBreakdown'
-import { padelReportPagesHtml, PAGE_WIDTH } from '../components/padelOutputs'
-import { downloadPadelReportPdf } from '../services/padelExport'
+import { downloadPadelReportPdf, padelReportPdfUrl } from '../services/padelExport'
 import { getBreakdown, createBreakdownLink, deleteBreakdownLink } from '../services/api'
 
 /* Athlete Test Battery Report — 4-page dark card (matches dashboard) */
@@ -159,6 +158,27 @@ function BreakdownSection({ report }) {
   )
 }
 
+// Padel athlete report: the PDF itself, shown on the page, so the screen and
+// the download are the same document (one layout that never runs into the footer).
+function PadelReportPreview({ report }) {
+  const [url, setUrl] = useState(null)
+  const [error, setError] = useState('')
+  useEffect(() => {
+    let made = null
+    let live = true
+    padelReportPdfUrl(report)
+      .then(u => { made = u; if (live) setUrl(u); else URL.revokeObjectURL(u) })
+      .catch(e => live && setError(e.message || 'Could not draw the athlete report'))
+    return () => { live = false; if (made) URL.revokeObjectURL(made) }
+  }, [report])
+  if (error) return <p className="text-sm text-red-600 mt-6">{error}</p>
+  if (!url) return <p className="text-sm text-gray-500 mt-6">Drawing the athlete report…</p>
+  return (
+    <iframe title="Padel athlete report" src={url} data-testid="padel-athlete-report"
+      style={{ width: CARD_WIDTH, height: 1120, marginTop: 24, border: 'none', boxShadow: '0 12px 40px rgba(0,0,0,0.18)', borderRadius: 4, background: '#fff' }} />
+  )
+}
+
 export default function ReportPage() {
   const report = useReportStore(s => s.report)
   const [downloading, setDownloading] = useState(false)
@@ -182,9 +202,9 @@ export default function ReportPage() {
 
   // Football (engine-scored) reports: the one-page player card, identical to the PDF.
   if (engineScored) {
-    // Padel: the two-page athlete report ("What it means for your game" /
-    // "How to improve") under the card, with its own PDF.
-    const athletePages = padelReportPagesHtml(report)
+    // Padel: the athlete report ("What it means for your game", "How to
+    // improve", "Your full results") under the card, with its own PDF.
+    const hasAthleteReport = !!rc.athleteReport
     const handleAthleteDownload = async () => {
       setDownloadingAthlete(true)
       try { await downloadPadelReportPdf(report); toast.success('Athlete report downloaded!') }
@@ -194,7 +214,7 @@ export default function ReportPage() {
     return (
       <div style={{ maxWidth: CARD_WIDTH, margin: '0 auto' }}>
         <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginBottom: 12 }}>
-          {athletePages.length > 0 && (
+          {hasAthleteReport && (
             <button onClick={handleAthleteDownload} disabled={downloadingAthlete}
               style={{ background: '#1c1f24', color: '#fff', border: 'none', borderRadius: 10, padding: '10px 16px', fontSize: 13, fontWeight: 700, cursor: downloadingAthlete ? 'default' : 'pointer', opacity: downloadingAthlete ? 0.6 : 1, fontFamily: "'IBM Plex Mono', monospace" }}>
               {downloadingAthlete ? '⏳ Generating…' : '⬇ What it means PDF'}
@@ -216,11 +236,7 @@ export default function ReportPage() {
               style={{ width: CARD_WIDTH, marginTop: 24, boxShadow: '0 12px 40px rgba(0,0,0,0.18)', borderRadius: 4 }}
               dangerouslySetInnerHTML={{ __html: html }} />
           ))}
-          {athletePages.map((html, i) => (
-            <div key={`athlete-${i}`} data-testid="padel-athlete-report-page"
-              style={{ width: PAGE_WIDTH, marginTop: 24, boxShadow: '0 12px 40px rgba(0,0,0,0.18)', borderRadius: 4 }}
-              dangerouslySetInnerHTML={{ __html: html }} />
-          ))}
+          {hasAthleteReport && <PadelReportPreview report={report} />}
         </div>
         <BreakdownSection report={report} />
       </div>
