@@ -208,6 +208,7 @@ test('athlete-facing text never names a device or a device unit, on any side', (
     const shown = JSON.stringify([
       ar.weapons.map(w => [w.plainName, w.headline, w.number, w.body, w.measures]),
       ar.priorities.map(p => [p.name, p.plainName, p.scoreLine, p.ruleNotes, p.measures]),
+      ar.testByTest,
       R.coachProse(ar)
     ]);
     assert.equal(R.DEVICE_WORDS.test(shown), false, `${position}: ${shown.match(R.DEVICE_WORDS)}`);
@@ -284,6 +285,39 @@ test('observations: only known values are kept', () => {
   assert.deepEqual(R.cleanObservations({ overhead_squat_fault: 'arms_back', other: 1 }), { overhead_squat_fault: 'arms_back' });
   assert.deepEqual(R.cleanObservations({ overhead_squat_fault: 'sideways' }), {});
   assert.deepEqual(R.cleanObservations(undefined), {});
+});
+
+// ---------- test by test ----------
+
+test('test by test: every library test in library order, with its result or why there is none', () => {
+  const ar = build();
+  assert.deepEqual(ar.testByTest.map(t => t.key), LIB.tests.map(t => t.key));
+  const by = Object.fromEntries(ar.testByTest.map(t => [t.key, t]));
+  assert.equal(by.sprint_10m.scoreLine, ar.priorities.find(p => p.key === 'sprint_10m').scoreLine);
+  assert.equal(by.sprint_10m.improveTitle, 'What a better score gets you');
+  assert.equal(by.ruler_drop.improveTitle, 'What it gives you on court');      // already Gold
+  assert.deepEqual([by.cod_505.status, by.cod_505.statusLine, by.cod_505.improveTitle], ['not_in_report', 'Not part of this report yet.', 'Why it matters']);
+  assert.equal(by.cod_505.score, undefined);
+  const s = copy(SESSION);
+  s.tests.trunk_rotation = { status: 'injured' };
+  assert.deepEqual([build(s).testByTest.find(t => t.key === 'trunk_rotation').status, build(s).testByTest.find(t => t.key === 'trunk_rotation').statusLine], ['not_tested', 'Not tested this session.']);
+});
+
+test('test by test: the athlete\'s side picks the lines; Both gets all three', () => {
+  const sprint = (position) => build(SESSION, { ...PROFILE, position }).testByTest.find(t => t.key === 'sprint_10m');
+  const lib = LIB.tests.find(t => t.key === 'sprint_10m');
+  assert.equal(sprint('RIGHT').improve, `${lib.improve.drive} ${lib.improve.every}`);
+  assert.equal(sprint('LEFT').improve, `${lib.improve.reves} ${lib.improve.every}`);
+  assert.equal(sprint('BOTH').improve, `${lib.improve.drive} ${lib.improve.reves} ${lib.improve.every}`);
+  assert.match(sprint('LEFT').meaning, /^On the revés side, you chase most of the lobs/);
+  assert.match(sprint('LEFT').meaning, /And for every player, padel is won at the net\./);
+});
+
+test('test by test: the "better score" lines are words only, never numbers', () => {
+  for (const t of LIB.tests) {
+    assert.deepEqual(Object.keys(t.improve).sort(), ['drive', 'every', 'reves'], t.key);
+    for (const line of Object.values(t.improve)) assert.equal(/\d/.test(line), false, `${t.key}: ${line}`);
+  }
 });
 
 // ---------- plan and retest ----------

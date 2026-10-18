@@ -55,7 +55,7 @@ const pageShell = (report, pageNo, title, kicker, inner) => {
   <div style="display:flex;align-items:center;justify-content:space-between;padding:22px 44px 0">
     <img src="${LOGO_URL}" alt="Peak Performance" width="84" height="64" style="width:84px;height:64px">
     <div style="text-align:right;line-height:1.35">
-      <div style="font-family:${TEXT};font-size:10px;font-weight:700;letter-spacing:2px;color:${FAINT}">PADEL ATHLETE REPORT · PAGE ${pageNo} OF 2</div>
+      <div style="font-family:${TEXT};font-size:10px;font-weight:700;letter-spacing:2px;color:${FAINT}">PADEL ATHLETE REPORT · PAGE ${pageNo}</div>
       <div style="font-family:${DISPLAY};font-size:26px;letter-spacing:1px;color:${TXT}">${esc((report.athleteName || ar.athleteName || '').toUpperCase())}</div>
       <div style="font-size:10.5px;color:${MUTED}">${esc(ar.side?.label || playingSideOf(rc))} side · OVR ${rc.overallOVR == null ? NO_DATA : esc(rc.overallOVR)} ${esc(t.label)} · tested ${esc(rc.testDate || '')}</div>
     </div>
@@ -136,7 +136,7 @@ export function padelReportPage1Html(report) {
 }
 
 /** Page 2: "How to improve". */
-export function padelReportPage2Html(report) {
+export function padelReportPage2Html(report, pageNo = 2) {
   const rc = report.reportContent || {}
   const ar = rc.athleteReport
   if (!ar) return ''
@@ -168,7 +168,7 @@ export function padelReportPage2Html(report) {
       <span style="flex:0 0 74px;font-weight:700;color:${MUTED}">${esc(d.label)}</span><span>${esc(d.text)}</span></div>`).join('')
 
   const rebuildUrl = ar.rebuild?.url || ''
-  return pageShell(report, 2, 'How to improve', `ONE COMBINED ${ar.plan.weeks}-WEEK PLAN`, `
+  return pageShell(report, pageNo, 'How to improve', `ONE COMBINED ${ar.plan.weeks}-WEEK PLAN`, `
     <div style="font-size:12px;line-height:1.5;color:${TXT};max-width:660px">${esc(prose.planIntro || '')}</div>
     ${ar.priorities.length ? `<div style="display:flex;gap:12px;margin-top:10px">${phases}</div>` : ''}
     ${pending}${notes}
@@ -187,5 +187,42 @@ export function padelReportPage2Html(report) {
     </div>`)
 }
 
-export const padelReportPagesHtml = (report) =>
-  report.reportContent?.athleteReport ? [padelReportPage1Html(report), padelReportPage2Html(report)] : []
+// One test's block on the "test by test" pages.
+function testBlock(t) {
+  const c = t.tier ? tierColour(t.tier) : null
+  return `<div style="padding:10px 0;border-top:1px solid ${RULE}">
+    <div style="display:flex;align-items:baseline;justify-content:space-between;gap:10px">
+      <div style="font-family:${DISPLAY};font-size:21px;letter-spacing:0.5px;color:${t.status === 'scored' ? TXT : FAINT}">${esc(t.name)}</div>
+      <div style="white-space:nowrap">${c ? pill(t.tier.toUpperCase(), c.ink, c.track) : pill('NOT TESTED', FAINT, '#f1eee8')}</div>
+    </div>
+    <div style="font-size:11.5px;font-weight:700;line-height:1.4;margin:2px 0 5px;color:${t.status === 'scored' ? TXT : MUTED}">${esc(t.scoreLine || t.statusLine)}</div>
+    <div style="display:flex;gap:16px">
+      <div style="flex:1"><div style="font-size:9px;font-weight:700;letter-spacing:1.2px;color:${FAINT}">WHAT IT MEANS FOR YOUR GAME</div>
+        <div style="font-size:10.5px;line-height:1.45;margin-top:2px">${esc(t.meaning)}</div></div>
+      <div style="flex:1"><div style="font-size:9px;font-weight:700;letter-spacing:1.2px;color:${c ? c.deep : FAINT}">${esc(t.improveTitle.toUpperCase())}</div>
+        <div style="font-size:10.5px;line-height:1.45;margin-top:2px">${esc(t.improve)}</div></div>
+    </div>
+  </div>`
+}
+
+// Tests per on-screen page: fewer when the athlete plays both sides (three lines each).
+const testsPerPage = (ar) => (ar.side?.key === 'BOTH' ? 3 : 4)
+
+/** "Your game, test by test": every padel test, on as many pages as it needs. */
+export function padelTestByTestPagesHtml(report, firstPage = 2) {
+  const ar = report.reportContent?.athleteReport
+  if (!ar?.testByTest?.length) return []
+  const per = testsPerPage(ar)
+  const pages = []
+  for (let i = 0; i < ar.testByTest.length; i += per) {
+    pages.push(pageShell(report, firstPage + pages.length, i ? 'Your game, test by test (continued)' : 'Your game, test by test',
+      `EVERY TEST · ${String(ar.side.label).toUpperCase()} SIDE`, ar.testByTest.slice(i, i + per).map(testBlock).join('')))
+  }
+  return pages
+}
+
+export const padelReportPagesHtml = (report) => {
+  if (!report.reportContent?.athleteReport) return []
+  const tests = padelTestByTestPagesHtml(report, 2)
+  return [padelReportPage1Html(report), ...tests, padelReportPage2Html(report, 2 + tests.length)]
+}

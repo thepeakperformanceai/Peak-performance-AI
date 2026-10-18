@@ -1,8 +1,8 @@
 {
-  "library_version": "padel-library-v1.1",
+  "library_version": "padel-library-v1.2",
   "sport": "padel",
   "source": "docs/library/padel.md (Oct 18, 2026)",
-  "notes": "One entry per padel test. The engine reads this file to pick the athlete's top 3 priorities, their role lines, fixes, role drills and retest window. Gemini only rewords the text it is given. Scores come from the existing scoring engine, unchanged. Left/right and ratio rules use the library's own percentages on the raw left/right results. Rules marked proposed need DPT sign-off; engine_note says where the engine's data can't follow the library exactly. plain_name, weapon (headline and body) and rule note templates are PeakPerformance wording added for the report, not text from padel.md.",
+  "notes": "One entry per padel test. The engine reads this file to pick the athlete's top 3 priorities, their role lines, fixes, role drills and retest window. Gemini only rewords the text it is given. Scores come from the existing scoring engine, unchanged. Left/right and ratio rules use the library's own percentages on the raw left/right results. Rules marked proposed need DPT sign-off; engine_note says where the engine's data can't follow the library exactly. plain_name, weapon (headline and body), improve (what a better score changes on court) and rule note templates are PeakPerformance wording added for the report, not text from padel.md.",
   "target": {
     "score": 75,
     "label": "Gold",
@@ -123,6 +123,11 @@
       "weapon": {
         "headline": "Quick off the mark",
         "body": "you are quick over the first few steps"
+      },
+      "improve": {
+        "drive": "A quicker first few steps gets you to balls off the side glass on balance, so you can play a real shot instead of just getting it back.",
+        "reves": "More speed lets you get behind lobs before they run off the back glass, so you defend them on your terms.",
+        "every": "You'll win more races back to the net after every lob, and that's where padel points are won."
       }
     },
     {
@@ -188,6 +193,11 @@
       "weapon": {
         "headline": "Sharp stop and turn",
         "body": "you brake and turn fast"
+      },
+      "improve": {
+        "drive": "A sharper turn closes the middle faster when your partner is pulled wide, leaving your opponents less space to attack.",
+        "reves": "Turning faster lets you play late-changing balls off the back glass and the corner instead of being beaten by the bounce.",
+        "every": "Braking and re-accelerating faster means you reach more balls on balance, point after point."
       }
     },
     {
@@ -249,6 +259,11 @@
       "weapon": {
         "headline": "Fast hands at the net",
         "body": "your reactions are sharp"
+      },
+      "improve": {
+        "drive": "Quicker reactions let you punch volleys through the middle rather than just block them.",
+        "reves": "Reading smashes and fast balls off the glass earlier gives you time to get your racket set.",
+        "every": "You'll win more of the quick-fire reflex exchanges at the net."
       }
     },
     {
@@ -337,6 +352,11 @@
       "weapon": {
         "headline": "Low and tall when it counts",
         "body": "your ankles, hips, upper back and shoulders work well together when you squat with your arms overhead"
+      },
+      "improve": {
+        "drive": "Better squat mechanics let you dig out chiquitas and low volleys while keeping your posture.",
+        "reves": "Freer shoulders and upper back let you hit bandejas, víboras and smashes with your trunk upright, without arching your lower back.",
+        "every": "You can stay low through long defensive rallies without tiring your back."
       }
     },
     {
@@ -409,6 +429,11 @@
           "uneven": "turning further to your {side} by {pct}%",
           "one_side": "measured on one side only"
         }
+      },
+      "improve": {
+        "drive": "More turn puts the power of your shoulders and hips into your forehand and your drive off the glass, instead of just your arm.",
+        "reves": "More rotation adds spin and pace to your víbora and smash without forcing your shoulder.",
+        "every": "You'll turn faster out of the corner and off the back glass while your feet stay set."
       }
     },
     {
@@ -484,6 +509,11 @@
           "uneven": "steadier on your {side} leg by {pct}%",
           "one_side": "measured on one leg only"
         }
+      },
+      "improve": {
+        "drive": "Better balance turns wide lunges to the side glass into controlled shots and quicker recoveries.",
+        "reves": "Steadier one-leg landings after smashes and jumping víboras get you straight back into position.",
+        "every": "Better balance is your first protection in all those quick stops on one foot."
       }
     },
     {
@@ -573,6 +603,11 @@
           "uneven": "stronger on your {side} side by {pct}%",
           "one_side": "measured on one side only"
         }
+      },
+      "improve": {
+        "drive": "A stronger back of the shoulder brakes your fast forehand and serve cleanly, rally after rally.",
+        "reves": "More strength here helps your shoulder handle bandejas, víboras and smashes across a whole season.",
+        "every": "You'll swing more freely, and you take load off your elbow."
       }
     },
     {
@@ -662,6 +697,11 @@
           "uneven": "stronger on your {side} side by {pct}%",
           "one_side": "measured on one side only"
         }
+      },
+      "improve": {
+        "drive": "Stronger outer hips give you a faster first sideways step to cover the middle.",
+        "reves": "Stronger outer hips keep your outside knee straight when you lunge toward the side glass on your backhand side.",
+        "every": "A level pelvis and straight knees on every lunge and stop help protect your knees."
       }
     },
     {
@@ -754,6 +794,11 @@
           "uneven": "stronger on your {side} side by {pct}%",
           "one_side": "measured on one side only"
         }
+      },
+      "improve": {
+        "drive": "A stronger groin speeds up your recovery step back to the centre after a wide ball.",
+        "reves": "More groin strength helps you handle deep lunges and splits into the corner.",
+        "every": "Building it up toward the strength of your outer hip is your best protection in sudden sideways stops."
       }
     }
   ]
