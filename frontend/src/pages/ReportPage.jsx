@@ -171,11 +171,22 @@ function PadelReportPreview({ report }) {
       .catch(e => live && setError(e.message || 'Could not draw the athlete report'))
     return () => { live = false; if (made) URL.revokeObjectURL(made) }
   }, [report])
-  if (error) return <p className="text-sm text-red-600 mt-6">{error}</p>
+  // Reports saved before library v2 (nickname / notice / Why / Fix it) still open,
+  // but show the older wording; a new report gets the current library.
+  const older = !/^padel-library-v[2-9]/.test(report.reportContent?.athleteReport?.libraryVersion || '')
+  const olderNote = older && (
+    <div style={{ background: '#fff7e6', border: '1px solid #f6c667', color: '#6b4a00', borderRadius: 10, padding: '10px 14px', fontSize: 13, marginTop: 24 }}>
+      This athlete report was made with an earlier version of the padel library. Create a new padel report for this athlete to get the latest wording.
+    </div>
+  )
+  if (error) return <>{olderNote}<p className="text-sm text-red-600 mt-6">{error}</p></>
   if (!url) return <p className="text-sm text-gray-500 mt-6">Drawing the athlete report…</p>
   return (
+    <>
+    {olderNote}
     <iframe title="Padel athlete report" src={url} data-testid="padel-athlete-report"
       style={{ width: CARD_WIDTH, height: 1120, marginTop: 24, border: 'none', boxShadow: '0 12px 40px rgba(0,0,0,0.18)', borderRadius: 4, background: '#fff' }} />
+    </>
   )
 }
 

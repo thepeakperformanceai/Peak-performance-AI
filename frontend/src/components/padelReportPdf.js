@@ -170,8 +170,10 @@ export function buildPadelReportPdf(report, opts = {}) {
   for (const p of ar.priorities) {
     const x = M + 13, w = CW - 13
     const c = tierByLabel(p.tier)
+    // Reports made before library v2 have no notice / Why / Fix it: show what they have.
+    const why = Array.isArray(p.why) && p.why.length ? p.why : [p.scoreLine, ...(p.ruleNotes || [])].filter(Boolean)
     font(9, 'normal', TXT)
-    const headH = 13 + wrap(p.notice, w).length * lineH(9)
+    const headH = 13 + (p.notice ? wrap(p.notice, w).length * lineH(9) : lineH(9))
     ensure(headH)
     doc.setDrawColor(RULE)
     doc.setLineWidth(0.25)
@@ -188,9 +190,9 @@ export function buildPadelReportPdf(report, opts = {}) {
     y += 13
     const pieces = [
       { text: p.notice, style: 'normal', color: TXT },
-      ...p.why.map(t => ({ text: t, style: 'bold', color: TXT, bullet: true })),
+      ...why.map(t => ({ text: t, style: 'bold', color: TXT, bullet: true })),
       { text: p.fixIt, style: 'bold', color: c.deep }
-    ]
+    ].filter(piece => piece.text)
     for (const piece of pieces) {
       const indent = piece.bullet ? 3 : 0
       font(9, piece.style, piece.color)
