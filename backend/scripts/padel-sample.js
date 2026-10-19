@@ -3,7 +3,7 @@
 // made-up athlete, through the real engine, library and checks, with no
 // database and no AI key. Writes JSON for a preview page.
 //
-//   node scripts/padel-sample.js [out.json] [--prose] [--side=LEFT|RIGHT|BOTH]
+//   node scripts/padel-sample.js [out.json] [--prose] [--side=LEFT|RIGHT|BOTH] [--name="First Last"]
 //
 // Without --prose the report uses the coach text built in code (what ships
 // when Gemini is unavailable or rejected). With --prose it uses a sample
@@ -50,6 +50,8 @@ const main = async () => {
   const withProse = process.argv.includes('--prose');
   const sideArg = (process.argv.find(a => a.startsWith('--side=')) || '').split('=')[1];
   if (sideArg) PROFILE_IN.position = sideArg;
+  const nameArg = (process.argv.find(a => a.startsWith('--name=')) || '').split('=')[1];
+  if (nameArg) PROFILE_IN.name = nameArg;
   const padel = forSport('padel');
   const { profile, session } = padel.validateInput(PROFILE_IN, RESULTS_IN);
   session.observations = R.cleanObservations({ overhead_squat_fault: RESULTS_IN.tests.overhead_squat.fault });
