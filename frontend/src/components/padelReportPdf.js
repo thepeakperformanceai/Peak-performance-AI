@@ -1,4 +1,4 @@
-// Padel athlete report as a real-text PDF (selectable, searchable, readable
+// Athlete report (padel, cricket: one format) as a real-text PDF (selectable, searchable, readable
 // on a phone): drawn with jsPDF's own text and shapes, not a screenshot.
 // The report page shows this same PDF, so screen and download always match.
 // Built from reportContent.athleteReport; every number is the engine's.
@@ -37,8 +37,10 @@ export function buildPadelReportPdf(report, opts = {}) {
   if (!ar) throw new Error('This report has no athlete report')
   const prose = ar.prose || {}
   const t = TIERS[tierKeyOf(rc.overallOVR)]
+  // Same layout for every sport; only the sport's name and drills label change.
+  const sport = /cricket/i.test(rc.sport || '') ? 'Cricket' : 'Padel'
   const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' })
-  doc.setProperties({ title: `Padel athlete report: ${report.athleteName || ar.athleteName}`, subject: 'What it means for your game · How to improve', author: 'PeakPerformance' })
+  doc.setProperties({ title: `${sport} athlete report: ${report.athleteName || ar.athleteName}`, subject: 'What it means for your game · How to improve', author: 'PeakPerformance' })
 
   let y = 0
   let pageNo = 0
@@ -91,11 +93,11 @@ export function buildPadelReportPdf(report, opts = {}) {
     doc.rect(0, 0, W, 2.2, 'F')
     if (opts.logo) doc.addImage(opts.logo.dataUrl, 'PNG', M, 7, opts.logo.w, opts.logo.h)
     font(7, 'bold', FAINT)
-    doc.text(`PADEL ATHLETE REPORT · PAGE ${pageNo}`, W - M, 11, { align: 'right', charSpace: 0.3 })
+    doc.text(`${sport.toUpperCase()} ATHLETE REPORT · PAGE ${pageNo}`, W - M, 11, { align: 'right', charSpace: 0.3 })
     font(15, 'bold', TXT)
     doc.text(String(report.athleteName || ar.athleteName || '').toUpperCase(), W - M, 17.5, { align: 'right' })
     font(8, 'normal', MUTED)
-    doc.text(`Padel · OVR ${rc.overallOVR ?? '--'} ${t.label} · tested ${rc.testDate || ''}`, W - M, 22, { align: 'right' })
+    doc.text(`${sport} · OVR ${rc.overallOVR ?? '--'} ${t.label} · tested ${rc.testDate || ''}`, W - M, 22, { align: 'right' })
     y = TOP
     if (kicker) {
       font(7.5, 'bold', t.deep)
@@ -126,7 +128,7 @@ export function buildPadelReportPdf(report, opts = {}) {
 
   // ---------- page 1: what it means for your game ----------
 
-  newPage('What it means for your game', `PADEL · ${String(ar.firstName).toUpperCase()}`)
+  newPage('What it means for your game', `${sport.toUpperCase()} · ${String(ar.firstName).toUpperCase()}`)
 
   section('Your weapons', 'your two best results')
   if (ar.weapons.length) {
@@ -282,7 +284,7 @@ export function buildPadelReportPdf(report, opts = {}) {
   }
 
   if (ar.plan.courtDrills?.length) {
-    section('Court drills', 'add to your sessions')
+    section(ar.drillsLabel || 'Court drills', 'add to your sessions')
     for (const d of ar.plan.courtDrills) {
       font(8.2, 'normal', TXT)
       const h = wrap(d.text, CW - 3).length * lineH(8.2)

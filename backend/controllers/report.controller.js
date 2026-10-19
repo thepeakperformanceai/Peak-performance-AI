@@ -246,14 +246,17 @@ const reportResponse = (report, message) => ({
  * current config (so new benchmarks apply) and rewrites the text.
  */
 /**
- * Padel only: the separate two-page athlete report (weapons, top 3
- * priorities, 6-week plan), chosen in code from the engine's existing scores
- * and library/padel.json. Gemini only rewords it; see padelAthleteReport.service.
- * The player card and its scores are not changed.
+ * Padel and cricket: the separate athlete report ("What it means for your
+ * game", "How to improve", "Your full results"), chosen in code from the
+ * engine's existing scores and the sport's library (library/<sport>.json).
+ * Same format for every sport. Gemini only rewords it; see
+ * padelAthleteReport.service. The player card and its scores are not changed.
  */
-const addPadelAthleteReport = async ({ reportContent, profile, scored, session, cfg }) => {
-  const ar = padelAthleteReport.buildAthleteReport({ profile, scored, session, cfg });
-  await padelAthleteReport.narrateAthleteReport(ar);
+const addAthleteReport = async (sportKey, { reportContent, profile, scored, session, cfg }) => {
+  const engine = padelAthleteReport.forSport(sportKey);
+  if (!engine) return;
+  const ar = engine.buildAthleteReport({ profile, scored, session, cfg });
+  await engine.narrateAthleteReport(ar);
   reportContent.athleteReport = ar;
 };
 
@@ -288,7 +291,7 @@ const makeScoredReportHandler = (sportKey) => async (req, res, next) => {
     const pdfData = uploadedFiles.length ? await pdfExtractService.processPdfs(uploadedFiles) : [];
 
     const { scored, payload, rawResponse, reportContent } = await pipeline.runPipeline(profile, session);
-    if (sportKey === 'padel') await addPadelAthleteReport({ reportContent, profile, scored, session, cfg: pipeline.cfg });
+    await addAthleteReport(sportKey, { reportContent, profile, scored, session, cfg: pipeline.cfg });
 
     const report = new Report({
       user: req.user._id,
@@ -436,7 +439,7 @@ const generateCustomReport = async (req, res, next) => {
 const generateCricketReport = makeScoredReportHandler('cricket');
 
 /**
- * Regenerate for an engine-scored report of a non-football sport (padel):
+ * Regenerate for an engine-scored report of a non-football sport (padel, cricket, custom):
  * re-scores the stored entry with the current config and rewrites the text.
  */
 const regenerateScoredReport = async (existingReport, res) => {
@@ -454,9 +457,7 @@ const regenerateScoredReport = async (existingReport, res) => {
     additionalVald: existingReport.reportContent?.additionalVald || []
   };
   const { scored, payload, rawResponse, reportContent } = await pipeline.runPipeline(profile, session);
-  if (existingReport.scoringSport === 'padel') {
-    await addPadelAthleteReport({ reportContent, profile, scored, session, cfg: pipeline.cfg });
-  }
+  await addAthleteReport(existingReport.scoringSport, { reportContent, profile, scored, session, cfg: pipeline.cfg });
 
   existingReport.reportContent = reportContent;
   existingReport.rawAiResponse = rawResponse;

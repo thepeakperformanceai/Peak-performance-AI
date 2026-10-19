@@ -1,0 +1,903 @@
+{
+  "library_version": "cricket-library-v1.0",
+  "sport": "cricket",
+  "source": "docs/library/cricket.md (Oct 19, 2026)",
+  "notes": "Built from docs/library/cricket.md by scripts/build-padel-library.js; edit cricket.md, then rebuild. Same format as the padel library. Scores come from the existing scoring engine, unchanged. Words in curly brackets are filled in by the engine from the athlete's results; Gemini never writes or changes these lines. plain_name, measures and weapon (headline, body, evenness) are PeakPerformance wording added for the report, not text from cricket.md.",
+  "draft_notice": "Draft – pending clinical review",
+  "draft_notice_help": "Shown in the footer of every page of the cricket athlete report. Set draft_notice to null (or \"\") to switch it off; applies to reports generated after the change. Kept when the library is rebuilt.",
+  "drills_label": "Pitch drills",
+  "target": {
+    "score": 75,
+    "label": "Gold",
+    "text": "Tier target is the Gold line (score 75). Priorities are ranked by score points below 75, biggest gap first; ties keep library order."
+  },
+  "tiers": [
+    {
+      "key": "gold",
+      "label": "Gold",
+      "min_score": 75
+    },
+    {
+      "key": "silver",
+      "label": "Silver",
+      "min_score": 65
+    },
+    {
+      "key": "bronze",
+      "label": "Bronze",
+      "min_score": 0
+    }
+  ],
+  "plan": {
+    "weeks": 6,
+    "text": "One combined 6-week plan: every selected fix runs from week 1. A fix shorter than 6 weeks switches to that test's maintain fix (where the library has one) for the remaining weeks."
+  },
+  "fault_words": {},
+  "tests": [
+    {
+      "key": "sprint_10m",
+      "name": "10m Sprint",
+      "plain_name": "10m sprint",
+      "measures": "Speed",
+      "what_we_measured": "How fast you cover 10 metres from a standing start, about half the length of the pitch.",
+      "nickname": "Speed: your first three steps",
+      "notice": "you call a quick single and only just make your ground, or the ball runs past you in the field before you've got going.",
+      "why": [
+        {
+          "label": "Below target",
+          "when": {
+            "type": "score_below_target"
+          },
+          "text": "You covered 10 metres in {time}. {next_tier} starts at {target}, so you're {gap} away."
+        },
+        {
+          "label": "At Gold",
+          "when": {
+            "type": "score_at_least_target"
+          },
+          "text": "You covered 10 metres in {time}. That's Gold level."
+        }
+      ],
+      "fix_it": "you'll turn dot balls into quick singles, and cut off balls in the field that used to get past you.",
+      "rules": [
+        {
+          "when": {
+            "type": "score_below_target"
+          },
+          "fix": "A",
+          "text": "Score below tier target → show Fix A: first-step power."
+        },
+        {
+          "when": {
+            "type": "score_at_least_target"
+          },
+          "fix": "B",
+          "text": "At or above Gold → show Fix B: keep it sharp."
+        }
+      ],
+      "fixes": {
+        "A": {
+          "title": "first-step power",
+          "kind": "main",
+          "weeks": 6,
+          "frequency": "2 sessions a week",
+          "exercises": [
+            "Falling starts over 5 metres: 6 reps, full rest.",
+            "Backing-up starts: walk in with the bowler, then sprint 10 metres on a call. 6 reps.",
+            "Split squats: 3 sets of 8 each leg."
+          ]
+        },
+        "B": {
+          "title": "keep it sharp",
+          "kind": "maintain",
+          "weeks": null,
+          "frequency": "once a week",
+          "exercises": [
+            "Reaction starts over 5 metres on a partner's call: 6 reps."
+          ]
+        }
+      },
+      "maintain_fix": "B",
+      "court_drills": [
+        "Quick singles: run one at full pace with your bat, grounding it over the line. 6 reps.",
+        "Attack the ball: a partner rolls the ball towards you; sprint in, pick up and throw at the stumps. 8 reps."
+      ],
+      "retest_weeks": 6,
+      "retest_note": null,
+      "weapon": {
+        "headline": "Quick off the mark",
+        "body": "you are quick over the first few steps"
+      }
+    },
+    {
+      "key": "sprint_20m",
+      "name": "20m Sprint",
+      "plain_name": "20m sprint",
+      "measures": "Speed",
+      "what_we_measured": "How fast you cover 20 metres from a standing start, about the length of the pitch.",
+      "nickname": "Speed: one run, crease to crease",
+      "notice": "a two becomes a one because the second run is too tight, or you chase a ball to the rope and it beats you.",
+      "why": [
+        {
+          "label": "Below target",
+          "when": {
+            "type": "score_below_target"
+          },
+          "text": "You covered 20 metres in {time}. {next_tier} starts at {target}, so you're {gap} away."
+        },
+        {
+          "label": "At Gold",
+          "when": {
+            "type": "score_at_least_target"
+          },
+          "text": "You covered 20 metres in {time}. That's Gold level."
+        }
+      ],
+      "fix_it": "you'll run more twos, take on more fielders, and stop more boundaries.",
+      "rules": [
+        {
+          "when": {
+            "type": "score_below_target"
+          },
+          "fix": "A",
+          "text": "Score below tier target → show Fix A: build top speed."
+        },
+        {
+          "when": {
+            "type": "score_at_least_target"
+          },
+          "fix": "B",
+          "text": "At or above Gold → show Fix B: keep it sharp."
+        }
+      ],
+      "fixes": {
+        "A": {
+          "title": "build top speed",
+          "kind": "main",
+          "weeks": 6,
+          "frequency": "2 sessions a week",
+          "exercises": [
+            "Flying sprints: build up over 10 metres, then sprint 20 metres. 5 reps, full rest.",
+            "A-skips: 3 sets of 20 metres.",
+            "Hill or incline sprints over 15 metres: 5 reps."
+          ]
+        },
+        "B": {
+          "title": "keep it sharp",
+          "kind": "maintain",
+          "weeks": null,
+          "frequency": "once a week",
+          "exercises": [
+            "Flying 20-metre sprints: 4 reps, full rest."
+          ]
+        }
+      },
+      "maintain_fix": "B",
+      "court_drills": [
+        "Run twos: run two at full pace with your bat, turning hard at the far crease. 5 reps.",
+        "Chase to the rope: a partner hits the ball past you; chase it and return it. 6 reps."
+      ],
+      "retest_weeks": 6,
+      "retest_note": null,
+      "weapon": {
+        "headline": "Quick between the wickets",
+        "body": "you cover the length of the pitch fast"
+      }
+    },
+    {
+      "key": "cod_505",
+      "name": "5-0-5 Agility Test",
+      "plain_name": "5-0-5 turn test",
+      "measures": "Agility",
+      "what_we_measured": "How quickly you sprint, stop, turn 180° and sprint back out, like turning at the crease.",
+      "nickname": "Agility: your turn at the crease",
+      "notice": "a run-out comes down to how fast you turned for the second run, or you overrun the ball in the field and have to come back for it.",
+      "why": [
+        {
+          "label": "Below target",
+          "when": {
+            "type": "score_below_target"
+          },
+          "text": "You turned and came back in {time}. {next_tier} starts at {target}, so you're {gap} away."
+        },
+        {
+          "label": "At Gold",
+          "when": {
+            "type": "score_at_least_target"
+          },
+          "text": "You turned and came back in {time}. That's Gold level."
+        }
+      ],
+      "fix_it": "you'll win the tight run-outs, for and against, and get to more balls in the field on balance.",
+      "rules": [
+        {
+          "when": {
+            "type": "score_below_target"
+          },
+          "fix": "A",
+          "text": "Time slower than tier target → show Fix A: brake and turn."
+        },
+        {
+          "when": {
+            "type": "score_at_least_target"
+          },
+          "fix": "B",
+          "text": "At or above Gold → show Fix B: keep it sharp."
+        }
+      ],
+      "fixes": {
+        "A": {
+          "title": "brake and turn",
+          "kind": "main",
+          "weeks": 6,
+          "frequency": "2 sessions a week",
+          "exercises": [
+            "Deceleration drills: sprint 5 metres, stop in two steps and hold. 6 reps.",
+            "5-0-5 practice at 80% effort, focusing on a low turn: 6 reps.",
+            "Lateral lunges: 3 sets of 8 each side."
+          ]
+        },
+        "B": {
+          "title": "keep it sharp",
+          "kind": "maintain",
+          "weeks": null,
+          "frequency": "once a week",
+          "exercises": [
+            "5-0-5 turns at full effort, both directions: 4 reps."
+          ]
+        }
+      },
+      "maintain_fix": "B",
+      "court_drills": [
+        "Turn for two: run one, turn at the crease with your bat and sprint back. Turn off each foot. 6 reps.",
+        "Field and turn: a partner hits the ball just past you; stop, turn, pick up and throw. 8 reps."
+      ],
+      "retest_weeks": 6,
+      "retest_note": null,
+      "weapon": {
+        "headline": "Sharp turn at the crease",
+        "body": "you brake and turn fast"
+      }
+    },
+    {
+      "key": "medicine_ball",
+      "name": "Medicine Ball Throw",
+      "plain_name": "medicine ball throw",
+      "measures": "Power",
+      "what_we_measured": "How far you throw a 4 kg medicine ball from a seated position, using your chest, shoulders and arms.",
+      "nickname": "Power: your upper-body push",
+      "notice": "your throws from the deep need a bounce to reach the keeper, or your shots don't carry as far as you expect.",
+      "why": [
+        {
+          "label": "Below target",
+          "when": {
+            "type": "score_below_target"
+          },
+          "text": "Your throw scored {score}. {next_tier} starts at {target}, so you're {gap} points away."
+        },
+        {
+          "label": "At Gold",
+          "when": {
+            "type": "score_at_least_target"
+          },
+          "text": "Your throw scored {score}. That's Gold level."
+        }
+      ],
+      "fix_it": "you'll throw flatter and further from the deep, and get more carry on your shots.",
+      "rules": [
+        {
+          "when": {
+            "type": "score_below_target"
+          },
+          "fix": "A",
+          "text": "Score below tier target → show Fix A: build upper-body power."
+        },
+        {
+          "when": {
+            "type": "score_at_least_target"
+          },
+          "fix": "B",
+          "text": "At or above Gold → show Fix B: maintain."
+        }
+      ],
+      "fixes": {
+        "A": {
+          "title": "build upper-body power",
+          "kind": "main",
+          "weeks": 6,
+          "frequency": "2 sessions a week",
+          "exercises": [
+            "Medicine ball chest passes against a wall: 3 sets of 8.",
+            "Press-ups, slow on the way down: 3 sets of 8.",
+            "Medicine ball overhead throws against a wall: 3 sets of 6."
+          ]
+        },
+        "B": {
+          "title": "maintain",
+          "kind": "maintain",
+          "weeks": null,
+          "frequency": null,
+          "exercises": [
+            "Medicine ball chest passes: 2 sets of 8, once a week."
+          ]
+        }
+      },
+      "maintain_fix": "B",
+      "court_drills": [
+        "Long throws to the keeper from the edge of the circle, flat and on target: 10 throws.",
+        "Medicine ball side throws against a wall: 3 sets of 6 each side."
+      ],
+      "retest_weeks": 6,
+      "retest_note": null,
+      "weapon": {
+        "headline": "A strong arm from the deep",
+        "body": "your upper body is powerful"
+      }
+    },
+    {
+      "key": "ruler_drop",
+      "name": "Ruler Drop Test",
+      "plain_name": "ruler-drop catch",
+      "measures": "Reaction",
+      "what_we_measured": "How far a dropped ruler falls before you catch it. Shorter is faster.",
+      "nickname": "Reaction: how fast your hands move",
+      "notice": "a sharp chance in the slips or at short leg is past you before your hands move, or a ball that keeps low catches you late with the bat.",
+      "why": [
+        {
+          "label": "Below target",
+          "when": {
+            "type": "score_below_target"
+          },
+          "text": "You caught the ruler at {distance}. {next_tier} starts at {target}, so you're {gap} away."
+        },
+        {
+          "label": "At Gold",
+          "when": {
+            "type": "score_at_least_target"
+          },
+          "text": "You caught the ruler at {distance}. That's Gold level."
+        }
+      ],
+      "fix_it": "you'll hold more close catches and have more time to adjust to late movement with the bat.",
+      "rules": [
+        {
+          "when": {
+            "type": "score_below_target"
+          },
+          "fix": "A",
+          "text": "Catch distance worse than tier target → show Fix A: sharpen reactions."
+        },
+        {
+          "when": {
+            "type": "score_at_least_target"
+          },
+          "fix": "B",
+          "text": "At or above Gold → show Fix B: keep it sharp."
+        }
+      ],
+      "fixes": {
+        "A": {
+          "title": "sharpen reactions",
+          "kind": "main",
+          "weeks": 4,
+          "frequency": "3 short sessions a week",
+          "exercises": [
+            "Reaction ball against a wall: 3 rounds of 60 seconds.",
+            "Partner drops: a partner drops a ball without warning; catch it before the second bounce. 3 sets of 10."
+          ]
+        },
+        "B": {
+          "title": "keep it sharp",
+          "kind": "maintain",
+          "weeks": null,
+          "frequency": null,
+          "exercises": [
+            "Close catching practice once a week."
+          ]
+        }
+      },
+      "maintain_fix": "B",
+      "court_drills": [
+        "Slip catching off a partner's edge or a catching cradle: 20 catches.",
+        "Short-range reflex catches: a partner throws hard at you from 5 metres. 20 catches."
+      ],
+      "retest_weeks": 4,
+      "retest_note": "Reaction improves fastest, so it's often the first stat that moves.",
+      "weapon": {
+        "headline": "Safe hands close in",
+        "body": "your reactions are sharp"
+      }
+    },
+    {
+      "key": "single_leg_stand",
+      "name": "Single Leg Stand, Eyes Closed",
+      "plain_name": "one-leg balance test",
+      "measures": "Balance",
+      "what_we_measured": "How steady you stay on one leg with your eyes closed, on each side. This tests the balance system in your ankle and body, not your eyesight.",
+      "nickname": "Balance: your one-leg control",
+      "notice": "your front foot lands unsteady in your delivery stride, or you lose your shape after a big stride forward to drive.",
+      "why": [
+        {
+          "label": "Below target",
+          "when": {
+            "type": "either_side_below_target"
+          },
+          "text": "With your eyes closed, you held steady for {seconds} seconds. {next_tier} starts at {target}, so you're {gap} away."
+        },
+        {
+          "label": "One leg weaker",
+          "when": {
+            "type": "side_gap_pct_over",
+            "pct": 20
+          },
+          "text": "Your {weaker_side} leg held steady for {gap}% less time than your other leg."
+        }
+      ],
+      "fix_it": "you'll land your delivery stride on balance, stay still at the crease, and protect your ankles and knees.",
+      "rules": [
+        {
+          "when": {
+            "type": "either_side_below_target"
+          },
+          "fix": "A",
+          "text": "Time held below tier target on either leg → show Fix A: build balance."
+        },
+        {
+          "when": {
+            "type": "side_gap_pct_over",
+            "pct": 20
+          },
+          "fix": "B",
+          "text": "One leg holding more than 20% less time than the other (proposed) → also show Fix B: even it out. Ask about past ankle sprains on that side.",
+          "also": true,
+          "proposed": true,
+          "coach_note": "Ask about past ankle sprains on that side."
+        }
+      ],
+      "fixes": {
+        "A": {
+          "title": "build balance",
+          "kind": "main",
+          "weeks": 4,
+          "frequency": "daily, 5 minutes",
+          "exercises": [
+            "Single-leg stands, eyes open then closed: 3 holds of 30 seconds each leg.",
+            "Single-leg stands on a cushion or folded towel: 3 holds of 30 seconds each leg.",
+            "Single-leg reaches in three directions: 2 sets of 6 each leg."
+          ]
+        },
+        "B": {
+          "title": "even it out",
+          "kind": "addon",
+          "weeks": null,
+          "frequency": null,
+          "exercises": [
+            "One extra hold on your weaker leg in every exercise."
+          ]
+        }
+      },
+      "maintain_fix": null,
+      "court_drills": [
+        "Front-foot landing holds: walk through your delivery stride and hold the landing for 2 seconds. 3 sets of 6.",
+        "Stride and hold: take a full front-foot stride as if driving, and hold for 2 seconds. 3 sets of 6 each side."
+      ],
+      "retest_weeks": 4,
+      "retest_note": null,
+      "weapon": {
+        "headline": "Steady on one leg",
+        "body": "you stay steady on one leg with your eyes closed, {evenness}",
+        "evenness": {
+          "even": "almost the same on each leg",
+          "fair": "fairly even on each leg",
+          "uneven": "steadier on your {side} leg by {pct}%",
+          "one_side": "measured on one leg only"
+        }
+      }
+    },
+    {
+      "key": "shoulder_er",
+      "name": "Shoulder External Rotation Strength",
+      "plain_name": "shoulder strength test",
+      "measures": "Strength",
+      "what_we_measured": "The strength of the muscles at the back of each shoulder that rotate your arm outward.",
+      "nickname": "Shoulder strength: the brakes on your arm",
+      "notice": "your throwing or bowling arm gets tired late in a long spell, or your shoulder aches the day after a big fielding session.",
+      "why": [
+        {
+          "label": "Below target",
+          "when": {
+            "type": "racket_side_below_target"
+          },
+          "text": "Your throwing arm scored {score}. {next_tier} starts at {target}, so you're {gap} points away."
+        },
+        {
+          "label": "Throwing arm weaker",
+          "when": {
+            "type": "racket_side_weaker_pct_over",
+            "pct": 10
+          },
+          "text": "Your throwing arm is {gap}% weaker than your other arm. Every throw and every delivery is a fast swing and a hard stop, and the back of the shoulder does the stopping."
+        }
+      ],
+      "fix_it": "you can keep bowling and throwing hard all day, and get through a full season with a healthy shoulder.",
+      "rules": [
+        {
+          "when": {
+            "type": "racket_side_below_target"
+          },
+          "fix": "A",
+          "text": "Strength relative to bodyweight below tier target on your throwing arm → show Fix A: strengthen the back of the shoulder."
+        },
+        {
+          "when": {
+            "type": "racket_side_weaker_pct_over",
+            "pct": 10
+          },
+          "fix": "B",
+          "text": "Throwing arm more than 10% weaker than the other arm (proposed) → also show Fix B: close the gap.",
+          "also": true,
+          "proposed": true
+        },
+        {
+          "when": {
+            "type": "otherwise"
+          },
+          "fix": "C",
+          "text": "Strong and balanced → show Fix C: maintain."
+        }
+      ],
+      "fixes": {
+        "A": {
+          "title": "strengthen the back of the shoulder",
+          "kind": "main",
+          "weeks": 6,
+          "frequency": "3 sessions a week",
+          "exercises": [
+            "Side-lying external rotation with a light dumbbell: 3 sets of 12–15.",
+            "Band external rotation with the arm at shoulder height (90/90): 3 sets of 12.",
+            "Prone Y and T raises: 2 sets of 10 in the warm-up."
+          ]
+        },
+        "B": {
+          "title": "close the gap",
+          "kind": "addon",
+          "weeks": null,
+          "frequency": null,
+          "exercises": [
+            "One extra set on your throwing arm for each exercise."
+          ]
+        },
+        "C": {
+          "title": "maintain",
+          "kind": "maintain",
+          "weeks": null,
+          "frequency": null,
+          "exercises": [
+            "Band external rotation, 2 sets of 15, twice a week."
+          ]
+        }
+      },
+      "maintain_fix": "C",
+      "court_drills": [
+        "Band external rotation before every session and match: 1 set of 15.",
+        "Build up throwing distance gradually in practice while you build strength; don't start with full-power throws from the deep.",
+        "Stop and tell us if you feel pain in your shoulder or elbow when you bowl or throw; don't play through it."
+      ],
+      "retest_weeks": 6,
+      "retest_note": null,
+      "weapon": {
+        "headline": "A shoulder built for long spells",
+        "body": "the back of your shoulders is strong and {evenness}",
+        "evenness": {
+          "even": "almost even, left vs right",
+          "fair": "fairly even, left vs right",
+          "uneven": "stronger on your {side} side by {pct}%",
+          "one_side": "measured on one side only"
+        }
+      }
+    },
+    {
+      "key": "shoulder_ir",
+      "name": "Shoulder Internal Rotation Strength",
+      "plain_name": "arm speed strength test",
+      "measures": "Strength",
+      "what_we_measured": "The strength of the muscles at the front of each shoulder that rotate your arm inward, the muscles that whip your arm through.",
+      "nickname": "Shoulder strength: your arm speed",
+      "notice": "your throws lose pace once you're tired, or your bowling feels like it's all effort and no zip.",
+      "why": [
+        {
+          "label": "Below target",
+          "when": {
+            "type": "score_below_target"
+          },
+          "text": "Your shoulders scored {score}. {next_tier} starts at {target}, so you're {gap} points away."
+        },
+        {
+          "label": "One side weaker",
+          "when": {
+            "type": "side_gap_pct_over",
+            "pct": 10
+          },
+          "text": "Your {weaker_side} shoulder is {gap}% weaker than your other shoulder."
+        }
+      ],
+      "fix_it": "you'll put more speed on your throws and deliveries, with the strength to back it up.",
+      "rules": [
+        {
+          "when": {
+            "type": "score_below_target"
+          },
+          "fix": "A",
+          "text": "Strength relative to bodyweight below tier target → show Fix A: build arm speed strength."
+        },
+        {
+          "when": {
+            "type": "side_gap_pct_over",
+            "pct": 10
+          },
+          "fix": "B",
+          "text": "One side more than 10% weaker than the other (proposed) → also show Fix B: close the gap.",
+          "also": true,
+          "proposed": true
+        },
+        {
+          "when": {
+            "type": "otherwise"
+          },
+          "fix": "C",
+          "text": "Strong and even → show Fix C: maintain."
+        }
+      ],
+      "fixes": {
+        "A": {
+          "title": "build arm speed strength",
+          "kind": "main",
+          "weeks": 6,
+          "frequency": "3 sessions a week",
+          "exercises": [
+            "Band internal rotation with the elbow at your side: 3 sets of 12 each arm.",
+            "Band internal rotation with the arm at shoulder height (90/90): 3 sets of 10.",
+            "Medicine ball chest passes against a wall: 3 sets of 8."
+          ]
+        },
+        "B": {
+          "title": "close the gap",
+          "kind": "addon",
+          "weeks": null,
+          "frequency": null,
+          "exercises": [
+            "One extra set on your weaker side for each exercise."
+          ]
+        },
+        "C": {
+          "title": "maintain",
+          "kind": "maintain",
+          "weeks": null,
+          "frequency": null,
+          "exercises": [
+            "Band internal rotation, 2 sets of 15, twice a week."
+          ]
+        }
+      },
+      "maintain_fix": "C",
+      "court_drills": [
+        "Short-range throws at one stump, building speed: 3 sets of 8.",
+        "Underarm flicks at the stumps from 10 metres: 10 throws."
+      ],
+      "retest_weeks": 6,
+      "retest_note": "Read this alongside Shoulder External Rotation: the balance between the two matters as much as either number.",
+      "weapon": {
+        "headline": "Zip through the arm",
+        "body": "the front of your shoulders is strong and {evenness}",
+        "evenness": {
+          "even": "almost even, left vs right",
+          "fair": "fairly even, left vs right",
+          "uneven": "stronger on your {side} side by {pct}%",
+          "one_side": "measured on one side only"
+        }
+      }
+    },
+    {
+      "key": "elbow_extension",
+      "name": "Elbow Extension Strength",
+      "plain_name": "elbow strength test",
+      "measures": "Strength",
+      "what_we_measured": "The strength of the muscles at the back of each upper arm that straighten your elbow.",
+      "nickname": "Arm strength: the push through the ball",
+      "notice": "your arm feels heavy late in a spell, or your throws and punches off the back foot lack snap.",
+      "why": [
+        {
+          "label": "Below target",
+          "when": {
+            "type": "score_below_target"
+          },
+          "text": "Your arms scored {score}. {next_tier} starts at {target}, so you're {gap} points away."
+        },
+        {
+          "label": "One side weaker",
+          "when": {
+            "type": "side_gap_pct_over",
+            "pct": 10
+          },
+          "text": "Your {weaker_side} arm is {gap}% weaker than your other arm."
+        }
+      ],
+      "fix_it": "you'll keep your action strong through a long spell and put more snap into throws and back-foot shots.",
+      "rules": [
+        {
+          "when": {
+            "type": "score_below_target"
+          },
+          "fix": "A",
+          "text": "Strength relative to bodyweight below tier target → show Fix A: build arm strength."
+        },
+        {
+          "when": {
+            "type": "side_gap_pct_over",
+            "pct": 10
+          },
+          "fix": "B",
+          "text": "One side more than 10% weaker than the other (proposed) → also show Fix B: close the gap.",
+          "also": true,
+          "proposed": true
+        },
+        {
+          "when": {
+            "type": "otherwise"
+          },
+          "fix": "C",
+          "text": "Strong and even → show Fix C: maintain."
+        }
+      ],
+      "fixes": {
+        "A": {
+          "title": "build arm strength",
+          "kind": "main",
+          "weeks": 6,
+          "frequency": "3 sessions a week",
+          "exercises": [
+            "Close-grip press-ups: 3 sets of 8.",
+            "Band triceps pushdowns: 3 sets of 12.",
+            "Overhead band triceps extensions: 3 sets of 12."
+          ]
+        },
+        "B": {
+          "title": "close the gap",
+          "kind": "addon",
+          "weeks": null,
+          "frequency": null,
+          "exercises": [
+            "One extra set on your weaker arm for each exercise."
+          ]
+        },
+        "C": {
+          "title": "maintain",
+          "kind": "maintain",
+          "weeks": null,
+          "frequency": null,
+          "exercises": [
+            "Close-grip press-ups, 2 sets of 10, twice a week."
+          ]
+        }
+      },
+      "maintain_fix": "C",
+      "court_drills": [
+        "Back-foot punch drives off throwdowns: 3 sets of 8.",
+        "Stop and tell us if you feel pain on the inside of your elbow when you bowl or throw; don't play through it."
+      ],
+      "retest_weeks": 6,
+      "retest_note": null,
+      "weapon": {
+        "headline": "Snap through the ball",
+        "body": "the backs of your arms are strong and {evenness}",
+        "evenness": {
+          "even": "almost even, left vs right",
+          "fair": "fairly even, left vs right",
+          "uneven": "stronger on your {side} side by {pct}%",
+          "one_side": "measured on one side only"
+        }
+      }
+    },
+    {
+      "key": "hip_extension",
+      "name": "Hip Extension Strength",
+      "plain_name": "hip strength test",
+      "measures": "Strength",
+      "what_we_measured": "The strength of your glutes and the back of each hip that drive your leg backward.",
+      "nickname": "Hip strength: your drive from the ground",
+      "notice": "your run-up feels like hard work without much pace at the crease, or you lack push-off when you sprint between the wickets.",
+      "why": [
+        {
+          "label": "Below target",
+          "when": {
+            "type": "score_below_target"
+          },
+          "text": "Your hips scored {score}. {next_tier} starts at {target}, so you're {gap} points away."
+        },
+        {
+          "label": "One side weaker",
+          "when": {
+            "type": "side_gap_pct_over",
+            "pct": 10
+          },
+          "text": "Your {weaker_side} side is {gap}% weaker than your other side."
+        }
+      ],
+      "fix_it": "you'll get more drive into your run-up and delivery, faster running between the wickets, and a stronger, safer lower back.",
+      "rules": [
+        {
+          "when": {
+            "type": "score_below_target"
+          },
+          "fix": "A",
+          "text": "Strength relative to bodyweight below tier target → show Fix A: build hip drive."
+        },
+        {
+          "when": {
+            "type": "side_gap_pct_over",
+            "pct": 10
+          },
+          "fix": "B",
+          "text": "One side more than 10% weaker than the other (proposed) → also show Fix B: close the gap.",
+          "also": true,
+          "proposed": true
+        },
+        {
+          "when": {
+            "type": "otherwise"
+          },
+          "fix": "C",
+          "text": "Strong and even → show Fix C: maintain."
+        }
+      ],
+      "fixes": {
+        "A": {
+          "title": "build hip drive",
+          "kind": "main",
+          "weeks": 6,
+          "frequency": "3 sessions a week",
+          "exercises": [
+            "Glute bridges, holding for 2 seconds at the top: 3 sets of 12.",
+            "Single-leg glute bridges: 3 sets of 8 each leg.",
+            "Romanian deadlifts with light dumbbells: 3 sets of 10."
+          ]
+        },
+        "B": {
+          "title": "close the gap",
+          "kind": "addon",
+          "weeks": null,
+          "frequency": null,
+          "exercises": [
+            "One extra set of each exercise on the weaker side."
+          ]
+        },
+        "C": {
+          "title": "maintain",
+          "kind": "maintain",
+          "weeks": null,
+          "frequency": null,
+          "exercises": [
+            "Single-leg glute bridges, 2 sets of 10 each leg, twice a week."
+          ]
+        }
+      },
+      "maintain_fix": "C",
+      "court_drills": [
+        "Run-up drives: the first 6 strides of your run-up, driving hard off the ground. 6 reps.",
+        "Bounding over 20 metres, pushing hard off each leg: 4 reps."
+      ],
+      "retest_weeks": 6,
+      "retest_note": null,
+      "weapon": {
+        "headline": "Drive from the ground",
+        "body": "your hips are strong and {evenness}",
+        "evenness": {
+          "even": "almost even, left vs right",
+          "fair": "fairly even, left vs right",
+          "uneven": "stronger on your {side} side by {pct}%",
+          "one_side": "measured on one side only"
+        }
+      }
+    }
+  ]
+}

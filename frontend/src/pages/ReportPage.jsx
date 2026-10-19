@@ -158,7 +158,7 @@ function BreakdownSection({ report }) {
   )
 }
 
-// Padel athlete report: the PDF itself, shown on the page, so the screen and
+// Athlete report (padel, cricket): the PDF itself, shown on the page, so the screen and
 // the download are the same document (one layout that never runs into the footer).
 function PadelReportPreview({ report }) {
   const [url, setUrl] = useState(null)
@@ -173,7 +173,8 @@ function PadelReportPreview({ report }) {
   }, [report])
   // Reports saved before library v2 (nickname / notice / Why / Fix it) still open,
   // but show the older wording; a new report gets the current library.
-  const older = !/^padel-library-v[2-9]/.test(report.reportContent?.athleteReport?.libraryVersion || '')
+  const version = report.reportContent?.athleteReport?.libraryVersion || ''
+  const older = !version || /^padel-library-v[01]\b/.test(version)
   const olderNote = older && (
     <div style={{ background: '#fff7e6', border: '1px solid #f6c667', color: '#6b4a00', borderRadius: 10, padding: '10px 14px', fontSize: 13, marginTop: 24 }}>
       This athlete report was made with an earlier version of the padel library. Create a new padel report for this athlete to get the latest wording.
@@ -184,7 +185,7 @@ function PadelReportPreview({ report }) {
   return (
     <>
     {olderNote}
-    <iframe title="Padel athlete report" src={url} data-testid="padel-athlete-report"
+    <iframe title="Athlete report" src={url} data-testid="padel-athlete-report"
       style={{ width: CARD_WIDTH, height: 1120, marginTop: 24, border: 'none', boxShadow: '0 12px 40px rgba(0,0,0,0.18)', borderRadius: 4, background: '#fff' }} />
     </>
   )
@@ -213,7 +214,7 @@ export default function ReportPage() {
 
   // Football (engine-scored) reports: the one-page player card, identical to the PDF.
   if (engineScored) {
-    // Padel: the athlete report ("What it means for your game", "How to
+    // Padel and cricket: the athlete report ("What it means for your game", "How to
     // improve", "Your full results") under the card, with its own PDF.
     const hasAthleteReport = !!rc.athleteReport
     const handleAthleteDownload = async () => {
