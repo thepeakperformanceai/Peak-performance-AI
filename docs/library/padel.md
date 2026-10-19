@@ -6,15 +6,16 @@ Oct 18, 2026 · @Faraz
 
 Every padel test gets one entry, and the athlete's report shows the entry that matches their result. Same four parts as cricket: what we measured, what it means for your game, how we read your result, and how to improve.
 
-**The athlete's playing side picks what they see.** In padel, the player on the right (drive side) and the player on the left (revés side) do different jobs, but both defend from the back and fight at the net.
+**One version for every player.** Players switch sides, so there are no Drive or Revés lines. The report stays personal through the athlete's own numbers, their weaker side and their racket arm.
 
-| Side in profile | Lines shown |
-| --- | --- |
-| Drive (right) | Drive + Every player |
-| Revés (left) | Revés + Every player |
-| Both / not sure | Drive + Revés + Every player |
+**Each test explains itself in four short parts:**
 
-"Every player" always shows, because everyone defends and volleys.
+1. **A nickname:** what the test is, in a few everyday words.
+2. **You'll notice it when…** a moment they've already felt on court.
+3. **Why:** one sentence using their number. There's one version per rule, and the engine shows the one that matches their result.
+4. **Fix it and…** what changes in their game.
+
+Words in curly brackets, like {score} or {weaker_side}, are filled in by the engine from the athlete's results. Gemini never writes or changes these lines.
 
 The same three rules apply as cricket: the engine picks the entry and the fix, Gemini only narrates, and every threshold marked "proposed" needs DPT sign-off.
 
@@ -24,11 +25,16 @@ This library covers the 9-test padel battery: 10m Sprint, 5-0-5 Agility, Ruler D
 
 **What we measured.** How fast you cover 10 metres from a standing start, the length of one side of the court.
 
-**What it means for your game.**
+**Speed: your first three steps**
 
-- **Drive:** You cover the middle of the court and chase balls coming off the side glass. A quicker first few steps means reaching them balanced instead of stretching.
-- **Revés:** You chase most of the lobs that go over your partner and you. Speed decides whether you get behind the ball or let it run off the back glass.
-- **Every player:** Padel is won at the net. After every lob you have to sprint back in and take it again before your opponents do.
+**You'll notice it when** you see the lob coming but your opponents get back to the net before you do, or you reach balls off the side glass stretching instead of set.
+
+**Why:**
+
+- *Below target:* You covered 10 metres in {time}. {next_tier} starts at {target}, so you're {gap} away.
+- *At Gold:* You covered 10 metres in {time}. That's Gold level.
+
+**Fix it and** you'll win more races back to the net, and that's where padel points are won.
 
 **How we read your result.**
 
@@ -47,11 +53,10 @@ This library covers the 9-test padel battery: 10m Sprint, 5-0-5 Agility, Ruler D
 
 - Split-step reaction sprints over 5 metres: 6 reps.
 
-*Role drills (add to either fix)*
+*Court drills (add to either fix)*
 
-- **Drive:** Sprint from the middle to the side glass and back: 6 reps.
-- **Revés:** Turn and chase: a partner lobs over you, turn and run it down before it reaches the back glass. 8 reps.
-- **Every player:** Back-to-net sprints: from the back glass to the net and split-step. 6 reps.
+- Back-to-net sprints: from the back glass to the net, then split-step. 6 reps.
+- Turn and chase: a partner lobs over you; turn and run it down before it reaches the back glass. 8 reps.
 
 **Retest:** 6 weeks.
 
@@ -59,11 +64,16 @@ This library covers the 9-test padel battery: 10m Sprint, 5-0-5 Agility, Ruler D
 
 **What we measured.** How quickly you sprint, stop, turn 180° and sprint back out.
 
-**What it means for your game.**
+**Agility: your brakes and turn**
 
-- **Drive:** You often have to stop, turn and cover the middle after your partner is pulled wide. A sharp turn closes that gap before it's attacked.
-- **Revés:** Balls off the back glass and the corner change direction late. Stopping and turning fast lets you play them instead of being beaten by the bounce.
-- **Every player:** Every point is short bursts with sudden stops. The faster you brake and re-accelerate, the more balls you reach on balance.
+**You'll notice it when** the ball comes off the back glass at an odd angle and you're already moving the wrong way, or you get pulled wide and can't get back in time to cover the middle.
+
+**Why:**
+
+- *Below target:* You turned and came back in {time}. {next_tier} starts at {target}, so you're {gap} away.
+- *One side slower:* You turn {gap}% slower off your {weaker_side} foot.
+
+**Fix it and** you'll stop, turn and reach more balls on balance, point after point.
 
 **How we read your result.**
 
@@ -82,11 +92,10 @@ This library covers the 9-test padel battery: 10m Sprint, 5-0-5 Agility, Ruler D
 
 - Two extra turns off your weaker foot in each session.
 
-*Role drills (add to either fix)*
+*Court drills (add to either fix)*
 
-- **Drive:** Cover-the-middle shuffle: shuffle wide, plant and return to centre. 3 sets of 6.
-- **Revés:** Back-glass exits: a partner feeds into the corner, you turn and play it out. 10 reps.
-- **Every player:** Partner-call change of direction over 5 metres: 8 reps.
+- Back-glass exits: a partner feeds into the corner; turn and play it out. 10 reps.
+- Cover-the-middle shuffle: shuffle wide, plant and return to centre. 3 sets of 6.
 
 **Retest:** 6 weeks.
 
@@ -94,11 +103,16 @@ This library covers the 9-test padel battery: 10m Sprint, 5-0-5 Agility, Ruler D
 
 **What we measured.** How far a dropped ruler falls before you catch it. Shorter is faster.
 
-**What it means for your game.**
+**Reaction: how fast you see and move**
 
-- **Drive:** Balls through the middle come at you fast and low. Quick reactions let you cover the middle and punch the volley rather than just block it.
-- **Revés:** You face more smashes and fast balls off the glass. Reaction is how early you read the bounce and get your racket in place.
-- **Every player:** At the net, exchanges happen in fractions of a second. The faster player wins the reflex volley.
+**You'll notice it when** fast exchanges at the net go past you before your racket is ready, or a smash off the glass catches you late.
+
+**Why:**
+
+- *Below target:* You caught the ruler at {distance}. {next_tier} starts at {target}, so you're {gap} away.
+- *At Gold:* You caught the ruler at {distance}. That's Gold level.
+
+**Fix it and** you'll win more of the quick-fire volleys at the net, and have time to set your racket against smashes.
 
 **How we read your result.**
 
@@ -116,11 +130,10 @@ This library covers the 9-test padel battery: 10m Sprint, 5-0-5 Agility, Ruler D
 
 - Fast volley rallies at the net once a week.
 
-*Role drills (add to either fix)*
+*Court drills (add to either fix)*
 
-- **Drive:** Partner feeds fast balls at your body through the middle; volley each one. 20 balls.
-- **Revés:** Defend smashes off the back glass from a partner's feed. 15 balls.
-- **Every player:** Quick-fire volleys at the net with a partner, both at the net. 3 rounds of 30 seconds.
+- Quick-fire volleys with a partner, both at the net: 3 rounds of 30 seconds.
+- A partner feeds fast balls at your body; volley each one. 20 balls.
 
 **Retest:** 4 weeks. Reaction improves fastest, so it's often the first stat that moves.
 
@@ -128,11 +141,17 @@ This library covers the 9-test padel battery: 10m Sprint, 5-0-5 Agility, Ruler D
 
 **What we measured.** How well your ankles, hips, upper back and shoulders work together as you squat with your arms overhead.
 
-**What it means for your game.**
+**Movement: getting low and reaching high**
 
-- **Drive:** Low balls at your feet, especially the chiquita and low volleys, need you to get down without losing your posture.
-- **Revés:** Bandejas, víboras and smashes need your arms overhead while your trunk stays upright. Tight shoulders or a stiff upper back force your lower back to arch instead.
-- **Every player:** Defending from the back means staying low for long rallies. Good squat mechanics let you stay low without tiring your back.
+**You'll notice it when** your back gets tired in long defensive rallies, or bandejas and smashes feel cramped, like you can't get your arm fully up.
+
+**Why:**
+
+- *Heels lifting or knees caving:* As you squatted, your {fault}. Tight ankles or weak hips stop you getting low while keeping good posture.
+- *Arms dropping or back arching:* As you squatted, your {fault}. A stiff upper back or tight shoulders make your lower back do the work on overheads.
+- *No fault recorded:* Your coach will go through what they saw and pick the right fix with you.
+
+**Fix it and** you can stay low all rally and hit overheads standing tall, without your lower back paying for it.
 
 **How we read your result.**
 
@@ -158,11 +177,10 @@ This library covers the 9-test padel battery: 10m Sprint, 5-0-5 Agility, Ruler D
 
 - Overhead squats with a stick in every warm-up: 1 set of 8.
 
-*Role drills (add to any fix)*
+*Court drills (add to any fix)*
 
-- **Drive:** Low-ball feeds: a partner feeds at your feet; stay low and play them back. 15 balls.
-- **Revés:** Shadow bandejas, keeping your chest tall: 2 sets of 10.
-- **Every player:** Defensive stance holds from the back glass: 3 holds of 20 seconds.
+- Low-ball feeds: a partner feeds at your feet; stay low and play them back. 15 balls.
+- Shadow bandejas, keeping your chest tall: 2 sets of 10.
 
 **Retest:** 4 weeks.
 
@@ -170,11 +188,16 @@ This library covers the 9-test padel battery: 10m Sprint, 5-0-5 Agility, Ruler D
 
 **What we measured.** How far your upper body turns to each side while your hips stay still.
 
-**What it means for your game.**
+**Rotation: your power turn**
 
-- **Drive:** Your forehand and your drive off the glass get their power from turning your shoulders against your hips. Limited rotation means swinging with just your arm.
-- **Revés:** The víbora and the smash are rotation shots. More turn means more spin and pace without forcing your shoulder.
-- **Every player:** Getting out of the corner and playing balls off the back glass means turning fast while your feet are still set.
+**You'll notice it when** your víbora and smash lack spin and pace even when you swing hard, or your forehand feels like it's all arm.
+
+**Why:**
+
+- *One side tighter:* Your upper body turns {gap}% less to the {weaker_side} than to the other side.
+- *Both sides below target:* Your rotation scored {score}. {next_tier} starts at {target}, so you're {gap} points away.
+
+**Fix it and** you'll get more spin and pace on overheads and drives, without forcing your shoulder.
 
 **How we read your result.**
 
@@ -194,11 +217,10 @@ This library covers the 9-test padel battery: 10m Sprint, 5-0-5 Agility, Ruler D
 - Open book: 2 sets of 10 each side.
 - Half-kneeling band rotations: 3 sets of 10 each side.
 
-*Role drills (add to either fix)*
+*Court drills (add to either fix)*
 
-- **Drive:** Med ball side throws from a forehand stance: 3 sets of 6.
-- **Revés:** Shadow víboras, pausing at full shoulder turn: 2 sets of 10.
-- **Every player:** Back-glass feeds: let the ball come off the glass, turn and play it out. 10 each side.
+- Med ball side throws against a wall: 3 sets of 6 each side.
+- Back-glass feeds: let the ball come off the glass, turn and play it out. 10 each side.
 
 **Retest:** 4 weeks.
 
@@ -206,16 +228,21 @@ This library covers the 9-test padel battery: 10m Sprint, 5-0-5 Agility, Ruler D
 
 **What we measured.** How steady you stay on one leg with your eyes closed, on each side. This tests the balance system in your ankle and body, not your eyesight.
 
-**What it means for your game.**
+**Balance: your one-foot control**
 
-- **Drive:** Lunging wide for balls off the side glass ends on one leg. Better balance means a controlled shot and a quick recovery.
-- **Revés:** Landing after a smash or a jumping víbora is a one-leg landing while you're looking up at the ball.
-- **Every player:** Padel is full of quick stops on one foot, and ankle sprains are among the most common injuries in the sport. Good balance is your first protection.
+**You'll notice it when** you wobble after a wide lunge or after landing from a smash, or you've rolled an ankle before.
+
+**Why:**
+
+- *Below target:* With your eyes closed, you held steady for {seconds} seconds. {next_tier} starts at {target}, so you're {gap} away.
+- *One leg weaker:* Your {weaker_side} leg held steady for {gap}% less time than your other leg.
+
+**Fix it and** you'll play controlled shots off wide lunges, recover faster, and protect your ankles against sprains.
 
 **How we read your result.**
 
-- Sway above tier target on either leg → show **Fix A: build balance**.
-- One leg clearly worse than the other (more than 20% more sway, proposed) → also show **Fix B: even it out**. Ask about past ankle sprains on that side.
+- Time held below tier target on either leg → show **Fix A: build balance**.
+- One leg holding more than 20% less time than the other (proposed) → also show **Fix B: even it out**. Ask about past ankle sprains on that side.
 
 **How to improve.**
 
@@ -229,11 +256,10 @@ This library covers the 9-test padel battery: 10m Sprint, 5-0-5 Agility, Ruler D
 
 - One extra hold on your weaker leg in every exercise.
 
-*Role drills (add to either fix)*
+*Court drills (add to either fix)*
 
-- **Drive:** Wide lunge and hold on one leg for 2 seconds before recovering: 3 sets of 6 each side.
-- **Revés:** Small jump, land on one leg and hold for 3 seconds: 3 sets of 5 each leg.
-- **Every player:** Single-leg stand while bouncing a ball on your racket: 3 holds of 20 seconds each leg.
+- Wide lunge, then hold on one leg for 2 seconds before recovering: 3 sets of 6 each side.
+- Small jump, land on one leg and hold for 3 seconds: 3 sets of 5 each leg.
 
 **Retest:** 4 weeks.
 
@@ -241,11 +267,16 @@ This library covers the 9-test padel battery: 10m Sprint, 5-0-5 Agility, Ruler D
 
 **What we measured.** The strength of the muscles at the back of each shoulder that rotate your arm outward.
 
-**What it means for your game.**
+**Shoulder strength: the brakes on your arm**
 
-- **Drive:** Your forehand and serve are fast arm swings that have to stop cleanly. The back of the shoulder does the braking, rally after rally.
-- **Revés:** You hit most of the overheads: bandejas, víboras and smashes. Each one loads the back of the shoulder hard. Weakness here is how shoulder pain builds over a season.
-- **Every player:** A strong, balanced shoulder lets you swing freely without your body quietly holding back. It also takes load off the elbow, which is where padel elbow starts.
+**You'll notice it when** your smashes and víboras lose pace late in a match, or your shoulder or elbow aches the day after.
+
+**Why:**
+
+- *Below target:* Your racket arm scored {score}. {next_tier} starts at {target}, so you're {gap} points away.
+- *Racket arm weaker:* Your racket arm is {gap}% weaker than your other arm. Every overhead is a fast swing and a hard stop, and the back of the shoulder does the stopping.
+
+**Fix it and** you can keep hitting hard overheads all match, and get through a full season without shoulder or elbow pain.
 
 **How we read your result.**
 
@@ -269,11 +300,11 @@ This library covers the 9-test padel battery: 10m Sprint, 5-0-5 Agility, Ruler D
 
 - Band external rotation, 2 sets of 15, twice a week.
 
-*Role drills (add to any fix)*
+*Court drills (add to any fix)*
 
-- **Drive:** Band external rotation as part of your warm-up before every match.
-- **Revés:** Limit full-power smashes in practice to 20–30 per session while you build strength.
-- **Every player:** Stop and tell us if you feel pain on the outside of your elbow; don't play through it.
+- Band external rotation before every match: 1 set of 15.
+- Limit full-power smashes in practice to 20–30 per session while you build strength.
+- Stop and tell us if you feel pain on the outside of your elbow; don't play through it.
 
 **Retest:** 6 weeks.
 
@@ -281,11 +312,16 @@ This library covers the 9-test padel battery: 10m Sprint, 5-0-5 Agility, Ruler D
 
 **What we measured.** The strength of the muscles on the outside of each hip that push your leg out to the side.
 
-**What it means for your game.**
+**Outer-hip strength: your sideways push**
 
-- **Drive:** Pushing off sideways to cover the middle starts here. Strong outer hips mean a faster first lateral step.
-- **Revés:** Lunging toward the side glass on your backhand side loads your outside leg. These muscles keep that knee straight instead of letting it cave in.
-- **Every player:** They keep your pelvis level and your knee pointing straight on every lunge and stop, which protects your knees.
+**You'll notice it when** you're a step late to balls through the middle, or your knee drifts inward when you lunge.
+
+**Why:**
+
+- *Below target:* Your outer hips scored {score}. {next_tier} starts at {target}, so you're {gap} points away.
+- *One side weaker:* Your {weaker_side} side is {gap}% weaker than your other side.
+
+**Fix it and** you'll get a faster first step sideways and straighter knees on every lunge.
 
 **How we read your result.**
 
@@ -309,11 +345,10 @@ This library covers the 9-test padel battery: 10m Sprint, 5-0-5 Agility, Ruler D
 
 - Banded lateral walks in every warm-up.
 
-*Role drills (add to any fix)*
+*Court drills (add to any fix)*
 
-- **Drive:** Lateral push-offs: shuffle and push off to the centre line. 3 sets of 6 each way.
-- **Revés:** Lunges toward the side glass, knee tracking over the toes: 3 sets of 8.
-- **Every player:** Lateral shuffles between cones: 4 runs of 6 metres each way.
+- Lateral push-offs: shuffle and push off to the centre line. 3 sets of 6 each way.
+- Lunges toward the side glass, knee tracking over the toes: 3 sets of 8 each side.
 
 **Retest:** 6 weeks. Read this alongside Hip Adduction: the balance between the two matters as much as either number.
 
@@ -321,11 +356,16 @@ This library covers the 9-test padel battery: 10m Sprint, 5-0-5 Agility, Ruler D
 
 **What we measured.** The strength of the inner thigh (groin) muscles that pull your leg back toward the middle, on each side.
 
-**What it means for your game.**
+**Groin strength: your pull back to the middle**
 
-- **Drive:** Pulling yourself back to the centre after a wide ball uses these muscles. Strong adductors mean a faster recovery step.
-- **Revés:** Deep lunges and splits to reach balls in the corner stretch the groin under load. That's when strains happen.
-- **Every player:** Groin strains are common in sports with sudden sideways stops. A strong groin, roughly as strong as the outer hip, is the best protection.
+**You'll notice it when** you reach a wide ball but you're slow getting back, or you feel a pull in your inner thigh after a deep lunge.
+
+**Why:**
+
+- *Weak compared with outer hip:* Your groin is {ratio}% as strong as your outer hip. We want it at 80% or more.
+- *One side weaker:* Your {weaker_side} side is {gap}% weaker than your other side.
+
+**Fix it and** you'll recover faster after wide balls, with less risk of a groin strain when you lunge into the corner.
 
 **How we read your result.**
 
@@ -349,11 +389,10 @@ This library covers the 9-test padel battery: 10m Sprint, 5-0-5 Agility, Ruler D
 
 - Copenhagen plank twice a week: 2 holds of 20 seconds each side.
 
-*Role drills (add to any fix)*
+*Court drills (add to any fix)*
 
-- **Drive:** Lateral lunge and push back to centre: 3 sets of 8 each side.
-- **Revés:** Controlled wide lunges into the corner, slow on the way down: 3 sets of 6.
-- **Every player:** Warm up your groin with leg swings side to side before every match: 10 each leg.
+- Lateral lunge and push back to centre: 3 sets of 8 each side.
+- Leg swings side to side before every match: 10 each leg.
 
 **Retest:** 6 weeks.
 
@@ -366,5 +405,5 @@ About an hour of review, ideally before 21 October.
 - [ ] Sets, reps and frequency suit players training alongside matches
 - [ ] Results that need a physio referral are flagged (pain during testing, past ankle sprains, elbow pain)
 - [ ] Retest windows are agreed
-- [ ] Drive and Revés lines reflect how padel is really played here
+- [ ] "You'll notice it when" lines match what club players really feel on court
 - [ ] Battery list matches the tests actually run on site

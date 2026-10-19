@@ -14,7 +14,7 @@ const { forSport } = require('../services/scoredReport.service');
 const R = require('../services/padelAthleteReport.service');
 
 const PROFILE_IN = {
-  name: 'Ali Khan', dob: '2001-03-02', testDate: '2026-10-18', sex: 'M', position: 'RIGHT',
+  name: 'Test Reves', dob: '2001-03-02', testDate: '2026-10-18', sex: 'M', position: 'RIGHT',
   dominantHand: 'R', bodyweight: '74', trainingLevel: 'Intermediate'
 };
 const RESULTS_IN = {
@@ -25,7 +25,7 @@ const RESULTS_IN = {
     beep_test: { status: 'completed', level: '9', shuttle: '5' },
     single_leg_stand: { status: 'completed', left: '9', right: '21', cutoffs: ['3', '8', '15', '25'] },
     trunk_rotation: { status: 'completed', left: '38', right: '50', cutoffs: ['20', '30', '40', '55'] },
-    overhead_squat: { status: 'completed', value: '55', cutoffs: ['30', '50', '65', '80'], fault: 'arms_back' },
+    overhead_squat: { status: 'completed', value: '55', cutoffs: ['30', '50', '65', '80'], fault: 'arms_drop' },
     shoulder_er: { status: 'completed', left: '160', right: '140', cutoffs: ['60', '100', '150', '220'] },
     hip_abduction: { status: 'completed', left: '300', right: '290', cutoffs: ['100', '180', '260', '340'] },
     hip_adduction: { status: 'completed', left: '200', right: '250', cutoffs: ['100', '180', '260', '340'] }

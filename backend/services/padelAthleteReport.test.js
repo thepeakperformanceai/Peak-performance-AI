@@ -1,5 +1,5 @@
 // Run: npm test   (from backend/)
-// Padel athlete report (the separate two-page PDF): the library matches
+// Padel athlete report (the separate PDF): the library matches
 // docs/library/padel.md, scores are read from the existing engine unchanged,
 // side filtering, ranking by score points below 75, the library's left/right
 // and ratio rules, the 6-week plan, retest date, next-tier gaps and the
@@ -24,7 +24,7 @@ const PROFILE = { name: 'Ali Khan', position: 'RIGHT', testDate: '2026-10-18' };
 const SESSION = {
   athlete: { age: 24, sex: 'M', position: 'RIGHT', dominant_hand: 'R' },
   timing_method: 'electronic',
-  observations: { overhead_squat_fault: 'arms_back' },
+  observations: { overhead_squat_fault: 'arms_drop' },
   tests: {
     sprint_10m: { status: 'completed', value: 2.05 },
     ruler_drop: { status: 'completed', value: 12.0 },
@@ -53,31 +53,45 @@ test('library: one entry per test in docs/library/padel.md, in its order', () =>
   assert.deepEqual(Object.keys(cfg.tests).filter(k => !LIB.tests.some(t => t.key === k)), ['beep_test']);
 });
 
-test('library: every role line, exercise, drill and rule is word for word from padel.md', () => {
+test('library: padel.json is exactly what docs/library/padel.md builds (run scripts/build-padel-library.js after editing)', () => {
+  const { buildPadelLibrary } = require('../library/buildPadelLibrary');
+  const raw = fs.readFileSync(path.join(__dirname, '../../docs/library/padel.md'), 'utf8');
+  assert.deepEqual(buildPadelLibrary(raw, { draft_notice: LIB.draft_notice }), LIB);
+});
+
+test('library: every nickname, notice, Why, Fix it, rule, exercise and court drill is word for word from padel.md', () => {
   for (const t of LIB.tests) {
-    const texts = [t.what_we_measured, ...Object.values(t.role_lines), ...Object.values(t.role_drills),
+    const texts = [t.what_we_measured, t.nickname, t.notice, t.fix_it, ...t.why.map(w => w.text), ...t.court_drills,
       ...Object.values(t.fixes).flatMap(f => f.exercises), ...t.rules.map(r => r.text)];
     if (t.retest_note) texts.push(t.retest_note);
-    for (const s of texts) assert.ok(MD.includes(s), `${t.key}: not in padel.md: ${s}`);
+    for (const x of texts) assert.ok(MD.includes(x), `${t.key}: not in padel.md: ${x}`);
     for (const [k, f] of Object.entries(t.fixes)) assert.ok(MD.includes(`Fix ${k}: ${f.title}`), `${t.key} Fix ${k}`);
     assert.ok(MD.includes(`Retest: ${t.retest_weeks} weeks`), `${t.key} retest`);
   }
 });
 
-test('library: rules point at fixes that exist; every line has Drive, Revés and Every player', () => {
+test('library: placeholders are only the ten the engine fills', () => {
+  const used = new Set(LIB.tests.flatMap(t => t.why.flatMap(w => (w.text.match(/\{(\w+)\}/g) || []))));
+  assert.deepEqual([...used].sort(), ['{distance}', '{fault}', '{gap}', '{next_tier}', '{ratio}', '{score}', '{seconds}', '{target}', '{time}', '{weaker_side}']);
+});
+
+test('library: rules point at fixes that exist; every test has its four athlete parts and court drills', () => {
   for (const t of LIB.tests) {
     for (const r of t.rules) assert.ok(t.fixes[r.fix], `${t.key} rule -> Fix ${r.fix}`);
     if (t.maintain_fix) assert.equal(t.fixes[t.maintain_fix].kind, 'maintain', t.key);
-    assert.ok(['drive', 'reves', 'every'].every(k => t.role_lines[k] && t.role_drills[k]), t.key);
+    assert.ok(t.nickname && t.notice && t.fix_it && t.why.length && t.court_drills.length, t.key);
+    for (const w of t.why) assert.ok(w.when && w.when.type, `${t.key} ${w.label}`);
   }
 });
 
-test('library: sides match the padel court-side field; tiers and target match the card tiers', () => {
-  assert.deepEqual(Object.keys(LIB.sides).sort(), [...SPORT_PROFILES.padel.positions].sort());
+test('library: no playing side anywhere; tiers and target match the card tiers', () => {
+  const text = JSON.stringify(LIB);
+  assert.equal(LIB.sides, undefined);
+  for (const word of ['role_lines', 'role_drills', 'Every player', '"drive"', '"reves"']) assert.equal(text.includes(word), false, word);
   assert.deepEqual(LIB.tiers.map(t => [t.key, t.min_score]), CARD_TIERS.tiers.map(t => [t.key, t.min_ovr]));
   assert.equal(LIB.target.score, 75);
-  assert.equal(LIB.rebuild, undefined);                                // Rebuild offer removed
-  assert.equal(JSON.stringify(LIB).includes('REBUILD_URL'), false);
+  assert.equal(LIB.rebuild, undefined);
+  assert.equal(text.includes('REBUILD_URL'), false);
 });
 
 // ---------- scores come from the engine, unchanged ----------
@@ -97,13 +111,11 @@ test('scores: every score is the engine\'s own number, rounded to a whole number
 
 // ---------- playing side ----------
 
-test('side: Drive and Revés see their lines plus Every player; Both sees all lines', () => {
-  const who = (pos) => build(SESSION, { ...PROFILE, position: pos }).priorities[0].lines.map(l => l.label);
-  assert.deepEqual(who('RIGHT'), ['Drive', 'Every player']);
-  assert.deepEqual(who('LEFT'), ['Revés', 'Every player']);
-  assert.deepEqual(who('BOTH'), ['Drive', 'Revés', 'Every player']);
-  const drills = (pos) => build(SESSION, { ...PROFILE, position: pos }).plan.roleDrills.map(d => d.label);
-  assert.ok(!drills('LEFT').includes('Drive') && drills('LEFT').includes('Revés'));
+test('playing side is ignored: Drive, Revés and Both get the same report', () => {
+  const view = (position) => { const ar = build(SESSION, { ...PROFILE, position }); return JSON.stringify(ar); };
+  assert.equal(view('LEFT'), view('RIGHT'));
+  assert.equal(view('BOTH'), view('RIGHT'));
+  assert.equal(view(undefined), view('RIGHT'));
 });
 
 const priority = (ar, key) => ar.priorities.find(p => p.key === key);
@@ -126,7 +138,8 @@ test('weapons: the two best scores, led by what they mean on court, then one pla
   assert.deepEqual(ar.weapons.map(w => w.number), [{ value: '12 cm', isScore: false }, { value: '77', isScore: true }]);
   // Hip abduction 300 / 290: about 3% apart.
   assert.equal(ar.weapons[1].body, 'your outer hips are strong and almost even, left vs right');
-  assert.equal(ar.weapons[1].line.label, 'Drive');
+  assert.equal(ar.weapons[1].nickname, 'Outer-hip strength: your sideways push');
+  assert.equal(ar.weapons[1].line, undefined);                        // no role lines any more
 });
 
 test('weapons: evenness in the test\'s own words', () => {
@@ -206,28 +219,79 @@ test('score line: band-only results use the score too; 1 point is singular', () 
   assert.match(build(s).priorities.find(x => x.key === 'overhead_squat').scoreLine, /so you're 1 point away\.$/);
 });
 
-test('athlete-facing text never names a device or a device unit, on any side', () => {
-  for (const position of ['RIGHT', 'LEFT', 'BOTH']) {
-    const ar = build(SESSION, { ...PROFILE, position });
-    const shown = JSON.stringify([
-      ar.weapons.map(w => [w.plainName, w.headline, w.number, w.body, w.measures]),
-      ar.priorities.map(p => [p.name, p.plainName, p.scoreLine, p.ruleNotes, p.measures]),
-      ar.fullResults,
-      R.coachProse(ar)
-    ]);
-    assert.equal(R.DEVICE_WORDS.test(shown), false, `${position}: ${shown.match(R.DEVICE_WORDS)}`);
-  }
+test('athlete-facing text never names a device or a device unit', () => {
+  const ar = build();
+  const shown = JSON.stringify([
+    ar.weapons.map(w => [w.nickname, w.headline, w.number, w.body, w.measures]),
+    ar.priorities.map(p => [p.name, p.nickname, p.notice, p.why, p.fixIt, p.measures]),
+    ar.fullResults, ar.plan.courtDrills, R.coachProse(ar)
+  ]);
+  assert.equal(R.DEVICE_WORDS.test(shown), false, String(shown.match(R.DEVICE_WORDS)));
 });
 
-test('rule sentences: the library\'s left/right and ratio rules, in plain words with the athlete\'s numbers', () => {
-  assert.deepEqual(build().priorities.find(p => p.key === 'hip_adduction').ruleNotes, [
-    'On your left side, your groin is 67% as strong as your outer hip. We want it at 80% or more.',
-    'Your left side is 20% weaker than your right side.'
+test('priorities: nickname, "You\'ll notice it when", Why, "Fix it and", from the library, in that order', () => {
+  const p = build().priorities.find(x => x.key === 'sprint_10m');
+  const lib = LIB.tests.find(t => t.key === 'sprint_10m');
+  assert.equal(p.nickname, 'Speed: your first three steps');
+  assert.equal(p.notice, `You'll notice it when ${lib.notice}`);
+  assert.deepEqual(p.why, ['You covered 10 metres in 2.05 seconds. Silver starts at 2.01 seconds, so you\'re 0.04 seconds away.']);
+  assert.equal(p.fixIt, `Fix it and ${lib.fix_it}`);
+});
+
+test('Why: only the version(s) whose rule matches, filled from the engine', () => {
+  const ar = build();
+  assert.deepEqual(priority(ar, 'hip_adduction').why, [
+    'Your groin is 67% as strong as your outer hip. We want it at 80% or more.',     // left 200 / 300
+    'Your left side is 20% weaker than your other side.'                              // 200 vs 250
   ]);
-  const ar = build(base());
-  assert.deepEqual(priority(ar, 'shoulder_er').ruleNotes, ['Your racket arm is 13% weaker than your other arm.']);
-  assert.deepEqual(priority(ar, 'single_leg_stand').ruleNotes, ['Your left leg held on for 57% less time than your right leg.']);
-  assert.deepEqual(priority(ar, 'trunk_rotation').ruleNotes, ['Your left side turns 24% less than your right side.']);
+  assert.deepEqual(priority(ar, 'overhead_squat').why, [
+    'As you squatted, your arms dropped forward. A stiff upper back or tight shoulders make your lower back do the work on overheads.'
+  ]);
+  const b = build(base());
+  assert.deepEqual(priority(b, 'shoulder_er').why, [
+    'Your racket arm scored 67. Gold starts at 75, so you\'re 8 points away.',      // right arm 140 -> 67
+    // 140 vs 160 is 12.5% weaker: the card's rounding sends a tie to the even number, so 12.
+    'Your racket arm is 12% weaker than your other arm. Every overhead is a fast swing and a hard stop, and the back of the shoulder does the stopping.'
+  ]);
+  assert.deepEqual(priority(b, 'single_leg_stand').why, [
+    'With your eyes closed, you held steady for 9 seconds. Gold starts at a score of 75, so you\'re 7 points away.',
+    'Your left leg held steady for 57% less time than your other leg.'
+  ]);
+  assert.deepEqual(priority(b, 'trunk_rotation').why, ['Your upper body turns 24% less to the left than to the other side.']);
+  const s = base();
+  s.tests.trunk_rotation = { status: 'completed', left: 33, right: 35, cutoffs: [20, 30, 40, 55] };   // even, both low
+  assert.deepEqual(priority(build(s), 'trunk_rotation').why, ['Your rotation scored 61. Silver starts at 65, so you\'re 4 points away.']);
+});
+
+test('Why: {fault} is the "Fault seen" in plain words; none recorded says the coach will choose', () => {
+  const squat = (fault) => {
+    const s = copy(SESSION);
+    s.observations = fault ? { overhead_squat_fault: fault } : {};
+    return priority(build(s), 'overhead_squat').why[0];
+  };
+  assert.match(squat('heels_lift'), /^As you squatted, your heels lifted off the floor\. Tight ankles/);
+  assert.match(squat('knees_cave'), /^As you squatted, your knees caved inward\. Tight ankles/);
+  assert.match(squat('back_arch'), /^As you squatted, your lower back arched\. A stiff upper back/);
+  assert.match(squat('arms_back'), /^As you squatted, your arms dropped forward or lower back arched\./);   // older reports
+  assert.equal(squat(null), 'Your coach will go through what they saw and pick the right fix with you.');
+  // A clean squat that still scored low has no matching Why: the plain score line instead.
+  assert.equal(squat('clean'), 'You scored 60 on the overhead squat. Silver starts at 65, so you\'re 5 points away.');
+});
+
+test('Why: whole numbers, left/right in words, and no {placeholder} ever left in', () => {
+  const sessions = [SESSION, base(), (() => { const s = base(); s.timing_method = 'hand'; s.tests.sprint_10m.value = 1.83; return s; })()];
+  for (const s of sessions) {
+    for (const position of ['LEFT', 'RIGHT']) {
+      const ar = build(s, { ...PROFILE, position });
+      for (const p of ar.priorities) {
+        for (const line of p.why) {
+          assert.equal(/[{}]/.test(line), false, line);
+          for (const n of (line.match(/\d+(?:\.\d+)? (?:points?|%)|\d+%/g) || [])) assert.match(n, /^\d+/, line);
+        }
+      }
+      for (const p of ar.priorities) for (const line of p.why.filter(l => /weaker|less/.test(l))) assert.match(line, /\b(left|right)\b|racket arm/, line);
+    }
+  }
 });
 
 // ---------- fixes: the library's rules ----------
@@ -275,18 +339,21 @@ test('hip abduction: below target -> Fix A; >10% side gap -> also Fix B', () => 
 });
 
 test('overhead squat: the fault seen picks the fix; none recorded leaves it to the coach', () => {
-  assert.deepEqual(priority(build(), 'overhead_squat').fixes.map(f => f.key), ['B']);
+  assert.deepEqual(priority(build(), 'overhead_squat').fixes.map(f => f.key), ['B']);       // arms dropped forward
   const s = copy(SESSION);
-  s.observations = { overhead_squat_fault: 'heels_knees' };
-  assert.deepEqual(priority(build(s), 'overhead_squat').fixes.map(f => f.key), ['A']);
+  for (const [fault, fix] of [['heels_lift', 'A'], ['knees_cave', 'A'], ['arms_drop', 'B'], ['back_arch', 'B'], ['heels_knees', 'A'], ['arms_back', 'B'], ['clean', 'C']]) {
+    s.observations = { overhead_squat_fault: fault };
+    assert.deepEqual(priority(build(s), 'overhead_squat').fixes.map(f => f.key), [fix], fault);
+  }
   s.observations = {};
   const p = priority(build(s), 'overhead_squat');
   assert.deepEqual(p.fixes, []);
-  assert.match(p.fixPending, /fault pattern was not recorded/);
+  assert.equal(p.fixPending, 'Your coach will go through what they saw and pick the right fix with you.');
 });
 
 test('observations: only known values are kept', () => {
-  assert.deepEqual(R.cleanObservations({ overhead_squat_fault: 'arms_back', other: 1 }), { overhead_squat_fault: 'arms_back' });
+  assert.deepEqual(R.cleanObservations({ overhead_squat_fault: 'back_arch', other: 1 }), { overhead_squat_fault: 'back_arch' });
+  assert.deepEqual(R.cleanObservations({ overhead_squat_fault: 'arms_back' }), { overhead_squat_fault: 'arms_back' });
   assert.deepEqual(R.cleanObservations({ overhead_squat_fault: 'sideways' }), {});
   assert.deepEqual(R.cleanObservations(undefined), {});
 });
@@ -297,11 +364,11 @@ test('full results: one plain line per test actually done, in library order; tes
   const ar = build();
   assert.deepEqual(ar.fullResults.map(r => r.key), ['sprint_10m', 'ruler_drop', 'overhead_squat', 'trunk_rotation',
     'single_leg_stand', 'shoulder_er', 'hip_abduction', 'hip_adduction']);           // no 5-0-5 (not done)
-  const sprintLib = LIB.tests.find(t => t.key === 'sprint_10m').improve;
-  assert.deepEqual(ar.fullResults[0], { key: 'sprint_10m', test: '10m sprint', result: '2.05 seconds', tier: 'Bronze', next: '4 points from Silver', better: sprintLib.drive });
-  const { better, ...hipAdd } = ar.fullResults.find(r => r.key === 'hip_adduction');
+  const sprintLib = LIB.tests.find(t => t.key === 'sprint_10m').fix_it;
+  assert.deepEqual(ar.fullResults[0], { key: 'sprint_10m', test: '10m sprint', result: '2.05 seconds', tier: 'Bronze', next: '4 points from Silver', fixIt: `Fix it and ${sprintLib}` });
+  const { fixIt, ...hipAdd } = ar.fullResults.find(r => r.key === 'hip_adduction');
   assert.deepEqual(hipAdd, { key: 'hip_adduction', test: 'Groin strength test', result: '63 out of 99', tier: 'Bronze', next: '2 points from Silver' });
-  assert.equal(better, LIB.tests.find(t => t.key === 'hip_adduction').improve.drive);
+  assert.equal(fixIt, `Fix it and ${LIB.tests.find(t => t.key === 'hip_adduction').fix_it}`);
   assert.equal(ar.fullResults.find(r => r.key === 'ruler_drop').next, 'At the top tier');
   const s = copy(SESSION);
   s.tests.trunk_rotation = { status: 'injured' };
@@ -324,13 +391,11 @@ test('full results: whole-number scores and gaps in whole points; tier follows t
   assert.equal(b.priorities.some(p => p.key === 'overhead_squat'), false);
 });
 
-test('full results: one "better score" line each: Drive line, Revés line, or Every player for Both', () => {
-  const sprint = (position) => build(SESSION, { ...PROFILE, position }).fullResults.find(r => r.key === 'sprint_10m').better;
-  const lib = LIB.tests.find(t => t.key === 'sprint_10m').improve;
-  assert.equal(sprint('RIGHT'), lib.drive);
-  assert.equal(sprint('LEFT'), lib.reves);
-  assert.equal(sprint('BOTH'), lib.every);
-  for (const r of build().fullResults) assert.ok(r.better && r.better.length, r.key);
+test('full results: the library\'s "Fix it and…" line under each result', () => {
+  for (const r of build().fullResults) {
+    assert.equal(r.fixIt, `Fix it and ${LIB.tests.find(t => t.key === r.key).fix_it}`, r.key);
+    assert.equal(r.better, undefined);
+  }
 });
 
 test('full results and draft notice: plain words, no device names', () => {
@@ -338,13 +403,6 @@ test('full results and draft notice: plain words, no device names', () => {
   assert.equal(R.DEVICE_WORDS.test(JSON.stringify(ar.fullResults)), false);
   assert.equal(ar.draftNotice, 'Draft – pending clinical review');
   assert.equal(LIB.draft_notice, ar.draftNotice);                     // one setting: library/padel.json draft_notice
-});
-
-test('library: the "better score" lines are kept for review, words only', () => {
-  for (const t of LIB.tests) {
-    assert.deepEqual(Object.keys(t.improve).sort(), ['drive', 'every', 'reves'], t.key);
-    for (const line of Object.values(t.improve)) assert.equal(/\d/.test(line), false, `${t.key}: ${line}`);
-  }
 });
 
 // ---------- plan and retest ----------
@@ -369,11 +427,12 @@ test('plan: an exercise shared by two fixes appears once', () => {
   assert.deepEqual(all.find(e => e.text === roller).alsoFor, ['Trunk Rotation']);
 });
 
-test('plan: role drills for the athlete\'s side, never repeated', () => {
-  const d = build().plan.roleDrills;
-  assert.equal(d.length, 6);                                           // 3 priorities x (Drive + Every player)
-  assert.ok(d.every(x => ['Drive', 'Every player'].includes(x.label)));
-  assert.equal(new Set(d.map(x => x.text)).size, d.length);
+test('plan: court drills for the priorities, from the library, no side labels, never repeated', () => {
+  const ar = build();
+  const expected = ar.priorities.flatMap(p => LIB.tests.find(t => t.key === p.key).court_drills);
+  assert.deepEqual(ar.plan.courtDrills.map(d => d.text), [...new Set(expected)]);
+  assert.ok(ar.plan.courtDrills.every(d => !('label' in d)));
+  assert.equal(ar.plan.roleDrills, undefined);
 });
 
 test('retest: test date plus the longest window among the priorities', () => {
@@ -404,62 +463,33 @@ test('coach text (no Gemini needed): the weapon sentences and plan intro, with t
   assert.equal(c.planIntro, 'Ali, this plan trains your top 3 priorities together: overhead squat, 10m sprint and groin strength. Stick with it for 6 weeks, then we retest on Sunday 29 November 2026 to measure how far you\'ve moved.');
 });
 
-test('role lines: Drive sees Drive + Every player, Revés sees Revés + Every player, Both sees all three', () => {
-  const lib = LIB.tests.find(t => t.key === 'overhead_squat').role_lines;
-  const view = (position) => {
-    const ar = build(SESSION, { ...PROFILE, position });
-    const p = ar.priorities.find(x => x.key === 'overhead_squat');
-    return { lines: p.lines.map(l => [l.label, l.text]), labels: ar.showLineLabels, weapon: ar.weapons.map(w => w.line.label) };
-  };
-  assert.deepEqual(view('RIGHT'), { lines: [['Drive', lib.drive], ['Every player', lib.every]], labels: false, weapon: ['Drive', 'Drive'] });
-  assert.deepEqual(view('LEFT'), { lines: [['Revés', lib.reves], ['Every player', lib.every]], labels: false, weapon: ['Revés', 'Revés'] });
-  assert.deepEqual(view('BOTH'), { lines: [['Drive', lib.drive], ['Revés', lib.reves], ['Every player', lib.every]], labels: true, weapon: ['Every player', 'Every player'] });
-  // A Revés player's report never contains a Drive line, anywhere.
-  const left = build(SESSION, { ...PROFILE, position: 'LEFT' });
-  const driveLines = LIB.tests.flatMap(t => [t.role_lines.drive, t.role_drills.drive, t.improve.drive]);
-  const shown = JSON.stringify([left.weapons, left.priorities.map(p => p.lines), left.fullResults, left.plan.roleDrills, R.coachProse(left)]);
-  for (const d of driveLines) assert.equal(shown.includes(d), false, d);
-});
-
-test('role lines: the playing side from the form reaches the report (padel pipeline + saved session)', () => {
+test('form to report: the padel pipeline and the "Fault seen" reach the report', () => {
   const { forSport } = require('./scoredReport.service');
   const padel = forSport('padel');
   const { profile, session } = padel.validateInput(
-    { name: 'Sara Malik', dob: '2000-06-15', testDate: '2026-10-12', sex: 'F', position: 'LEFT', dominantHand: 'R', bodyweight: '61' },
+    { name: 'Test Reves', dob: '2000-06-15', testDate: '2026-10-12', sex: 'F', position: 'LEFT', dominantHand: 'R', bodyweight: '61' },
     { timingMethod: 'electronic', tests: { sprint_10m: { status: 'completed', value: '2.05' }, ruler_drop: { status: 'completed', value: '12' },
-      trunk_rotation: { status: 'completed', left: '30', right: '32', cutoffs: ['20', '30', '40', '55'] } } });
-  assert.equal(profile.position, 'LEFT');
+      overhead_squat: { status: 'completed', value: '55', cutoffs: ['30', '50', '65', '80'], fault: 'knees_cave' } } });
+  session.observations = R.cleanObservations({ overhead_squat_fault: 'knees_cave' });
   const ar = R.buildAthleteReport({ profile, scored: scoreSession(session, cfg), session, cfg });
-  assert.equal(ar.side.label, 'Revés');
-  assert.deepEqual(ar.priorities[0].lines.map(l => l.label), ['Revés', 'Every player']);
+  assert.equal(ar.firstName, 'Test');
+  assert.match(ar.priorities[0].why[0], /^As you squatted, your knees caved inward\./);
 });
 
-test('narration: Gemini only polishes the weapon sentences and plan intro, and sees no exercises or role lines', async () => {
+test('narration: Gemini only polishes the weapon sentences and plan intro; it never sees the library lines or exercises', async () => {
   const ar = build();
   let seen;
   await R.narrateAthleteReport(ar, { callModel: async (sys, p) => { seen = payloadOf(p); return goodProse(seen); } });
   assert.equal(ar.prose.source, 'gemini');
   assert.equal(seen.first_name, 'Ali');
   assert.equal(seen.priorities, undefined);
+  assert.equal(seen.playing_side, undefined);
   assert.deepEqual(seen.weapons.map(w => w.coach_text), R.coachProse(ar).weapons);
-  assert.equal(JSON.stringify(seen).includes('Copenhagen'), false);    // exercises are never sent
-  assert.equal(JSON.stringify(seen).includes(ar.priorities[0].lines[0].text), false);
+  const sent = JSON.stringify(seen);
+  for (const p of ar.priorities) for (const x of [p.nickname, p.notice, ...p.why, p.fixIt]) assert.equal(sent.includes(x), false, x);
+  assert.equal(sent.includes('Copenhagen'), false);
   assert.match(R.SYSTEM_PROMPT, /Never add, name or suggest an exercise/);
   assert.match(R.SYSTEM_PROMPT, /Never mention testing devices/);
-});
-
-test('narration: the other playing side in Gemini\'s answer is rejected', async () => {
-  const ar = build(SESSION, { ...PROFILE, position: 'LEFT' });
-  let calls = 0;
-  await R.narrateAthleteReport(ar, { callModel: async (sys, p) => {
-    calls++;
-    const ok = JSON.parse(goodProse(payloadOf(p)));
-    if (calls === 1) ok.weapons[0] = 'Ali, on the drive side your hands are quick.';
-    return JSON.stringify(ok);
-  } });
-  assert.equal(calls, 2);
-  assert.equal(ar.prose.source, 'gemini');
-  assert.equal(ar.prose.weapons[0].includes('drive'), false);
 });
 
 test('narration: device names in Gemini\'s answer are rejected', async () => {

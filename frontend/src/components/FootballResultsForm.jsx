@@ -151,11 +151,13 @@ const emptyTest = () => ({
   cutoffs: ['', '', '', ''], band: '', band_left: '', band_right: '', fault: '',
 })
 
-// Padel overhead squat: what the tester saw. Picks the library's fix in the
-// padel athlete report; it never changes the score.
+// Padel overhead squat: what the tester saw. Picks the library's fix and is
+// named in the athlete report's "Why" line; it never changes the score.
 const SQUAT_FAULTS = [
-  { value: 'heels_knees', label: 'Heels lifting or knees caving' },
-  { value: 'arms_back', label: 'Arms dropping forward or lower back arching' },
+  { value: 'heels_lift', label: 'Heels lifting' },
+  { value: 'knees_cave', label: 'Knees caving inward' },
+  { value: 'arms_drop', label: 'Arms dropping forward' },
+  { value: 'back_arch', label: 'Lower back arching' },
   { value: 'clean', label: 'Clean pattern' },
 ]
 

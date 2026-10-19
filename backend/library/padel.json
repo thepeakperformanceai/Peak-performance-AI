@@ -1,10 +1,10 @@
 {
-  "library_version": "padel-library-v1.5",
+  "library_version": "padel-library-v2.0",
   "sport": "padel",
   "source": "docs/library/padel.md (Oct 18, 2026)",
-  "notes": "One entry per padel test. The engine reads this file to pick the athlete's top 3 priorities, their role lines, fixes, role drills and retest window. Gemini only rewords the text it is given. Scores come from the existing scoring engine, unchanged. Left/right and ratio rules use the library's own percentages on the raw left/right results. Rules marked proposed need DPT sign-off; engine_note says where the engine's data can't follow the library exactly. plain_name, weapon (headline and body), improve (what a better score changes on court; one line per result on page 3: Drive or Revés line for that side, Every player for Both) and rule note templates are PeakPerformance wording added for the report, not text from padel.md.",
+  "notes": "Built from docs/library/padel.md by scripts/build-padel-library.js; edit padel.md, then rebuild. One version for every player (no playing side). Scores come from the existing scoring engine, unchanged. Words in curly brackets are filled in by the engine from the athlete's results; Gemini never writes or changes these lines. plain_name, measures and weapon (headline, body, evenness) are PeakPerformance wording added for the report, not text from padel.md.",
   "draft_notice": "Draft – pending clinical review",
-  "draft_notice_help": "Shown in the footer of every page of the padel athlete report. Set draft_notice to null (or \"\") to switch it off; applies to reports generated after the change.",
+  "draft_notice_help": "Shown in the footer of every page of the padel athlete report. Set draft_notice to null (or \"\") to switch it off; applies to reports generated after the change. Kept when the library is rebuilt.",
   "target": {
     "score": 75,
     "label": "Gold",
@@ -27,50 +27,44 @@
       "min_score": 0
     }
   ],
-  "sides": {
-    "RIGHT": {
-      "label": "Drive",
-      "lines": [
-        "drive",
-        "every"
-      ]
-    },
-    "LEFT": {
-      "label": "Revés",
-      "lines": [
-        "reves",
-        "every"
-      ]
-    },
-    "BOTH": {
-      "label": "Both",
-      "lines": [
-        "drive",
-        "reves",
-        "every"
-      ]
-    }
-  },
-  "line_labels": {
-    "drive": "Drive",
-    "reves": "Revés",
-    "every": "Every player"
-  },
   "plan": {
     "weeks": 6,
     "text": "One combined 6-week plan: every selected fix runs from week 1. A fix shorter than 6 weeks switches to that test's maintain fix (where the library has one) for the remaining weeks."
+  },
+  "fault_words": {
+    "heels_lift": "heels lifted off the floor",
+    "knees_cave": "knees caved inward",
+    "arms_drop": "arms dropped forward",
+    "back_arch": "lower back arched",
+    "heels_knees": "heels lifted or knees caved in",
+    "arms_back": "arms dropped forward or lower back arched"
   },
   "tests": [
     {
       "key": "sprint_10m",
       "name": "10m Sprint",
+      "plain_name": "10m sprint",
       "measures": "Speed",
       "what_we_measured": "How fast you cover 10 metres from a standing start, the length of one side of the court.",
-      "role_lines": {
-        "drive": "You cover the middle of the court and chase balls coming off the side glass. A quicker first few steps means reaching them balanced instead of stretching.",
-        "reves": "You chase most of the lobs that go over your partner and you. Speed decides whether you get behind the ball or let it run off the back glass.",
-        "every": "Padel is won at the net. After every lob you have to sprint back in and take it again before your opponents do."
-      },
+      "nickname": "Speed: your first three steps",
+      "notice": "you see the lob coming but your opponents get back to the net before you do, or you reach balls off the side glass stretching instead of set.",
+      "why": [
+        {
+          "label": "Below target",
+          "when": {
+            "type": "score_below_target"
+          },
+          "text": "You covered 10 metres in {time}. {next_tier} starts at {target}, so you're {gap} away."
+        },
+        {
+          "label": "At Gold",
+          "when": {
+            "type": "score_at_least_target"
+          },
+          "text": "You covered 10 metres in {time}. That's Gold level."
+        }
+      ],
+      "fix_it": "you'll win more races back to the net, and that's where padel points are won.",
       "rules": [
         {
           "when": {
@@ -110,34 +104,42 @@
         }
       },
       "maintain_fix": "B",
-      "role_drills": {
-        "drive": "Sprint from the middle to the side glass and back: 6 reps.",
-        "reves": "Turn and chase: a partner lobs over you, turn and run it down before it reaches the back glass. 8 reps.",
-        "every": "Back-to-net sprints: from the back glass to the net and split-step. 6 reps."
-      },
+      "court_drills": [
+        "Back-to-net sprints: from the back glass to the net, then split-step. 6 reps.",
+        "Turn and chase: a partner lobs over you; turn and run it down before it reaches the back glass. 8 reps."
+      ],
       "retest_weeks": 6,
       "retest_note": null,
-      "plain_name": "10m sprint",
       "weapon": {
         "headline": "Quick off the mark",
         "body": "you are quick over the first few steps"
-      },
-      "improve": {
-        "drive": "A quicker first few steps gets you to balls off the side glass on balance, so you can play a real shot instead of just getting it back.",
-        "reves": "More speed lets you get behind lobs before they run off the back glass, so you defend them on your terms.",
-        "every": "You'll win more races back to the net after every lob, and that's where padel points are won."
       }
     },
     {
       "key": "cod_505",
       "name": "5-0-5 Agility Test",
+      "plain_name": "5-0-5 turn test",
       "measures": "Agility",
       "what_we_measured": "How quickly you sprint, stop, turn 180° and sprint back out.",
-      "role_lines": {
-        "drive": "You often have to stop, turn and cover the middle after your partner is pulled wide. A sharp turn closes that gap before it's attacked.",
-        "reves": "Balls off the back glass and the corner change direction late. Stopping and turning fast lets you play them instead of being beaten by the bounce.",
-        "every": "Every point is short bursts with sudden stops. The faster you brake and re-accelerate, the more balls you reach on balance."
-      },
+      "nickname": "Agility: your brakes and turn",
+      "notice": "the ball comes off the back glass at an odd angle and you're already moving the wrong way, or you get pulled wide and can't get back in time to cover the middle.",
+      "why": [
+        {
+          "label": "Below target",
+          "when": {
+            "type": "score_below_target"
+          },
+          "text": "You turned and came back in {time}. {next_tier} starts at {target}, so you're {gap} away."
+        },
+        {
+          "label": "One side slower",
+          "when": {
+            "type": "not_measured"
+          },
+          "text": "You turn {gap}% slower off your {weaker_side} foot."
+        }
+      ],
+      "fix_it": "you'll stop, turn and reach more balls on balance, point after point.",
       "rules": [
         {
           "when": {
@@ -151,10 +153,9 @@
             "type": "not_measured"
           },
           "fix": "B",
-          "also": true,
-          "proposed": true,
           "text": "Slower turning off one foot than the other (if timed both ways, more than 5%, proposed) → also show Fix B: even both turns.",
-          "engine_note": "The 5-0-5 is not in the current padel scoring battery, and one time is recorded, not one per turning foot."
+          "also": true,
+          "proposed": true
         }
       ],
       "fixes": {
@@ -180,34 +181,42 @@
         }
       },
       "maintain_fix": null,
-      "role_drills": {
-        "drive": "Cover-the-middle shuffle: shuffle wide, plant and return to centre. 3 sets of 6.",
-        "reves": "Back-glass exits: a partner feeds into the corner, you turn and play it out. 10 reps.",
-        "every": "Partner-call change of direction over 5 metres: 8 reps."
-      },
+      "court_drills": [
+        "Back-glass exits: a partner feeds into the corner; turn and play it out. 10 reps.",
+        "Cover-the-middle shuffle: shuffle wide, plant and return to centre. 3 sets of 6."
+      ],
       "retest_weeks": 6,
       "retest_note": null,
-      "plain_name": "5-0-5 turn test",
       "weapon": {
         "headline": "Sharp stop and turn",
         "body": "you brake and turn fast"
-      },
-      "improve": {
-        "drive": "A sharper turn closes the middle faster when your partner is pulled wide, leaving your opponents less space to attack.",
-        "reves": "Turning faster lets you play late-changing balls off the back glass and the corner instead of being beaten by the bounce.",
-        "every": "Braking and re-accelerating faster means you reach more balls on balance, point after point."
       }
     },
     {
       "key": "ruler_drop",
       "name": "Ruler Drop Test",
+      "plain_name": "ruler-drop catch",
       "measures": "Reaction",
       "what_we_measured": "How far a dropped ruler falls before you catch it. Shorter is faster.",
-      "role_lines": {
-        "drive": "Balls through the middle come at you fast and low. Quick reactions let you cover the middle and punch the volley rather than just block it.",
-        "reves": "You face more smashes and fast balls off the glass. Reaction is how early you read the bounce and get your racket in place.",
-        "every": "At the net, exchanges happen in fractions of a second. The faster player wins the reflex volley."
-      },
+      "nickname": "Reaction: how fast you see and move",
+      "notice": "fast exchanges at the net go past you before your racket is ready, or a smash off the glass catches you late.",
+      "why": [
+        {
+          "label": "Below target",
+          "when": {
+            "type": "score_below_target"
+          },
+          "text": "You caught the ruler at {distance}. {next_tier} starts at {target}, so you're {gap} away."
+        },
+        {
+          "label": "At Gold",
+          "when": {
+            "type": "score_at_least_target"
+          },
+          "text": "You caught the ruler at {distance}. That's Gold level."
+        }
+      ],
+      "fix_it": "you'll win more of the quick-fire volleys at the net, and have time to set your racket against smashes.",
       "rules": [
         {
           "when": {
@@ -239,47 +248,79 @@
           "title": "keep it sharp",
           "kind": "maintain",
           "weeks": null,
-          "frequency": "once a week",
+          "frequency": null,
           "exercises": [
             "Fast volley rallies at the net once a week."
           ]
         }
       },
       "maintain_fix": "B",
-      "role_drills": {
-        "drive": "Partner feeds fast balls at your body through the middle; volley each one. 20 balls.",
-        "reves": "Defend smashes off the back glass from a partner's feed. 15 balls.",
-        "every": "Quick-fire volleys at the net with a partner, both at the net. 3 rounds of 30 seconds."
-      },
+      "court_drills": [
+        "Quick-fire volleys with a partner, both at the net: 3 rounds of 30 seconds.",
+        "A partner feeds fast balls at your body; volley each one. 20 balls."
+      ],
       "retest_weeks": 4,
       "retest_note": "Reaction improves fastest, so it's often the first stat that moves.",
-      "plain_name": "ruler-drop catch",
       "weapon": {
         "headline": "Fast hands at the net",
         "body": "your reactions are sharp"
-      },
-      "improve": {
-        "drive": "Quicker reactions let you punch volleys through the middle rather than just block them.",
-        "reves": "Reading smashes and fast balls off the glass earlier gives you time to get your racket set.",
-        "every": "You'll win more of the quick-fire reflex exchanges at the net."
       }
     },
     {
       "key": "overhead_squat",
       "name": "Overhead Squat",
+      "plain_name": "overhead squat",
       "measures": "Movement",
       "what_we_measured": "How well your ankles, hips, upper back and shoulders work together as you squat with your arms overhead.",
-      "role_lines": {
-        "drive": "Low balls at your feet, especially the chiquita and low volleys, need you to get down without losing your posture.",
-        "reves": "Bandejas, víboras and smashes need your arms overhead while your trunk stays upright. Tight shoulders or a stiff upper back force your lower back to arch instead.",
-        "every": "Defending from the back means staying low for long rallies. Good squat mechanics let you stay low without tiring your back."
-      },
+      "nickname": "Movement: getting low and reaching high",
+      "notice": "your back gets tired in long defensive rallies, or bandejas and smashes feel cramped, like you can't get your arm fully up.",
+      "why": [
+        {
+          "label": "Heels lifting or knees caving",
+          "when": {
+            "type": "observation",
+            "key": "overhead_squat_fault",
+            "in": [
+              "heels_lift",
+              "knees_cave",
+              "heels_knees"
+            ]
+          },
+          "text": "As you squatted, your {fault}. Tight ankles or weak hips stop you getting low while keeping good posture."
+        },
+        {
+          "label": "Arms dropping or back arching",
+          "when": {
+            "type": "observation",
+            "key": "overhead_squat_fault",
+            "in": [
+              "arms_drop",
+              "back_arch",
+              "arms_back"
+            ]
+          },
+          "text": "As you squatted, your {fault}. A stiff upper back or tight shoulders make your lower back do the work on overheads."
+        },
+        {
+          "label": "No fault recorded",
+          "when": {
+            "type": "observation_missing",
+            "key": "overhead_squat_fault"
+          },
+          "text": "Your coach will go through what they saw and pick the right fix with you."
+        }
+      ],
+      "fix_it": "you can stay low all rally and hit overheads standing tall, without your lower back paying for it.",
       "rules": [
         {
           "when": {
             "type": "observation",
             "key": "overhead_squat_fault",
-            "equals": "heels_knees"
+            "in": [
+              "heels_lift",
+              "knees_cave",
+              "heels_knees"
+            ]
           },
           "fix": "A",
           "text": "Heels lifting or knees caving → show Fix A: ankles and hips."
@@ -288,7 +329,11 @@
           "when": {
             "type": "observation",
             "key": "overhead_squat_fault",
-            "equals": "arms_back"
+            "in": [
+              "arms_drop",
+              "back_arch",
+              "arms_back"
+            ]
           },
           "fix": "B",
           "text": "Arms dropping forward or the lower back arching → show Fix B: shoulders and upper back."
@@ -297,14 +342,15 @@
           "when": {
             "type": "observation",
             "key": "overhead_squat_fault",
-            "equals": "clean"
+            "in": [
+              "clean"
+            ]
           },
           "fix": "C",
           "text": "Clean pattern → show Fix C: maintain."
         }
       ],
       "needs_observation": "overhead_squat_fault",
-      "missing_observation_text": "The fault pattern was not recorded at testing, so the fix is chosen with your coach: ankles and hips, or shoulders and upper back.",
       "fixes": {
         "A": {
           "title": "ankles and hips",
@@ -332,41 +378,50 @@
           "title": "maintain",
           "kind": "maintain",
           "weeks": null,
-          "frequency": "every warm-up",
+          "frequency": null,
           "exercises": [
             "Overhead squats with a stick in every warm-up: 1 set of 8."
           ]
         }
       },
       "maintain_fix": "C",
-      "role_drills": {
-        "drive": "Low-ball feeds: a partner feeds at your feet; stay low and play them back. 15 balls.",
-        "reves": "Shadow bandejas, keeping your chest tall: 2 sets of 10.",
-        "every": "Defensive stance holds from the back glass: 3 holds of 20 seconds."
-      },
+      "court_drills": [
+        "Low-ball feeds: a partner feeds at your feet; stay low and play them back. 15 balls.",
+        "Shadow bandejas, keeping your chest tall: 2 sets of 10."
+      ],
       "retest_weeks": 4,
       "retest_note": null,
-      "plain_name": "overhead squat",
       "weapon": {
         "headline": "Low and tall when it counts",
         "body": "your ankles, hips, upper back and shoulders work well together when you squat with your arms overhead"
-      },
-      "improve": {
-        "drive": "Better squat mechanics let you dig out chiquitas and low volleys while keeping your posture.",
-        "reves": "Freer shoulders and upper back let you hit bandejas, víboras and smashes with your trunk upright, without arching your lower back.",
-        "every": "You can stay low through long defensive rallies without tiring your back."
       }
     },
     {
       "key": "trunk_rotation",
       "name": "Trunk Rotation",
+      "plain_name": "trunk rotation test",
       "measures": "Mobility",
       "what_we_measured": "How far your upper body turns to each side while your hips stay still.",
-      "role_lines": {
-        "drive": "Your forehand and your drive off the glass get their power from turning your shoulders against your hips. Limited rotation means swinging with just your arm.",
-        "reves": "The víbora and the smash are rotation shots. More turn means more spin and pace without forcing your shoulder.",
-        "every": "Getting out of the corner and playing balls off the back glass means turning fast while your feet are still set."
-      },
+      "nickname": "Rotation: your power turn",
+      "notice": "your víbora and smash lack spin and pace even when you swing hard, or your forehand feels like it's all arm.",
+      "why": [
+        {
+          "label": "One side tighter",
+          "when": {
+            "type": "side_gap_pct_over",
+            "pct": 10
+          },
+          "text": "Your upper body turns {gap}% less to the {weaker_side} than to the other side."
+        },
+        {
+          "label": "Both sides below target",
+          "when": {
+            "type": "both_sides_below_target"
+          },
+          "text": "Your rotation scored {score}. {next_tier} starts at {target}, so you're {gap} points away."
+        }
+      ],
+      "fix_it": "you'll get more spin and pace on overheads and drives, without forcing your shoulder.",
       "rules": [
         {
           "when": {
@@ -374,9 +429,8 @@
             "pct": 10
           },
           "fix": "A",
-          "proposed": true,
           "text": "One side more than 10% less than the other (proposed) → show Fix A: even it out.",
-          "note": "Your {weaker} side turns {pct}% less than your {stronger} side."
+          "proposed": true
         },
         {
           "when": {
@@ -410,14 +464,12 @@
         }
       },
       "maintain_fix": null,
-      "role_drills": {
-        "drive": "Med ball side throws from a forehand stance: 3 sets of 6.",
-        "reves": "Shadow víboras, pausing at full shoulder turn: 2 sets of 10.",
-        "every": "Back-glass feeds: let the ball come off the glass, turn and play it out. 10 each side."
-      },
+      "court_drills": [
+        "Med ball side throws against a wall: 3 sets of 6 each side.",
+        "Back-glass feeds: let the ball come off the glass, turn and play it out. 10 each side."
+      ],
       "retest_weeks": 4,
       "retest_note": null,
-      "plain_name": "trunk rotation test",
       "weapon": {
         "headline": "Free shoulder turn",
         "body": "your upper body turns freely, {evenness}",
@@ -427,31 +479,41 @@
           "uneven": "turning further to your {side} by {pct}%",
           "one_side": "measured on one side only"
         }
-      },
-      "improve": {
-        "drive": "More turn puts the power of your shoulders and hips into your forehand and your drive off the glass, instead of just your arm.",
-        "reves": "More rotation adds spin and pace to your víbora and smash without forcing your shoulder.",
-        "every": "You'll turn faster out of the corner and off the back glass while your feet stay set."
       }
     },
     {
       "key": "single_leg_stand",
       "name": "Single Leg Stand, Eyes Closed",
+      "plain_name": "one-leg balance test",
       "measures": "Balance",
       "what_we_measured": "How steady you stay on one leg with your eyes closed, on each side. This tests the balance system in your ankle and body, not your eyesight.",
-      "role_lines": {
-        "drive": "Lunging wide for balls off the side glass ends on one leg. Better balance means a controlled shot and a quick recovery.",
-        "reves": "Landing after a smash or a jumping víbora is a one-leg landing while you're looking up at the ball.",
-        "every": "Padel is full of quick stops on one foot, and ankle sprains are among the most common injuries in the sport. Good balance is your first protection."
-      },
+      "nickname": "Balance: your one-foot control",
+      "notice": "you wobble after a wide lunge or after landing from a smash, or you've rolled an ankle before.",
+      "why": [
+        {
+          "label": "Below target",
+          "when": {
+            "type": "either_side_below_target"
+          },
+          "text": "With your eyes closed, you held steady for {seconds} seconds. {next_tier} starts at {target}, so you're {gap} away."
+        },
+        {
+          "label": "One leg weaker",
+          "when": {
+            "type": "side_gap_pct_over",
+            "pct": 20
+          },
+          "text": "Your {weaker_side} leg held steady for {gap}% less time than your other leg."
+        }
+      ],
+      "fix_it": "you'll play controlled shots off wide lunges, recover faster, and protect your ankles against sprains.",
       "rules": [
         {
           "when": {
             "type": "either_side_below_target"
           },
           "fix": "A",
-          "text": "Sway above tier target on either leg → show Fix A: build balance.",
-          "engine_note": "The engine records time held (seconds) per leg, not sway, so each leg's score is used."
+          "text": "Time held below tier target on either leg → show Fix A: build balance."
         },
         {
           "when": {
@@ -459,12 +521,10 @@
             "pct": 20
           },
           "fix": "B",
+          "text": "One leg holding more than 20% less time than the other (proposed) → also show Fix B: even it out. Ask about past ankle sprains on that side.",
           "also": true,
           "proposed": true,
-          "text": "One leg clearly worse than the other (more than 20% more sway, proposed) → also show Fix B: even it out. Ask about past ankle sprains on that side.",
-          "engine_note": "Sway isn't recorded: one leg's time held more than 20% below the other is used instead.",
-          "coach_note": "Ask about past ankle sprains on that side.",
-          "note": "Your {weaker} leg held on for {pct}% less time than your {stronger} leg."
+          "coach_note": "Ask about past ankle sprains on that side."
         }
       ],
       "fixes": {
@@ -490,14 +550,12 @@
         }
       },
       "maintain_fix": null,
-      "role_drills": {
-        "drive": "Wide lunge and hold on one leg for 2 seconds before recovering: 3 sets of 6 each side.",
-        "reves": "Small jump, land on one leg and hold for 3 seconds: 3 sets of 5 each leg.",
-        "every": "Single-leg stand while bouncing a ball on your racket: 3 holds of 20 seconds each leg."
-      },
+      "court_drills": [
+        "Wide lunge, then hold on one leg for 2 seconds before recovering: 3 sets of 6 each side.",
+        "Small jump, land on one leg and hold for 3 seconds: 3 sets of 5 each leg."
+      ],
       "retest_weeks": 4,
       "retest_note": null,
-      "plain_name": "one-leg balance test",
       "weapon": {
         "headline": "Steady on one leg",
         "body": "you stay steady on one leg with your eyes closed, {evenness}",
@@ -507,31 +565,41 @@
           "uneven": "steadier on your {side} leg by {pct}%",
           "one_side": "measured on one leg only"
         }
-      },
-      "improve": {
-        "drive": "Better balance turns wide lunges to the side glass into controlled shots and quicker recoveries.",
-        "reves": "Steadier one-leg landings after smashes and jumping víboras get you straight back into position.",
-        "every": "Better balance is your first protection in all those quick stops on one foot."
       }
     },
     {
       "key": "shoulder_er",
       "name": "Shoulder External Rotation Strength",
+      "plain_name": "shoulder strength test",
       "measures": "Strength",
       "what_we_measured": "The strength of the muscles at the back of each shoulder that rotate your arm outward.",
-      "role_lines": {
-        "drive": "Your forehand and serve are fast arm swings that have to stop cleanly. The back of the shoulder does the braking, rally after rally.",
-        "reves": "You hit most of the overheads: bandejas, víboras and smashes. Each one loads the back of the shoulder hard. Weakness here is how shoulder pain builds over a season.",
-        "every": "A strong, balanced shoulder lets you swing freely without your body quietly holding back. It also takes load off the elbow, which is where padel elbow starts."
-      },
+      "nickname": "Shoulder strength: the brakes on your arm",
+      "notice": "your smashes and víboras lose pace late in a match, or your shoulder or elbow aches the day after.",
+      "why": [
+        {
+          "label": "Below target",
+          "when": {
+            "type": "racket_side_below_target"
+          },
+          "text": "Your racket arm scored {score}. {next_tier} starts at {target}, so you're {gap} points away."
+        },
+        {
+          "label": "Racket arm weaker",
+          "when": {
+            "type": "racket_side_weaker_pct_over",
+            "pct": 10
+          },
+          "text": "Your racket arm is {gap}% weaker than your other arm. Every overhead is a fast swing and a hard stop, and the back of the shoulder does the stopping."
+        }
+      ],
+      "fix_it": "you can keep hitting hard overheads all match, and get through a full season without shoulder or elbow pain.",
       "rules": [
         {
           "when": {
             "type": "racket_side_below_target"
           },
           "fix": "A",
-          "text": "Strength relative to bodyweight below tier target on your racket arm → show Fix A: strengthen the back of the shoulder.",
-          "engine_note": "The racket arm's score against VALD's age-and-sex bands is used, not strength relative to bodyweight."
+          "text": "Strength relative to bodyweight below tier target on your racket arm → show Fix A: strengthen the back of the shoulder."
         },
         {
           "when": {
@@ -539,10 +607,9 @@
             "pct": 10
           },
           "fix": "B",
-          "also": true,
-          "proposed": true,
           "text": "Racket arm more than 10% weaker than the other arm (proposed) → also show Fix B: close the gap.",
-          "note": "Your racket arm is {pct}% weaker than your other arm."
+          "also": true,
+          "proposed": true
         },
         {
           "when": {
@@ -577,21 +644,20 @@
           "title": "maintain",
           "kind": "maintain",
           "weeks": null,
-          "frequency": "twice a week",
+          "frequency": null,
           "exercises": [
             "Band external rotation, 2 sets of 15, twice a week."
           ]
         }
       },
       "maintain_fix": "C",
-      "role_drills": {
-        "drive": "Band external rotation as part of your warm-up before every match.",
-        "reves": "Limit full-power smashes in practice to 20–30 per session while you build strength.",
-        "every": "Stop and tell us if you feel pain on the outside of your elbow; don't play through it."
-      },
+      "court_drills": [
+        "Band external rotation before every match: 1 set of 15.",
+        "Limit full-power smashes in practice to 20–30 per session while you build strength.",
+        "Stop and tell us if you feel pain on the outside of your elbow; don't play through it."
+      ],
       "retest_weeks": 6,
       "retest_note": null,
-      "plain_name": "shoulder strength test",
       "weapon": {
         "headline": "A shoulder built for overheads",
         "body": "the back of your shoulders is strong and {evenness}",
@@ -601,31 +667,41 @@
           "uneven": "stronger on your {side} side by {pct}%",
           "one_side": "measured on one side only"
         }
-      },
-      "improve": {
-        "drive": "A stronger back of the shoulder brakes your fast forehand and serve cleanly, rally after rally.",
-        "reves": "More strength here helps your shoulder handle bandejas, víboras and smashes across a whole season.",
-        "every": "You'll swing more freely, and you take load off your elbow."
       }
     },
     {
       "key": "hip_abduction",
       "name": "Hip Abduction Strength",
+      "plain_name": "outer-hip strength test",
       "measures": "Strength",
       "what_we_measured": "The strength of the muscles on the outside of each hip that push your leg out to the side.",
-      "role_lines": {
-        "drive": "Pushing off sideways to cover the middle starts here. Strong outer hips mean a faster first lateral step.",
-        "reves": "Lunging toward the side glass on your backhand side loads your outside leg. These muscles keep that knee straight instead of letting it cave in.",
-        "every": "They keep your pelvis level and your knee pointing straight on every lunge and stop, which protects your knees."
-      },
+      "nickname": "Outer-hip strength: your sideways push",
+      "notice": "you're a step late to balls through the middle, or your knee drifts inward when you lunge.",
+      "why": [
+        {
+          "label": "Below target",
+          "when": {
+            "type": "score_below_target"
+          },
+          "text": "Your outer hips scored {score}. {next_tier} starts at {target}, so you're {gap} points away."
+        },
+        {
+          "label": "One side weaker",
+          "when": {
+            "type": "side_gap_pct_over",
+            "pct": 10
+          },
+          "text": "Your {weaker_side} side is {gap}% weaker than your other side."
+        }
+      ],
+      "fix_it": "you'll get a faster first step sideways and straighter knees on every lunge.",
       "rules": [
         {
           "when": {
             "type": "score_below_target"
           },
           "fix": "A",
-          "text": "Strength relative to bodyweight below tier target → show Fix A: build hip strength.",
-          "engine_note": "The engine's score against VALD's age-and-sex bands is used, not strength relative to bodyweight."
+          "text": "Strength relative to bodyweight below tier target → show Fix A: build hip strength."
         },
         {
           "when": {
@@ -633,10 +709,9 @@
             "pct": 10
           },
           "fix": "B",
-          "also": true,
-          "proposed": true,
           "text": "One side more than 10% weaker than the other (proposed) → also show Fix B: close the gap.",
-          "note": "Your {weaker} side is {pct}% weaker than your {stronger} side."
+          "also": true,
+          "proposed": true
         },
         {
           "when": {
@@ -671,21 +746,19 @@
           "title": "maintain",
           "kind": "maintain",
           "weeks": null,
-          "frequency": "every warm-up",
+          "frequency": null,
           "exercises": [
             "Banded lateral walks in every warm-up."
           ]
         }
       },
       "maintain_fix": "C",
-      "role_drills": {
-        "drive": "Lateral push-offs: shuffle and push off to the centre line. 3 sets of 6 each way.",
-        "reves": "Lunges toward the side glass, knee tracking over the toes: 3 sets of 8.",
-        "every": "Lateral shuffles between cones: 4 runs of 6 metres each way."
-      },
+      "court_drills": [
+        "Lateral push-offs: shuffle and push off to the centre line. 3 sets of 6 each way.",
+        "Lunges toward the side glass, knee tracking over the toes: 3 sets of 8 each side."
+      ],
       "retest_weeks": 6,
       "retest_note": "Read this alongside Hip Adduction: the balance between the two matters as much as either number.",
-      "plain_name": "outer-hip strength test",
       "weapon": {
         "headline": "Fast first step to the middle",
         "body": "your outer hips are strong and {evenness}",
@@ -695,23 +768,36 @@
           "uneven": "stronger on your {side} side by {pct}%",
           "one_side": "measured on one side only"
         }
-      },
-      "improve": {
-        "drive": "Stronger outer hips give you a faster first sideways step to cover the middle.",
-        "reves": "Stronger outer hips keep your outside knee straight when you lunge toward the side glass on your backhand side.",
-        "every": "A level pelvis and straight knees on every lunge and stop help protect your knees."
       }
     },
     {
       "key": "hip_adduction",
       "name": "Hip Adduction Strength",
+      "plain_name": "groin strength test",
       "measures": "Strength",
       "what_we_measured": "The strength of the inner thigh (groin) muscles that pull your leg back toward the middle, on each side.",
-      "role_lines": {
-        "drive": "Pulling yourself back to the centre after a wide ball uses these muscles. Strong adductors mean a faster recovery step.",
-        "reves": "Deep lunges and splits to reach balls in the corner stretch the groin under load. That's when strains happen.",
-        "every": "Groin strains are common in sports with sudden sideways stops. A strong groin, roughly as strong as the outer hip, is the best protection."
-      },
+      "nickname": "Groin strength: your pull back to the middle",
+      "notice": "you reach a wide ball but you're slow getting back, or you feel a pull in your inner thigh after a deep lunge.",
+      "why": [
+        {
+          "label": "Weak compared with outer hip",
+          "when": {
+            "type": "same_side_ratio_below",
+            "denominator": "hip_abduction",
+            "ratio": 0.8
+          },
+          "text": "Your groin is {ratio}% as strong as your outer hip. We want it at 80% or more."
+        },
+        {
+          "label": "One side weaker",
+          "when": {
+            "type": "side_gap_pct_over",
+            "pct": 10
+          },
+          "text": "Your {weaker_side} side is {gap}% weaker than your other side."
+        }
+      ],
+      "fix_it": "you'll recover faster after wide balls, with less risk of a groin strain when you lunge into the corner.",
       "rules": [
         {
           "when": {
@@ -720,9 +806,8 @@
             "ratio": 0.8
           },
           "fix": "A",
-          "proposed": true,
           "text": "Adduction less than 80% of abduction on the same side (proposed) → show Fix A: strengthen the groin.",
-          "note": "On your {side} side, your groin is {pct}% as strong as your outer hip. We want it at {target}% or more."
+          "proposed": true
         },
         {
           "when": {
@@ -730,10 +815,9 @@
             "pct": 10
           },
           "fix": "B",
-          "also": true,
-          "proposed": true,
           "text": "One side more than 10% weaker than the other (proposed) → also show Fix B: close the gap.",
-          "note": "Your {weaker} side is {pct}% weaker than your {stronger} side."
+          "also": true,
+          "proposed": true
         },
         {
           "when": {
@@ -768,21 +852,19 @@
           "title": "maintain",
           "kind": "maintain",
           "weeks": null,
-          "frequency": "twice a week",
+          "frequency": null,
           "exercises": [
             "Copenhagen plank twice a week: 2 holds of 20 seconds each side."
           ]
         }
       },
       "maintain_fix": "C",
-      "role_drills": {
-        "drive": "Lateral lunge and push back to centre: 3 sets of 8 each side.",
-        "reves": "Controlled wide lunges into the corner, slow on the way down: 3 sets of 6.",
-        "every": "Warm up your groin with leg swings side to side before every match: 10 each leg."
-      },
+      "court_drills": [
+        "Lateral lunge and push back to centre: 3 sets of 8 each side.",
+        "Leg swings side to side before every match: 10 each leg."
+      ],
       "retest_weeks": 6,
       "retest_note": null,
-      "plain_name": "groin strength test",
       "weapon": {
         "headline": "Quick recovery to the centre",
         "body": "your groin muscles are strong and {evenness}",
@@ -792,11 +874,6 @@
           "uneven": "stronger on your {side} side by {pct}%",
           "one_side": "measured on one side only"
         }
-      },
-      "improve": {
-        "drive": "A stronger groin speeds up your recovery step back to the centre after a wide ball.",
-        "reves": "More groin strength helps you handle deep lunges and splits into the corner.",
-        "every": "Building it up toward the strength of your outer hip is your best protection in sudden sideways stops."
       }
     }
   ]

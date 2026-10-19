@@ -1,29 +1,32 @@
 // services/padelAthleteReport.service.js
-// The padel athlete report ("What it means for your game" / "How to improve").
+// The padel athlete report: "What it means for your game", "How to improve"
+// and "Your full results". One version for every player (no playing side).
 //
-//   engine scores (scoring.js) + library/padel.json
-//     -> buildAthleteReport: weapons, top 3 priorities, role lines, fixes,
-//        combined 6-week plan, retest date (all chosen here, in code)
-//     -> coachProse: the coach's sentences (weapons, plan intro) from the
-//        athlete's name and numbers; the report reads well with this alone.
-//        Role lines are printed word for word from the library, for the
-//        athlete's playing side only, and never go through Gemini.
+//   engine scores (scoring.js) + library/padel.json (built from padel.md)
+//     -> buildAthleteReport: weapons, top 3 priorities, the fixes, the
+//        combined 6-week plan, court drills and retest date (all chosen
+//        here, in code). Each priority shows the library's nickname,
+//        "You'll notice it when…", the "Why" version(s) whose rule matches
+//        the result, and "Fix it and…". Words in {curly brackets} are
+//        filled from the engine's results: whole numbers rounded as the OVR
+//        card rounds, left/right in words, the squat fault in plain words.
+//     -> coachProse: the coach's own sentences (weapon line, plan intro).
 //     -> narrateAthleteReport: Gemini only polishes coachProse. It never
-//        picks tests, exercises or thresholds; an answer with a number not
-//        in its payload, an exercise prescription, a device name or the
-//        other playing side is rejected, and after MAX_ATTEMPTS the coach text is used.
+//        sees or changes the library lines, and never picks tests,
+//        exercises or thresholds; an answer with a number not in its
+//        payload, an exercise prescription or a device name is rejected,
+//        and after MAX_ATTEMPTS the coach text is used.
 //
 // Scores are the existing engine's, read as they are; nothing here changes
 // how they are calculated. Ranking: score points below the Gold line (75),
 // biggest gap first; ties keep library order. Left/right and ratio rules use
-// the library's own percentages on the raw results. Athlete-facing gaps are
-// to the NEXT tier: in seconds or cm for timed tests, in score points for
-// the rest. No device names or device units reach the athlete.
+// the library's own percentages on the raw results.
 
 const LIBRARY = require('../library/padel.json');
 const { findUnsupportedNumbers } = require('./scoredReport.service');
 const { scoreFromVald, pyRound } = require('../scoring/scoring');
 const aiEngine = require('./aiEngine.service');
+const { FAULTS } = require('../library/buildPadelLibrary');
 
 // Timed tests are shown in their own units; every other test as its score
 // out of 99, so no device units (newtons, composite scores) reach the athlete.
@@ -33,7 +36,8 @@ const MANUAL_UNITS = {
   ruler_drop: { word: 'cm', dp: 1 }
 };
 
-const OBSERVATIONS = { overhead_squat_fault: ['heels_knees', 'arms_back', 'clean'] };
+// "Fault seen" on the overhead squat (the two combined values are from older reports).
+const OBSERVATIONS = { overhead_squat_fault: [...FAULTS, 'heels_knees', 'arms_back'] };
 
 const isSet = (v) => v !== undefined && v !== null;
 const roundTo = (x, dp) => Math.round(x * 10 ** dp) / 10 ** dp;
@@ -160,7 +164,8 @@ const conditionHolds = (when, ctx) => {
     case 'score_below_target': return t.score < target;
     case 'score_at_least_target': return t.score >= target;
     case 'not_measured': return false;
-    case 'observation': return observations[when.key] === when.equals;
+    case 'observation': return (when.in || [when.equals]).includes(observations[when.key]);
+    case 'observation_missing': return !isSet(observations[when.key]);
     case 'either_side_below_target': return sides.length ? sides.some(s => s < target) : t.score < target;
     case 'both_sides_below_target': return sides.length === 2 && sides.every(s => s < target);
     case 'racket_side_below_target': {
@@ -186,20 +191,18 @@ const conditionHolds = (when, ctx) => {
 // Every rule that holds; the "otherwise" rule only when none does.
 const selectFixes = (entry, ctx) => {
   if (entry.needs_observation && !isSet(ctx.observations[entry.needs_observation])) {
-    return { rules: [], pending: entry.missing_observation_text };
+    const missing = entry.why.find(w => w.when.type === 'observation_missing');
+    return { rules: [], pending: missing ? missing.text : null };
   }
   let rules = entry.rules.filter(r => r.when.type !== 'otherwise' && conditionHolds(r.when, ctx));
   if (!rules.length) rules = entry.rules.filter(r => r.when.type === 'otherwise');
   return { rules, pending: null };
 };
 
-const OWN_LINE = { RIGHT: 'drive', LEFT: 'reves', BOTH: 'every' };
-const linesFor = (side, block) =>
-  LIBRARY.sides[side].lines.map(who => ({ who, label: LIBRARY.line_labels[who], text: block[who] }));
 
 // ---------- the combined 6-week plan ----------
 
-const buildPlan = (priorities, side) => {
+const buildPlan = (priorities) => {
   const total = LIBRARY.plan.weeks;
   const mainWeeks = priorities.flatMap(p => p.fixes.filter(f => f.kind === 'main' && f.weeks).map(f => Math.min(f.weeks, total)));
   const ends = [...new Set([...mainWeeks.filter(w => w < total), total])].sort((a, b) => a - b);
@@ -245,16 +248,17 @@ const buildPlan = (priorities, side) => {
     from = to + 1;
   }
 
+  // Court drills for the priorities, each listed once.
   const drills = [];
   for (const p of priorities) {
     const entry = LIBRARY.tests.find(e => e.key === p.key);
-    for (const l of linesFor(side, entry.role_drills)) {
-      const hit = drills.find(d => d.text === l.text);
+    for (const text of entry.court_drills) {
+      const hit = drills.find(d => d.text === text);
       if (hit) hit.tests.push(p.name);
-      else drills.push({ ...l, tests: [p.name] });
+      else drills.push({ text, tests: [p.name] });
     }
   }
-  return { weeks: total, phases, roleDrills: drills };
+  return { weeks: total, phases, courtDrills: drills };
 };
 
 const addWeeks = (isoDate, weeks) => {
@@ -263,46 +267,82 @@ const addWeeks = (isoDate, weeks) => {
   return d.toISOString().slice(0, 10);
 };
 
-// ---------- rule sentences ----------
+// ---------- "Why": the library's lines, filled with the athlete's numbers ----------
 
-// A plain sentence for a left/right or ratio rule that fired, from the
-// rule's note template in the library; null when the rule has none.
-const ruleNote = (rule, ctx) => {
-  if (!rule.note) return null;
-  const { t, session, byName } = ctx;
-  const fill = (vars) => rule.note.replace(/\{(\w+)\}/g, (_, k) => vars[k]);
-  const when = rule.when;
-  if (when.type === 'side_gap_pct_over') {
-    const weaker = t.raw_left < t.raw_right ? 'left' : 'right';
-    const stronger = weaker === 'left' ? 'right' : 'left';
-    const pct = Math.round((1 - t[`raw_${weaker}`] / t[`raw_${stronger}`]) * 100);
-    return fill({ weaker, stronger, pct });
+const racketSide = (session) =>
+  (session.athlete && session.athlete.dominant_hand === 'L' ? 'left' : session.athlete && session.athlete.dominant_hand === 'R' ? 'right' : null);
+const pct = (x) => pyRound(x * 100);
+
+// The placeholder values for one "Why" version, from the engine's results.
+const whyValues = (when, template, ctx) => {
+  const { entry, t, session, byName, cfg, observations, timing } = ctx;
+  const u = MANUAL_UNITS[entry.key];
+  const v = {};
+  if (u) v.time = v.distance = `${t.raw} ${u.word}${t.timing === 'hand' ? ' (hand-timed)' : ''}`;
+
+  // Tier gap from the shown score (the racket arm's own score for its rule).
+  let score = shownScore(t);
+  if (when.type === 'racket_side_below_target') score = pyRound(sideScore(racketSide(session), ctx.sessionTest, cfg));
+  v.score = score;
+  const next = nextTierOf(score);
+  if (next) {
+    v.next_tier = next.label;
+    const rawTarget = u ? rawForScore(entry.key, next.min_score, cfg, timing) : null;
+    if (rawTarget !== null) {
+      v.target = `${roundTo(rawTarget, u.dp)} ${u.word}`;
+      v.gap = `${ceilTo(Math.abs(t.raw - rawTarget), u.dp)} ${u.word}`;
+    } else if (/\{gap\} points/.test(template)) {
+      v.target = next.min_score;
+      v.gap = next.min_score - score;
+    } else {
+      v.target = `a score of ${next.min_score}`;
+      v.gap = points(next.min_score - score);
+    }
+  }
+
+  const l = t.raw_left, r = t.raw_right;
+  // Time held: the weaker leg's (or the one leg entered).
+  const held = [l, r].filter(isSet);
+  if (held.length) v.seconds = pyRound(Math.min(...held));
+  if (when.type === 'side_gap_pct_over' && isSet(l) && isSet(r)) {
+    v.weaker_side = l < r ? 'left' : 'right';
+    v.gap = pct(1 - Math.min(l, r) / Math.max(l, r));
   }
   if (when.type === 'racket_side_weaker_pct_over') {
-    const racket = session.athlete.dominant_hand === 'L' ? 'left' : 'right';
-    const other = racket === 'left' ? 'right' : 'left';
-    return fill({ pct: Math.round((1 - t[`raw_${racket}`] / t[`raw_${other}`]) * 100) });
+    const k = racketSide(session);
+    const o = k === 'left' ? 'right' : 'left';
+    v.gap = pct(1 - t[`raw_${k}`] / t[`raw_${o}`]);
   }
   if (when.type === 'same_side_ratio_below') {
     const den = byName[when.denominator];
-    const ratios = ['left', 'right']
-      .filter(s => isSet(t[`raw_${s}`]) && isSet(den[`raw_${s}`]) && den[`raw_${s}`] > 0)
-      .map(s => ({ side: s, ratio: t[`raw_${s}`] / den[`raw_${s}`] }))
-      .sort((a, b) => a.ratio - b.ratio);
-    const low = ratios[0];
-    return fill({ side: low.side, pct: Math.round(low.ratio * 100), target: Math.round(when.ratio * 100) });
+    const sides = ['left', 'right'].filter(s => isSet(t[`raw_${s}`]) && isSet(den[`raw_${s}`]) && den[`raw_${s}`] > 0);
+    v.ratio = Math.min(...sides.map(s => pct(t[`raw_${s}`] / den[`raw_${s}`])));
   }
-  return null;
+  if (when.type === 'observation') v.fault = LIBRARY.fault_words[observations[when.key]];
+  return v;
 };
+
+// Every "Why" version whose rule matches the result, filled in. A line that
+// would still show a {placeholder} is held back rather than printed.
+const whyLines = (ctx) => ctx.entry.why
+  .filter(w => conditionHolds(w.when, ctx))
+  .map(w => {
+    const v = whyValues(w.when, w.text, ctx);
+    return w.text.replace(/\{(\w+)\}/g, (m, k) => (isSet(v[k]) ? String(v[k]) : m));
+  })
+  .filter(line => {
+    if (!/\{\w+\}/.test(line)) return true;
+    console.warn(`[padel report] ${ctx.entry.key}: Why line not filled, left out: ${line}`);
+    return false;
+  });
 
 // ---------- the report ----------
 
 /**
  * Everything the report shows, chosen in code from the engine's scores and
- * the library. profile: { name, position (LEFT/RIGHT/BOTH), testDate }.
+ * the library. profile: { name, testDate } (playing side is not used).
  */
 const buildAthleteReport = ({ profile, scored, session, cfg }) => {
-  const side = LIBRARY.sides[profile.position] ? profile.position : 'BOTH';
   const observations = (session && session.observations) || {};
   const timing = session && session.timing_method;
   const byName = Object.fromEntries(scored.tests.map(t => [t.name, t]));
@@ -340,16 +380,21 @@ const buildAthleteReport = ({ profile, scored, session, cfg }) => {
     .slice(0, 3);
 
   const priorities = ranked.map((r, i) => {
-    const ctx = { t: r.t, key: r.entry.key, sessionTest: session.tests[r.entry.key] || {}, session, byName, cfg, observations };
+    const ctx = { entry: r.entry, t: r.t, key: r.entry.key, sessionTest: session.tests[r.entry.key] || {}, session, byName, cfg, observations, timing };
     const { rules, pending } = selectFixes(r.entry, ctx);
+    const why = whyLines(ctx);
     const fixes = rules.map(rule => ({ key: rule.fix, rule: rule.text, ...(rule.proposed ? { proposed: true } : {}), ...r.entry.fixes[rule.fix] }));
     return {
       rank: i + 1,
       ...r.view,
       gapToTarget: target - shownScore(r.t),
       whatWeMeasured: r.entry.what_we_measured,
-      lines: linesFor(side, r.entry.role_lines),
-      ruleNotes: rules.map(rule => ruleNote(rule, ctx)).filter(Boolean),
+      // The four athlete-facing parts, from the library, in this order.
+      nickname: r.entry.nickname,
+      notice: `You'll notice it when ${r.entry.notice}`,
+      // When no "Why" version matches (e.g. a clean squat that still scored low), the plain score line.
+      why: why.length ? why : [r.view.scoreLine],
+      fixIt: `Fix it and ${r.entry.fix_it}`,
       fixes,
       coachNotes: rules.map(rule => rule.coach_note).filter(Boolean),
       ...(pending ? { fixPending: pending } : {}),
@@ -367,7 +412,7 @@ const buildAthleteReport = ({ profile, scored, session, cfg }) => {
   const inBattery = (e) => !!cfg.tests[e.key];
 
   // "Your full results": one plain line per test that was actually done, with
-  // one "better score" line: the Drive or Revés line, or Every player for Both.
+  // the library's "Fix it and…" line under it.
   const fullResults = results.map(r => ({
     key: r.entry.key,
     test: r.entry.plain_name.charAt(0).toUpperCase() + r.entry.plain_name.slice(1),
@@ -376,7 +421,7 @@ const buildAthleteReport = ({ profile, scored, session, cfg }) => {
     next: r.view.nextTier
       ? `${points(r.view.nextTier.points)} from ${r.view.nextTier.tier}`
       : 'At the top tier',
-    better: r.entry.improve[OWN_LINE[side]]
+    fixIt: `Fix it and ${r.entry.fix_it}`
   }));
 
   return {
@@ -384,21 +429,16 @@ const buildAthleteReport = ({ profile, scored, session, cfg }) => {
     configVersion: scored.config_version,
     athleteName: profile.name,
     firstName: String(profile.name || '').trim().split(/\s+/)[0] || 'Athlete',
-    side: { key: side, label: LIBRARY.sides[side].label },
-    // Role lines are printed as short separate lines; labels (Drive / Revés /
-    // Every player) only when more than one side's lines are shown.
-    showLineLabels: LIBRARY.sides[side].lines.length > 2,
     target: { score: target, label: LIBRARY.target.label },
     weapons: weapons.map(w => ({
       ...w.view,
+      nickname: w.entry.nickname,
       headline: w.entry.weapon.headline,
-      body: w.entry.weapon.body.replace('{evenness}', evenness(w.t, w.entry.weapon.evenness)),
-      // The athlete's own line for this test (Every player when they play both sides).
-      line: linesFor(side, w.entry.role_lines).find(l => l.who === OWN_LINE[side])
+      body: w.entry.weapon.body.replace('{evenness}', evenness(w.t, w.entry.weapon.evenness))
     })),
     priorities,
     fullResults,
-    plan: buildPlan(priorities, side),
+    plan: buildPlan(priorities),
     retest: { weeks: retestWeeks, date: retestDate, dateText: longDate(retestDate) },
     // For staff only: never shown to the athlete (athletes only see what was tested).
     notTested: LIBRARY.tests.filter(e => inBattery(e) && !tested.has(e.key)).map(e => e.name),
@@ -412,8 +452,8 @@ const buildAthleteReport = ({ profile, scored, session, cfg }) => {
 /**
  * The coach's own sentences, from the athlete's name and numbers. This is the
  * report's text whenever Gemini is unavailable or rejected, and the text
- * Gemini is asked to polish. Role lines are not part of it: they are always
- * printed word for word from the library, for the athlete's side only.
+ * Gemini is asked to polish. The library lines (nickname, notice, Why, Fix
+ * it) are not part of it: they are always printed as filled in by the engine.
  */
 const coachProse = (ar) => {
   const name = ar.firstName;
@@ -437,7 +477,7 @@ Every piece of text in the payload is already complete and correct. It was chose
 RULES (all mandatory):
 1. Use only numbers present in the payload, copied exactly. Never compute, round, estimate or invent a number.
 2. Never add, name or suggest an exercise, drill, set, rep, hold or training load. Never change which tests are weapons or priorities, or their order.
-3. Keep every fact from coach_text. Don't drop anything; don't add claims. Never mention a playing side other than payload.playing_side (a Revés player never reads about the drive side, and the other way round).
+3. Keep every fact from coach_text. Don't drop anything; don't add claims.
 4. Address the athlete by their first name (payload.first_name) and speak to them as "you".
 5. Never mention testing devices or brands (no "HumanTrak", "Dynamo" or "VALD") and never use newtons or other device units.
 6. No diagnoses, injuries or injury predictions; describe weaknesses as things to build.
@@ -454,7 +494,6 @@ const buildNarrationPayload = (ar) => {
   const plain = coachProse(ar);
   return {
     first_name: ar.firstName,
-    playing_side: ar.side.label,
     weapons: ar.weapons.map((w, i) => ({ test: w.plainName, headline: w.headline, result: w.number.value, coach_text: plain.weapons[i] })),
     plan: { weeks: ar.plan.weeks, retest_date: ar.retest.dateText, intro: plain.planIntro }
   };
@@ -464,8 +503,6 @@ const buildNarrationPayload = (ar) => {
 const PRESCRIPTION = /\b(?:sets?|reps?|repetitions?|holds?|rounds?)\s+of\b|\b\d+\s*(?:x|×)\s*\d+|\b\d+\s+(?:sets|reps|repetitions|holds|rounds)\b/i;
 // No device names or device units in anything the athlete reads.
 const DEVICE_WORDS = /\b(?:humantrak|dynamo|vald|newtons?)\b|\d\s*N\b/i;
-// The other side's name, which a one-side player must never read.
-const OTHER_SIDE = { Drive: /\brev[eé]s\b/i, 'Revés': /\bdrive\b/i };
 
 const stripFences = (text) => {
   let t = String(text || '').replace(/```json\s*/gi, '').replace(/```\s*/g, '').trim();
@@ -486,8 +523,6 @@ const problemsWith = (prose, payload) => {
   if (bad.length) out.push(`it used numbers that are not in the payload: ${bad.join(', ')}`);
   if (strings.some(s => PRESCRIPTION.test(s))) out.push('it wrote an exercise prescription (sets, reps, holds or rounds); exercises are not yours to write');
   if (strings.some(s => DEVICE_WORDS.test(s))) out.push('it named a testing device or a device unit (HumanTrak, Dynamo, VALD, newtons)');
-  const other = OTHER_SIDE[payload.playing_side];
-  if (other && strings.some(s => other.test(s))) out.push(`it mentioned the other playing side; this athlete plays ${payload.playing_side} only`);
   return out;
 };
 
@@ -555,7 +590,6 @@ module.exports = {
   narrateAthleteReport,
   coachProse,
   DEVICE_WORDS,
-  OTHER_SIDE,
   cleanObservations,
   problemsWith
 };

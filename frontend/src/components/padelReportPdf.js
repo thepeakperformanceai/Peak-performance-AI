@@ -26,7 +26,6 @@ const tierByLabel = (label) => TIERS[String(label || '').toLowerCase()] || TIERS
 const PT = 0.3528                       // mm per point
 const lineH = (size, lead = 1.35) => size * PT * lead
 
-const SIDE_LABEL = { RIGHT: 'Drive', LEFT: 'Revés', BOTH: 'Both' }
 
 /**
  * Builds the two-page report. opts.logo = { dataUrl, w, h } (mm), optional.
@@ -96,7 +95,7 @@ export function buildPadelReportPdf(report, opts = {}) {
     font(15, 'bold', TXT)
     doc.text(String(report.athleteName || ar.athleteName || '').toUpperCase(), W - M, 17.5, { align: 'right' })
     font(8, 'normal', MUTED)
-    doc.text(`${ar.side?.label || SIDE_LABEL[rc.position] || ''} side · OVR ${rc.overallOVR ?? '--'} ${t.label} · tested ${rc.testDate || ''}`, W - M, 22, { align: 'right' })
+    doc.text(`Padel · OVR ${rc.overallOVR ?? '--'} ${t.label} · tested ${rc.testDate || ''}`, W - M, 22, { align: 'right' })
     y = TOP
     if (kicker) {
       font(7.5, 'bold', t.deep)
@@ -127,7 +126,7 @@ export function buildPadelReportPdf(report, opts = {}) {
 
   // ---------- page 1: what it means for your game ----------
 
-  newPage('What it means for your game', `FOR ${String(ar.side.label).toUpperCase()}-SIDE PLAYERS · ${String(ar.firstName).toUpperCase()}`)
+  newPage('What it means for your game', `PADEL · ${String(ar.firstName).toUpperCase()}`)
 
   section('Your weapons', 'your two best results')
   if (ar.weapons.length) {
@@ -136,7 +135,7 @@ export function buildPadelReportPdf(report, opts = {}) {
       const c = tierByLabel(w.tier)
       let yy = top + pad
       font(7, 'bold', c.soft)
-      if (draw) doc.text(String(w.plainName).toUpperCase(), x + pad, yy + 2.5, { charSpace: 0.3 })
+      if (draw) doc.text(String(w.nickname || w.plainName).toUpperCase(), x + pad, yy + 2.5, { charSpace: 0.3 })
       yy += 4.5
       yy += para(w.headline, x + pad, yy, bw - 2 * pad, 13, 'bold', c.ink, draw, 1.15) + 1.5
       font(17, 'bold', c.ink)
@@ -145,9 +144,7 @@ export function buildPadelReportPdf(report, opts = {}) {
       font(7.5, 'bold', c.soft)
       if (draw) doc.text(w.number.isScore ? `out of 99 · ${w.tier}` : w.tier, x + pad + nw + 2.5, yy + 6)
       yy += 9
-      yy += para(prose.weapons?.[i] || '', x + pad, yy, bw - 2 * pad, 8.5, 'bold', c.ink, draw) + 1
-      // The library's line for the athlete's side, word for word.
-      if (w.line) yy += para(w.line.text, x + pad, yy, bw - 2 * pad, 8.5, 'normal', c.ink, draw)
+      yy += para(prose.weapons?.[i] || '', x + pad, yy, bw - 2 * pad, 8.5, 'normal', c.ink, draw)
       return yy + pad - top
     }
     const hgt = Math.max(...ar.weapons.map((w, i) => weaponBlock(w, i, M, 0, false)))
@@ -167,14 +164,15 @@ export function buildPadelReportPdf(report, opts = {}) {
   if (!ar.priorities.length) {
     y += para('Every scored test is at Gold or above: nothing below target to prioritise.', M, y, CW, 9, 'normal', MUTED)
   }
-  // Each priority is drawn piece by piece: the heading stays with its score
-  // line, and any line that wouldn't fit above the footer moves to the next page.
+  // Each priority: the library's nickname, "You'll notice it when…", the
+  // matching "Why" line(s) and "Fix it and…", in that order, drawn piece by
+  // piece so any piece that wouldn't fit above the footer moves to the next page.
   for (const p of ar.priorities) {
     const x = M + 13, w = CW - 13
     const c = tierByLabel(p.tier)
-    font(9.5, 'bold', TXT)
-    const headH = 9 + wrap(p.scoreLine, w).length * lineH(9.5) + 1.5
-    ensure(headH + lineH(9) * 2)
+    font(9, 'normal', TXT)
+    const headH = 13 + wrap(p.notice, w).length * lineH(9)
+    ensure(headH)
     doc.setDrawColor(RULE)
     doc.setLineWidth(0.25)
     doc.line(M, y, W - M, y)
@@ -184,36 +182,28 @@ export function buildPadelReportPdf(report, opts = {}) {
     doc.text(String(p.rank), M + 4.5, y + 8.6, { align: 'center' })
     pill(p.tier.toUpperCase(), W - M, y + 3, c.ink, c.track)
     font(12.5, 'bold', TXT)
-    doc.text(p.name, x, y + 7)
-    y += 9
-    y += para(p.scoreLine, x, y, w, 9.5, 'bold', TXT) + 1.5
-    // Left/right and ratio notes, then the role lines: one short line each.
+    doc.text(p.nickname || p.name, x, y + 7)
+    font(7.5, 'normal', FAINT)
+    doc.text(p.name, x, y + 11)
+    y += 13
     const pieces = [
-      ...p.ruleNotes.map(t => ({ text: t, color: c.deep, style: 'bold' })),
-      ...p.lines.map(l => ({ label: ar.showLineLabels ? `${l.label}: ` : '', text: l.text, color: TXT, style: 'normal' }))
+      { text: p.notice, style: 'normal', color: TXT },
+      ...p.why.map(t => ({ text: t, style: 'bold', color: TXT, bullet: true })),
+      { text: p.fixIt, style: 'bold', color: c.deep }
     ]
     for (const piece of pieces) {
-      const full = `${piece.label || ''}${piece.text}`
+      const indent = piece.bullet ? 3 : 0
       font(9, piece.style, piece.color)
-      const h = wrap(full, w - 3).length * lineH(9)
+      const h = wrap(piece.text, w - indent).length * lineH(9)
       ensure(h + 1)
-      font(9, 'normal', c.deep)
-      doc.text('•', x, y + 9 * PT)
-      if (piece.label) {
-        // Bold label, then the line (wrapped as one piece).
-        const lines = wrap(full, w - 3)
-        font(9, 'bold', MUTED)
-        doc.text(piece.label, x + 3, y + 9 * PT)
-        const lw = doc.getTextWidth(piece.label)
-        font(9, 'normal', TXT)
-        doc.text(lines[0].slice(piece.label.length), x + 3 + lw, y + 9 * PT)
-        lines.slice(1).forEach((ln, k) => doc.text(ln, x + 3, y + 9 * PT + (k + 1) * lineH(9)))
-      } else {
-        para(piece.text, x + 3, y, w - 3, 9, piece.style, piece.color)
+      if (piece.bullet) {
+        font(9, 'normal', c.deep)
+        doc.text('•', x, y + 9 * PT)
       }
-      y += h + 1
+      para(piece.text, x + indent, y, w - indent, 9, piece.style, piece.color)
+      y += h + 1.4
     }
-    y += 2
+    y += 1.5
   }
 
   // ---------- page 2: how to improve ----------
@@ -289,15 +279,15 @@ export function buildPadelReportPdf(report, opts = {}) {
     for (const note of p.coachNotes || []) { ensure(6); y += para(`${p.name}: ${note}`, M, y, CW, 8.5, 'normal', MUTED) + 1 }
   }
 
-  if (ar.plan.roleDrills.length) {
-    section('Role drills', `add to your sessions · ${ar.side.label} side`)
-    for (const d of ar.plan.roleDrills) {
+  if (ar.plan.courtDrills?.length) {
+    section('Court drills', 'add to your sessions')
+    for (const d of ar.plan.courtDrills) {
       font(8.2, 'normal', TXT)
-      const h = wrap(d.text, CW - 26).length * lineH(8.2)
+      const h = wrap(d.text, CW - 3).length * lineH(8.2)
       ensure(h + 1)
-      font(8.2, 'bold', MUTED)
-      doc.text(d.label, M, y + 8.2 * PT)
-      para(d.text, M + 26, y, CW - 26, 8.2, 'normal', TXT)
+      font(8.2, 'normal', t.deep)
+      doc.text('•', M, y + 8.2 * PT)
+      para(d.text, M + 3, y, CW - 3, 8.2, 'normal', TXT)
       y += h + 0.8
     }
   }
@@ -329,7 +319,7 @@ export function buildPadelReportPdf(report, opts = {}) {
   ;['TEST', 'YOUR RESULT', 'LEVEL', 'NEXT STEP'].forEach((h, i) => doc.text(h, cols[i], y + 3, { charSpace: 0.3 }))
   y += 5
   for (const r of ar.fullResults || []) {
-    const betterText = r.better ? `Better score: ${r.better}` : ''
+    const betterText = r.fixIt || ''
     // Wrapped once, in the body font, leaving room for the bold lead-in.
     font(8.2, 'normal', TXT)
     const betterLines = betterText ? wrap(betterText, CW - 3) : []
@@ -350,9 +340,9 @@ export function buildPadelReportPdf(report, opts = {}) {
     doc.text(r.next, cols[3], y + 5.6)
     y += 8
     if (betterText) {
-      // "Better score:" in the tier colour, then the line itself.
+      // "Fix it and" in the tier colour, then the rest of the library line.
       font(8.2, 'bold', c.deep)
-      const lead = 'Better score: '
+      const lead = 'Fix it and '
       const lines = betterLines
       doc.text(lead, M, y + 8.2 * PT)
       const lw = doc.getTextWidth(lead)
