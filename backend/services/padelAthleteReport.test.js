@@ -415,8 +415,8 @@ test('full results: the library\'s "Fix it and…" line under each result', () =
 test('full results and draft notice: plain words, no device names', () => {
   const ar = build();
   assert.equal(R.DEVICE_WORDS.test(JSON.stringify(ar.fullResults)), false);
-  assert.equal(ar.draftNotice, 'Draft – pending clinical review');
-  assert.equal(LIB.draft_notice, ar.draftNotice);                     // one setting: library/padel.json draft_notice
+  assert.equal(LIB.draft_notice, null);                               // switched off: library/padel.json draft_notice
+  assert.equal(ar.draftNotice, null);
 });
 
 // ---------- plan and retest ----------

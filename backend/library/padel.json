@@ -3,7 +3,7 @@
   "sport": "padel",
   "source": "docs/library/padel.md (Oct 18, 2026)",
   "notes": "Built from docs/library/padel.md by scripts/build-padel-library.js; edit padel.md, then rebuild. One version for every player (no playing side). Scores come from the existing scoring engine, unchanged. Words in curly brackets are filled in by the engine from the athlete's results; Gemini never writes or changes these lines. plain_name, measures and weapon (headline, body, evenness) are PeakPerformance wording added for the report, not text from padel.md.",
-  "draft_notice": "Draft – pending clinical review",
+  "draft_notice": null,
   "draft_notice_help": "Shown in the footer of every page of the padel athlete report. Set draft_notice to null (or \"\") to switch it off; applies to reports generated after the change. Kept when the library is rebuilt.",
   "target": {
     "score": 75,
