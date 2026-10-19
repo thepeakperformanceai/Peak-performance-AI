@@ -16,7 +16,7 @@
 //   timing_method: 'hand' | 'electronic',
 //   tests: {
 //     sprint_30m:     { status: 'completed', value: 4.21 },
-//     beep_test:      { status: 'completed', level: 11, shuttle: 4 },
+//     cod_505:        { status: 'completed', left: 2.52, right: 2.47 },   // best of both feet
 //     knee_extension: { status: 'completed', left: 612, right: 533, cutoffs: [200, 300, 450, 600] },
 //     overhead_squat: { status: 'completed', value: 70, band: 'within_normal' },
 //     ...
@@ -131,23 +131,10 @@ const valdBandIndex = (value, cutoffs, higherIsBetter = true) =>
     ? cutoffs.filter(c => value > c).length
     : cutoffs.filter(c => value < c).length;
 
-const beepDecimal = (level, shuttle, cfg) => {
-  const perLevel = cfg.beep_shuttles_per_level[String(Math.trunc(level))];
-  if (perLevel === undefined) throw new Error(`unknown beep level ${level}`);
-  return level + shuttle / perLevel;
-};
-
-// Yo-Yo IR1: level.shuttle -> cumulative metres (each shuttle is 2 x 20 m).
-// cfg.yoyo_shuttles_per_level lists the levels in order, e.g. {"5": 1, "9": 1, ...}.
-const yoyoDistance = (level, shuttle, cfg) => {
-  const table = cfg.yoyo_shuttles_per_level;
-  if (!table || table[String(level)] === undefined) throw new Error(`unknown Yo-Yo level ${level}`);
-  let shuttles = 0;
-  for (const [lvl, n] of Object.entries(table).sort((a, b) => Number(a[0]) - Number(b[0]))) {
-    if (Number(lvl) === Number(level)) return (shuttles + shuttle) * 40;
-    shuttles += n;
-  }
-  throw new Error(`unknown Yo-Yo level ${level}`);
+// The better of two results on a manual scale (lower is better for times).
+const bestOf = (values, anchors) => {
+  const pts = [...anchors].sort((a, b) => a[1] - b[1]);
+  return pts[pts.length - 1][0] > pts[0][0] ? Math.max(...values) : Math.min(...values);
 };
 
 const plausible = (value, rng) => rng == null || (rng[0] <= value && value <= rng[1]);
@@ -186,13 +173,19 @@ const scoreTest = (name, testIn, tdef, cfg, timingMethod) => {
   if (tdef.source === 'manual') {
     out.benchmark = 'research';
     let raw;
-    if (name === 'beep_test') {
-      raw = beepDecimal(testIn.level, testIn.shuttle, cfg);
-      out.raw = `${testIn.level}.${testIn.shuttle}`;
-    } else if (name === 'yoyo_ir1') {
-      raw = yoyoDistance(testIn.level, testIn.shuttle, cfg);
-      out.raw = `${testIn.level}.${testIn.shuttle}`;
-      out.distance_m = raw;
+    if (tdef.best_of_left_right) {
+      // Timed both ways (e.g. 5-0-5 turning off each foot): both kept, the better one scored.
+      const left = isSet(testIn.left) ? testIn.left : null;
+      const right = isSet(testIn.right) ? testIn.right : null;
+      out.raw_left = left;
+      out.raw_right = right;
+      const sides = [left, right].filter(v => v !== null);
+      if (!sides.length || sides.some(v => !plausible(v, rng))) {
+        out.status = 'invalid';
+        return out;
+      }
+      raw = bestOf(sides, cfg.manual_anchors[name]);
+      out.raw = raw;
     } else {
       raw = testIn.value;
       out.raw = raw;
@@ -437,8 +430,7 @@ module.exports = {
   scoreFromAnchors,
   scoreFromVald,
   valdBandIndex,
-  beepDecimal,
-  yoyoDistance,
+  bestOf,
   scoreTest,
   buildFlags,
   scoreSession

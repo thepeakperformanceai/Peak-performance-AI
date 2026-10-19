@@ -41,7 +41,6 @@ OUTPUT THIS EXACT SHAPE (the test names shown are FOOTBALL examples — replace 
     { "test": "30m Sprint (0-30m)", "raw": "4.1 s", "avg": "Avg: 4.2-4.4s", "score": 82 },
     { "test": "Illinois Agility Test", "raw": "15.8 s", "avg": "Avg: 16.0-16.5s", "score": 79 },
     { "test": "Standing Broad Jump", "raw": "215 cm", "avg": "Avg: 200-220cm", "score": 74 },
-    { "test": "Beep Test", "raw": "9.7", "avg": "Avg: 8.5-9.5", "score": 76 },
     { "test": "Ruler Drop Test", "raw": "21 cm", "avg": "Avg: 20-24cm", "score": 68 },
     { "test": "Single Leg Stand (Eyes Closed)", "raw": "18 s", "avg": "Avg: 15-20s", "score": 71 }
   ],
@@ -89,11 +88,11 @@ RULES:
 // correct set for the athlete's sport, not a generic Football list.
 const SPORT_BATTERY = {
   Football: {
-    manual: ['30m Sprint (0-30m)', 'Illinois Agility Test', 'Standing Broad Jump', 'Single Leg Stand (Eyes Closed)', 'Ruler Drop Test', 'Beep Test'],
+    manual: ['30m Sprint (0-30m)', 'Illinois Agility Test', 'Standing Broad Jump', 'Single Leg Stand (Eyes Closed)', 'Ruler Drop Test'],
     dynamo: ['Hip Extension', 'Knee Extension', 'Ankle Plantarflexion'],
   },
   Cricket: {
-    manual: ['30m Sprint (0-30m)', '5-10-5 Pro Agility Shuttle', 'Medicine Ball Chest Throw', 'Single Leg Stand (Eyes Closed)', 'Ruler Drop Test', 'Yo-Yo Intermittent Recovery Test'],
+    manual: ['30m Sprint (0-30m)', '5-10-5 Pro Agility Shuttle', 'Medicine Ball Chest Throw', 'Single Leg Stand (Eyes Closed)', 'Ruler Drop Test'],
     dynamo: ['Shoulder External Rotation', 'Shoulder Internal Rotation', 'Elbow Extension', 'Hip Extension'],
   },
   Padel: {

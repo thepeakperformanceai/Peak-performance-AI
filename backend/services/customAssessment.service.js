@@ -27,9 +27,7 @@ const MANUAL_TESTS = {
   sprint_20m: { label: '20m Sprint', unit: 's' },
   sprint_30m: { label: '30m Sprint', unit: 's' },
   ruler_drop: { label: 'Ruler Drop', unit: 'cm' },
-  beep_test: { label: 'Beep Test', unit: 'level.shuttle' },
   cod_505: { label: '505 Agility', unit: 's' },
-  yoyo_ir1: { label: 'Yo-Yo IR1', unit: 'level.shuttle' },
   medicine_ball: { label: 'Medicine Ball Throw (seated, 4 kg)', unit: 'm' }
 };
 
@@ -39,7 +37,9 @@ const MANUAL_TESTS = {
  */
 const manualSource = (key, benchmarkSport, all = configs()) => {
   const order = [benchmarkSport, ...SPORTS.filter(s => s !== benchmarkSport)].filter(s => SPORTS.includes(s));
-  return order.find(s => all[s].tests[key]?.source === 'manual') || null;
+  // Anchors a sport borrows from another (football and padel 5-0-5 from cricket)
+  // are taken from the original, which also takes one time, not one per foot.
+  return order.find(s => all[s].tests[key]?.source === 'manual' && !all[s].tests[key]?.citation?.borrowed_from) || null;
 };
 
 /** The manual test list for the form: key, label, unit, which sport's norms. */
@@ -195,8 +195,6 @@ const buildCustomConfig = ({ testsIn = [], benchmarkSport = 'football', mappings
     vald_band_labels: base.vald_band_labels,
     vald_band_edge_scores: base.vald_band_edge_scores,
     vald_band_midpoints: base.vald_band_midpoints,
-    beep_shuttles_per_level: base.beep_shuttles_per_level,
-    yoyo_shuttles_per_level: all.cricket.yoyo_shuttles_per_level,
     tests,
     // Equal weights: the OVR is the plain mean of the stats that have a score.
     stat_weights: Object.fromEntries(STATS.map(s => [s, 1])),

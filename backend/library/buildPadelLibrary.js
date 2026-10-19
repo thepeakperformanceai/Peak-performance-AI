@@ -30,8 +30,8 @@ const ENGINE = [
   },
   {
     key: 'cod_505', plain_name: '5-0-5 turn test', measures: 'Agility',
-    rules: [{ type: 'score_below_target' }, { type: 'not_measured' }],
-    why: [{ type: 'score_below_target' }, { type: 'not_measured' }],
+    rules: [{ type: 'score_below_target' }, { type: 'slower_side_pct_over', pct: 5 }],
+    why: [{ type: 'score_below_target' }, { type: 'slower_side_pct_over', pct: 5 }],
     kinds: { A: 'main', B: 'addon' }, maintain_fix: null,
     weapon: { headline: 'Sharp stop and turn', body: 'you brake and turn fast' }
   },
@@ -207,7 +207,7 @@ function buildPadelLibrary(md, settings = {}) {
   });
 
   return {
-    library_version: 'padel-library-v2.0',
+    library_version: 'padel-library-v2.1',
     sport: 'padel',
     source: `docs/library/padel.md (${date})`,
     notes: 'Built from docs/library/padel.md by scripts/build-padel-library.js; edit padel.md, then rebuild. One version for every player (no playing side). Scores come from the existing scoring engine, unchanged. Words in curly brackets are filled in by the engine from the athlete\'s results; Gemini never writes or changes these lines. plain_name, measures and weapon (headline, body, evenness) are PeakPerformance wording added for the report, not text from padel.md.',

@@ -19,7 +19,7 @@ const FULL = {
     sprint_10m: { status: 'completed', value: 1.85 },
     sprint_30m: { status: 'completed', value: 4.30 },
     ruler_drop: { status: 'completed', value: 11.0 },
-    beep_test: { status: 'completed', level: 10, shuttle: 0 },
+    cod_505: { status: 'completed', left: 2.62, right: 2.59 },
     single_leg_stand: { status: 'completed', left: 20, right: 22, cutoffs: [3, 8, 15, 25] },
     trunk_rotation: { status: 'completed', left: 45, right: 47, cutoffs: [20, 30, 40, 55] },
     overhead_squat: { status: 'completed', value: 70, cutoffs: [30, 50, 65, 80] },
@@ -37,7 +37,7 @@ const findTest = (out, name) => out.tests.find(t => t.name === name);
 test('anchor points exact', () => {
   assert.ok(close(scoreFromAnchors(4.30, A.sprint_30m), 70));
   assert.ok(close(scoreFromAnchors(11.0, A.ruler_drop), 85));
-  assert.ok(close(scoreFromAnchors(10.0, A.beep_test), 55));
+  assert.ok(close(scoreFromAnchors(2.59, A.cod_505), 70));
 });
 
 test('anchor interpolation and limits', () => {
@@ -67,20 +67,37 @@ test('vald label only is midpoint and partial', () => {
   assert.ok(t.score === 63 && t.partial);
 });
 
-test('full session not provisional, agility excluded', () => {
+test('full session not provisional, endurance excluded (no endurance test in the battery)', () => {
   const out = scoreSession(FULL, cfg);
   assert.notEqual(out.ovr.value, null);
   assert.ok(!out.ovr.provisional);
-  assert.equal(out.stats.agility.status, 'not_in_battery');
+  assert.equal(out.stats.endurance.status, 'not_in_battery');
+  assert.equal(out.stats.endurance.value, null);
+  assert.equal(cfg.tests.beep_test, undefined);
 });
 
-test('missing beep injured', () => {
+test('missing 5-0-5 injured', () => {
   const s = copy(FULL);
-  s.tests.beep_test = { status: 'injured' };
+  s.tests.cod_505 = { status: 'injured' };
   const out = scoreSession(s, cfg);
-  assert.equal(out.stats.endurance.status, 'not_tested');
+  assert.equal(out.stats.agility.status, 'not_tested');
   assert.ok(out.ovr.provisional);
-  assert.ok(out.ovr.reasons.includes('beep_test: injured'));
+  assert.ok(out.ovr.reasons.includes('cod_505: injured'));
+});
+
+test('5-0-5: both feet kept, the fastest scored on cricket\'s interim scale', () => {
+  assert.deepEqual(A.cod_505, require('./cricket_v1.json').manual_anchors.cod_505);
+  assert.deepEqual(cfg.tests.cod_505.citation, { basis: 'interim', borrowed_from: 'cricket' });
+  const t = findTest(scoreSession(FULL, cfg), 'cod_505');
+  assert.deepEqual([t.raw_left, t.raw_right, t.raw], [2.62, 2.59, 2.59]);
+  assert.ok(close(t.score, 70));
+  const s = copy(FULL);
+  s.tests.cod_505 = { status: 'completed', right: 2.46 };                    // one foot only
+  assert.ok(close(findTest(scoreSession(s, cfg), 'cod_505').score, 85));
+  s.tests.cod_505 = { status: 'completed', left: 2.5, right: 9.9 };          // implausible side
+  assert.equal(findTest(scoreSession(s, cfg), 'cod_505').status, 'invalid');
+  s.tests.cod_505 = { status: 'completed', value: 2.5 };                     // no feet entered
+  assert.equal(findTest(scoreSession(s, cfg), 'cod_505').status, 'invalid');
 });
 
 test('one test missing in speed is partial', () => {

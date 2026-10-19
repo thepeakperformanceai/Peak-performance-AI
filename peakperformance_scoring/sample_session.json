@@ -5,7 +5,7 @@
     "sprint_10m": {"status": "completed", "value": 1.70},
     "sprint_30m": {"status": "completed", "value": 4.21},
     "ruler_drop": {"status": "completed", "value": 14.5},
-    "beep_test": {"status": "injured"},
+    "cod_505": {"status": "injured"},
     "single_leg_stand": {"status": "completed", "left": 18, "right": 22, "cutoffs": [3, 8, 15, 25]},
     "trunk_rotation": {"status": "completed", "left": 42, "right": 40, "cutoffs": [20, 30, 40, 55]},
     "overhead_squat": {"status": "completed", "value": 68, "band": "within_normal"},

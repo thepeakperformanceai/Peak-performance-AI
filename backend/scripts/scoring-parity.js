@@ -58,9 +58,14 @@ const valdBilateral = (lo, hi, dp) => {
 };
 
 const randomSession = () => {
-  const beepStatus = pick(STATUSES);
-  const level = 1 + Math.floor(rand() * 21);
-  const shuttle = Math.floor(rand() * (cfg.beep_shuttles_per_level[String(level)] + 1));
+  // 5-0-5: a time off each foot (sometimes one foot only, or none).
+  const codStatus = pick(STATUSES);
+  const cod = { status: codStatus };
+  if (codStatus === 'completed') {
+    const feet = pick(['both', 'both', 'both', 'left', 'right', 'none']);
+    if (feet === 'both' || feet === 'left') cod.left = between(1.6, 4.3, 2);
+    if (feet === 'both' || feet === 'right') cod.right = between(1.6, 4.3, 2);
+  }
   const ohsStatus = pick(STATUSES);
   const ohs = { status: ohsStatus };
   if (ohsStatus === 'completed') {
@@ -72,7 +77,7 @@ const randomSession = () => {
     sprint_10m: manual(1.2, 3.8, 2),
     sprint_30m: manual(3.3, 8.5, 2),
     ruler_drop: manual(0, 32, 1),
-    beep_test: beepStatus === 'completed' ? { status: beepStatus, level, shuttle } : { status: beepStatus },
+    cod_505: cod,
     single_leg_stand: valdBilateral(0, 32, 0),
     trunk_rotation: valdBilateral(0, 95, 0),
     overhead_squat: ohs,

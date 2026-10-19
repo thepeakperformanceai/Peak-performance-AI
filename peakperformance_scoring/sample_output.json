@@ -6,12 +6,12 @@
     "position": "MID"
   },
   "sport": "football",
-  "config_version": "football-v1.1",
+  "config_version": "football-v1.2",
   "ovr": {
     "value": 71,
     "provisional": true,
     "reasons": [
-      "beep_test: injured"
+      "cod_505: injured"
     ]
   },
   "stats": {
@@ -25,11 +25,11 @@
     },
     "agility": {
       "value": null,
-      "status": "not_in_battery"
+      "status": "not_tested"
     },
     "endurance": {
       "value": null,
-      "status": "not_tested"
+      "status": "not_in_battery"
     },
     "balance": {
       "value": 78,
@@ -68,7 +68,7 @@
       "raw": 14.5
     },
     {
-      "name": "beep_test",
+      "name": "cod_505",
       "status": "injured",
       "score": null,
       "partial": false,

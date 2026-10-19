@@ -61,12 +61,16 @@ flags: hip adduction below 80% of abduction (amber "groin risk"), and a Shoulder
 gap where the dominant arm is weaker is "monitor" (never red, no Power cap).
 Padel's manual-test anchors are interim and approximate (adult male).
 
+No sport has an endurance test (the Beep Test and Yo-Yo IR1 were removed), so
+Endurance shows "--" and is left out of every OVR. Football and padel time the
+5-0-5 off each foot (`best_of_left_right`): both times are kept and the faster
+one is scored on cricket's 505 scale, labelled as an interim benchmark.
+
 Cricket (`cricket_v1.json`) cites a source for every anchor in its `sources` block.
 Agility uses the 505 test (devised for cricket), anchored on published male
 cricketer data. The seated 4 kg medicine ball throw is `benchmark_pending`:
 recorded on the card but not scored (and the OVR is Provisional) until sourced
-benchmarks are added to the config. Yo-Yo IR1 is entered as level.shuttle and scored on
-cumulative metres. Bowling-arm ER below 66% of IR is an amber "shoulder balance"
+benchmarks are added to the config. Bowling-arm ER below 66% of IR is an amber "shoulder balance"
 flag; a bowling-arm-weaker gap is "monitor".
 
 `scoring/scoring.js` is a JavaScript port of `../peakperformance_scoring/scoring.py`.

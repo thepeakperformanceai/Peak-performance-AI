@@ -20,7 +20,6 @@ const RESULTS = {
     sprint_20m: { status: 'completed', value: '3.19' },
     cod_505: { status: 'completed', value: '2.52' },
     medicine_ball: { status: 'completed', value: '7.4' },
-    yoyo_ir1: { status: 'completed', level: '17', shuttle: '4' },
     ruler_drop: { status: 'completed', value: '13.0' },
     single_leg_stand: { status: 'completed', left: '19', right: '23', cutoffs: ['3', '8', '15', '25'] },
     shoulder_er: { status: 'completed', left: '150', right: '118', cutoffs: ['60', '100', '150', '220'] },
@@ -47,35 +46,31 @@ test('form entry becomes the engine session, with bowling arm', () => {
   assert.equal(profile.age, 25);
   assert.deepEqual(session.athlete, { id: 'PP-0301', age: 25, sex: 'M', position: 'PACE', dominant_hand: 'R' });
   assert.deepEqual(Object.keys(session.tests), Object.keys(cricket.cfg.tests));
-  assert.deepEqual(session.tests.yoyo_ir1, { status: 'completed', level: 17, shuttle: 4 });
+  assert.equal(session.tests.yoyo_ir1, undefined);                    // Yo-Yo IR1 removed (cricket-v1.2)
   assert.deepEqual(session.tests.medicine_ball, { status: 'completed', value: 7.4 });
 });
 
-test('bowling arm and role required; Yo-Yo level/shuttle checked', () => {
+test('bowling arm and role required', () => {
   assert.throws(() => cricket.validateInput({ ...PROFILE, dominantHand: '' }, RESULTS), /Bowling arm is required/);
   assert.throws(() => cricket.validateInput({ ...PROFILE, position: 'FWD' }, RESULTS), /Role is required/);
   const r = copy(RESULTS);
-  r.tests.yoyo_ir1 = { status: 'completed', level: '10', shuttle: '1' };
-  assert.throws(() => cricket.validateInput(PROFILE, r), /Yo-Yo IR1: level must be one of 5, 9, 11/);
-  r.tests.yoyo_ir1 = { status: 'completed', level: '17', shuttle: '9' };
-  assert.throws(() => cricket.validateInput(PROFILE, r), /shuttle must be a whole number from 1 to 8 at level 17/);
-  r.tests.yoyo_ir1 = { status: 'completed', level: '17', shuttle: '0' };
-  assert.throws(() => cricket.validateInput(PROFILE, r), /from 1 to 8/);
+  r.tests.yoyo_ir1 = { status: 'completed', level: '17', shuttle: '4' };         // no longer in the battery: ignored
+  assert.equal(cricket.validateInput(PROFILE, r).session.tests.yoyo_ir1, undefined);
 });
 
-test('Gemini payload: pending tests, Yo-Yo distance, cricket flags, no name', () => {
+test('Gemini payload: pending tests, cricket flags, no endurance test, no name', () => {
   const { session } = cricket.validateInput(PROFILE, RESULTS);
   const scored = scoreSession(session, cricket.cfg);
   const payload = cricket.buildGeminiPayload(scored, session);
   assert.equal(JSON.stringify(payload).includes('Bilal'), false);
-  assert.equal(payload.config_version, 'cricket-v1.1');
+  assert.equal(payload.config_version, 'cricket-v1.2');
   const agility = payload.tests.find(t => t.name === '505 Agility');
   assert.deepEqual([agility.raw, agility.benchmark], [2.52, 'research']);
   assert.ok(agility.score > 70 && agility.score < 85);
   const mb = payload.tests.find(t => t.name === 'Medicine Ball Throw (seated, 4 kg)');
   assert.deepEqual([mb.raw, mb.score, mb.benchmark], [7.4, null, 'pending']);
-  const yoyo = payload.tests.find(t => t.name === 'Yo-Yo IR1');
-  assert.deepEqual([yoyo.raw, yoyo.level, yoyo.shuttle, yoyo.distance_m], ['17.4', 17, 4, 1560]);
+  assert.equal(payload.tests.some(t => /yo-yo/i.test(t.name)), false);
+  assert.equal(payload.stats.endurance.status, 'not_in_battery');
   assert.equal(payload.stats.agility.partial, false);
   assert.deepEqual(payload.ovr.reasons, ['Medicine Ball Throw (seated, 4 kg): benchmarks pending']);
   // R is the bowling arm: ER 118 weaker than L 150 -> monitor; ER:IR 118/210 = 56.2% -> shoulder balance.
@@ -88,16 +83,17 @@ test('Gemini payload: pending tests, Yo-Yo distance, cricket flags, no name', ()
 test('cricket system prompt: shared rules plus cricket rules', () => {
   for (const rule of ['Use only numbers present in the payload', 'not tested this session', 'firm up after the remaining tests',
     'never as diagnoses', 'compared with cricketers', 'benchmark "pending"', 'never rate it, score it or compare it',
-    'common in cricketers', 'shoulder_balance', 'level.shuttle']) {
+    'common in cricketers', 'shoulder_balance', 'Endurance is not in the current test battery']) {
     assert.ok(cricket.SYSTEM_PROMPT.includes(rule), rule);
   }
   assert.equal(cricket.SYSTEM_PROMPT.includes('padel'), false);
+  assert.equal(/yo-yo/i.test(cricket.SYSTEM_PROMPT), false);
 });
 
-test('number check covers Yo-Yo metres and rejects invented numbers', async () => {
+test('number check rejects invented numbers', async () => {
   const { session } = cricket.validateInput(PROFILE, RESULTS);
   const payload = cricket.buildGeminiPayload(scoreSession(session, cricket.cfg), session);
-  assert.deepEqual(findUnsupportedNumbers({ a: 'Yo-Yo 17.4 (1560 m), medicine ball 7.4 m' }, payload), []);
+  assert.deepEqual(findUnsupportedNumbers({ a: '505 in 2.52 s, medicine ball 7.4 m' }, payload), []);
   assert.deepEqual(findUnsupportedNumbers({ a: 'Agility would score about 66.6' }, payload), [66.6]);
   let calls = 0;
   const callModel = async () => {
@@ -127,16 +123,15 @@ test('full pipeline: cricket card content', async () => {
   assert.deepEqual(rc.manualBattery.map(t => [t.test, t.avg]), [
     ['10m Sprint', 'vs published international norms'], ['20m Sprint', 'vs published international norms'],
     ['505 Agility', 'vs published international norms'], ['Medicine Ball Throw (seated, 4 kg)', 'benchmarks pending'],
-    ['Yo-Yo IR1', 'vs published international norms'], ['Ruler Drop', 'vs published international norms']
+    ['Ruler Drop', 'vs published international norms']
   ]);
   assert.deepEqual(rc.dynamoStrength.map(d => [d.joint, d.status]), [
     ['Shoulder External Rotation', 'MONITOR — DOMINANT ARM'], ['Shoulder Internal Rotation', 'WITHIN RANGE'],
     ['Elbow Extension', 'WITHIN RANGE'], ['Hip Extension', 'WITHIN RANGE']
   ]);
-  const yoyoRow = rc.testTable.find(r => r.test === 'Yo-Yo IR1');
-  assert.equal(yoyoRow.result, '17.4 (1560 m)');
+  assert.deepEqual(rc.ovrScores.find(s => s.name === 'Endurance'), { name: 'Endurance', score: null, status: 'not_in_battery' });
   const mbRow = rc.testTable.find(r => r.test === 'Medicine Ball Throw (seated, 4 kg)');
   assert.deepEqual([mbRow.result, mbRow.unit, mbRow.score, mbRow.benchmarkPending], ['7.4', 'm', null, true]);
-  assert.equal(rc.testTable.length, 11);
+  assert.equal(rc.testTable.length, 10);
   assert.deepEqual(rc.flags.map(f => [f.type, f.level]), [['LSI', 'monitor'], ['shoulder_balance', 'amber']]);
 });

@@ -1,5 +1,5 @@
 {
-  "library_version": "padel-library-v2.0",
+  "library_version": "padel-library-v2.1",
   "sport": "padel",
   "source": "docs/library/padel.md (Oct 18, 2026)",
   "notes": "Built from docs/library/padel.md by scripts/build-padel-library.js; edit padel.md, then rebuild. One version for every player (no playing side). Scores come from the existing scoring engine, unchanged. Words in curly brackets are filled in by the engine from the athlete's results; Gemini never writes or changes these lines. plain_name, measures and weapon (headline, body, evenness) are PeakPerformance wording added for the report, not text from padel.md.",
@@ -134,7 +134,8 @@
         {
           "label": "One side slower",
           "when": {
-            "type": "not_measured"
+            "type": "slower_side_pct_over",
+            "pct": 5
           },
           "text": "You turn {gap}% slower off your {weaker_side} foot."
         }
@@ -150,7 +151,8 @@
         },
         {
           "when": {
-            "type": "not_measured"
+            "type": "slower_side_pct_over",
+            "pct": 5
           },
           "fix": "B",
           "text": "Slower turning off one foot than the other (if timed both ways, more than 5%, proposed) → also show Fix B: even both turns.",

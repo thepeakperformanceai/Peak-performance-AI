@@ -66,6 +66,9 @@ const citationOf = (cfg, tdef) => {
     const reference = referenceOf(cfg, c.reference);
     if (reference) return { basis: 'study', label: reference.text, reference };
   }
+  // Interim anchors borrowed from another sport say so (football and padel 5-0-5: cricket's).
+  const from = c && c.borrowed_from;
+  if (from) return { basis: 'interim', label: `${INTERIM_LABEL} (reused from ${from[0].toUpperCase()}${from.slice(1)} until ${cfg.sport} norms are agreed)`, borrowedFrom: from };
   return { basis: 'interim', label: INTERIM_LABEL };
 };
 
@@ -101,7 +104,7 @@ const describeTest = (key, tdef, cfg, { sport, testInfo = {}, benchmarkFrom = nu
         text: 'Compared with published research norms.',
         anchors: [...anchors].sort((a, b) => a[1] - b[1]).map(([value, score]) => ({ value, score })),
         higherIsBetter: higherIsBetter(anchors),
-        ...(key === 'yoyo_ir1' ? { anchorUnit: 'm' } : key === 'beep_test' ? { anchorUnit: 'level' } : {})
+        ...(tdef.best_of_left_right ? { bestOfLeftRight: true } : {})
       };
     }
     // Norms (and their citation) come from the sport whose anchors are used.
@@ -207,19 +210,8 @@ const exampleInput = (key, tdef, cfg, n) => {
     }
     const target = n % 2 ? 70 : 85;
     const v = anchorAt(cfg.manual_anchors[key], target);
-    if (key === 'beep_test') {
-      const level = Math.trunc(v);
-      return { status: 'completed', level, shuttle: Math.round((v - level) * cfg.beep_shuttles_per_level[String(level)]) };
-    }
-    if (key === 'yoyo_ir1') {
-      let metres = 0;
-      for (const [lvl, shuttles] of Object.entries(cfg.yoyo_shuttles_per_level).sort((a, b) => Number(a[0]) - Number(b[0]))) {
-        for (let s = 1; s <= shuttles; s++) {
-          metres += 40;
-          if (metres >= v) return { status: 'completed', level: Number(lvl), shuttle: s };
-        }
-      }
-    }
+    // Timed both ways: the faster time (the anchor) and a slower one.
+    if (tdef.best_of_left_right) return { status: 'completed', left: r1(v + 0.06), right: v };
     return { status: 'completed', value: v };
   }
   const [lo, hi] = tdef.plausible || [0, 100];

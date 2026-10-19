@@ -1,11 +1,11 @@
 // Run: npm test   (from backend/)
 // Cricket scoring (cricket_v1): the football spec checks mirrored for
-// cricket's battery, plus cricket's rules (Yo-Yo IR1, benchmark-pending
-// test, bowling-arm flags).
+// cricket's battery, plus cricket's rules (benchmark-pending test,
+// bowling-arm flags). cricket-v1.2: no endurance test (Yo-Yo IR1 removed).
 
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { loadConfig, scoreFromAnchors, scoreFromVald, scoreSession, yoyoDistance } = require('./scoring');
+const { loadConfig, scoreFromAnchors, scoreFromVald, scoreSession } = require('./scoring');
 
 const cfg = loadConfig('cricket');
 const A = cfg.manual_anchors;
@@ -17,7 +17,6 @@ const FULL = {
     sprint_20m: { status: 'completed', value: 3.13 },
     cod_505: { status: 'completed', value: 2.46 },
     medicine_ball: { status: 'completed', value: 7.4 },
-    yoyo_ir1: { status: 'completed', level: 18, shuttle: 3 },
     ruler_drop: { status: 'completed', value: 11.0 },
     single_leg_stand: { status: 'completed', left: 20, right: 22, cutoffs: [3, 8, 15, 25] },
     shoulder_er: { status: 'completed', left: 150, right: 145, cutoffs: [60, 100, 150, 220] },
@@ -34,8 +33,8 @@ const findTest = (out, name) => out.tests.find(t => t.name === name);
 // ---------- config ----------
 
 test('cricket config: battery, weights, cited anchors', () => {
-  assert.equal(cfg.config_version, 'cricket-v1.1');
-  assert.deepEqual(Object.keys(cfg.tests), ['sprint_10m', 'sprint_20m', 'cod_505', 'medicine_ball', 'yoyo_ir1',
+  assert.equal(cfg.config_version, 'cricket-v1.2');
+  assert.deepEqual(Object.keys(cfg.tests), ['sprint_10m', 'sprint_20m', 'cod_505', 'medicine_ball',
     'ruler_drop', 'single_leg_stand', 'shoulder_er', 'shoulder_ir', 'elbow_extension', 'hip_extension']);
   assert.deepEqual(cfg.stat_weights, { speed: 20, agility: 20, power: 20, endurance: 15, reaction: 15, balance: 10 });
   assert.equal(Object.values(cfg.stat_weights).reduce((a, b) => a + b, 0), 100);
@@ -44,23 +43,15 @@ test('cricket config: battery, weights, cited anchors', () => {
   assert.equal(cfg.tests.cod_505.benchmark_pending, undefined);
   assert.deepEqual(A.cod_505, [[2.86, 40], [2.72, 55], [2.59, 70], [2.46, 85], [2.30, 95]]);
   assert.equal(A.medicine_ball, undefined);
-  for (const k of ['sprint_10m', 'sprint_20m', 'yoyo_ir1', 'ruler_drop', 'cod_505', 'medicine_ball', 'arm_ratio']) {
+  assert.deepEqual(cfg.stats_not_in_battery, ['endurance']);
+  assert.equal(cfg.tests.yoyo_ir1, undefined);
+  assert.equal(A.yoyo_ir1, undefined);
+  for (const k of ['sprint_10m', 'sprint_20m', 'ruler_drop', 'cod_505', 'medicine_ball', 'arm_ratio']) {
     assert.ok(cfg.sources[k], `source for ${k}`);
   }
   // Power: medicine ball half, the four Dynamo tests share the other half.
   const power = Object.entries(cfg.tests).filter(([, d]) => d.stat === 'power');
   assert.equal(power.reduce((a, [, d]) => a + d.stat_weight, 0), 1);
-});
-
-test('Yo-Yo IR1 level.shuttle converts to cumulative metres', () => {
-  assert.equal(yoyoDistance(5, 1, cfg), 40);
-  assert.equal(yoyoDistance(15, 4, cfg), 920);
-  assert.equal(yoyoDistance(16, 4, cfg), 1240);
-  assert.equal(yoyoDistance(17, 4, cfg), 1560);
-  assert.equal(yoyoDistance(18, 3, cfg), 1840);
-  assert.equal(yoyoDistance(20, 1, cfg), 2400);
-  assert.equal(yoyoDistance(23, 8, cfg), 3640);
-  assert.throws(() => yoyoDistance(10, 1, cfg), /unknown Yo-Yo level/);
 });
 
 // ---------- the football spec checks, for cricket ----------
@@ -69,8 +60,6 @@ test('anchor points exact (international means score 85)', () => {
   assert.ok(close(scoreFromAnchors(1.84, A.sprint_10m), 85));
   assert.ok(close(scoreFromAnchors(3.13, A.sprint_20m), 85));
   assert.ok(close(scoreFromAnchors(2.96, A.sprint_20m), 95));
-  assert.ok(close(scoreFromAnchors(1560, A.yoyo_ir1), 70));     // 17.4
-  assert.ok(close(scoreFromAnchors(1840, A.yoyo_ir1), 85));     // 18.3
   assert.ok(close(scoreFromAnchors(11.0, A.ruler_drop), 85));
   assert.ok(close(scoreFromAnchors(2.46, A.cod_505), 85));      // male cricketer mean, Thomas et al. 2018
   assert.ok(close(scoreFromAnchors(2.30, A.cod_505), 95));      // Draper & Lancaster elite cut-off
@@ -78,7 +67,7 @@ test('anchor points exact (international means score 85)', () => {
 
 test('anchor interpolation and limits', () => {
   assert.ok(close(scoreFromAnchors(3.19, A.sprint_20m), 77.5));  // halfway 3.25 -> 3.13
-  assert.ok(close(scoreFromAnchors(1400, A.yoyo_ir1), 62.5));    // halfway 1240 -> 1560
+  assert.ok(close(scoreFromAnchors(2.655, A.cod_505), 62.5));    // halfway 2.72 -> 2.59
   assert.equal(scoreFromAnchors(1.50, A.sprint_10m), 99);         // capped
   assert.equal(scoreFromAnchors(4.50, A.sprint_20m), 25);         // floored
 });
@@ -114,22 +103,22 @@ test('full session: 505 scored; pending medicine ball kept raw, not scored, OVR 
   assert.deepEqual([mb.score, mb.raw, mb.benchmark], [null, 7.4, 'pending']);
   assert.deepEqual(out.stats.agility, { value: 85, partial: false });
   assert.ok(out.stats.power.partial);                             // Dynamo only for now
-  assert.equal(findTest(out, 'yoyo_ir1').distance_m, 1840);
   assert.deepEqual(
     Object.fromEntries(Object.entries(out.stats).map(([k, v]) => [k, v.value])),
-    { speed: 85, agility: 85, power: 72, endurance: 85, reaction: 85, balance: 79 });
-  // (20*85 + 20*85 + 20*71.7 + 15*85 + 15*85 + 10*79) / 100 = 81.8 -> 82
-  assert.equal(out.ovr.value, 82);
+    { speed: 85, agility: 85, power: 72, endurance: null, reaction: 85, balance: 79 });
+  assert.equal(out.stats.endurance.status, 'not_in_battery');
+  // (20*85 + 20*85 + 20*71.7 + 15*85 + 10*79) / 85 = 81.2 -> 81 (endurance's 15% left out)
+  assert.equal(out.ovr.value, 81);
   assert.equal(out.ovr.provisional, true);
   assert.deepEqual(out.ovr.reasons, ['medicine_ball: benchmark_pending']);
 });
 
-test('missing Yo-Yo injured', () => {
+test('missing 505 injured', () => {
   const s = copy(FULL);
-  s.tests.yoyo_ir1 = { status: 'injured' };
+  s.tests.cod_505 = { status: 'injured' };
   const out = scoreSession(s, cfg);
-  assert.equal(out.stats.endurance.status, 'not_tested');
-  assert.ok(out.ovr.reasons.includes('yoyo_ir1: injured'));
+  assert.equal(out.stats.agility.status, 'not_tested');
+  assert.ok(out.ovr.reasons.includes('cod_505: injured'));
 });
 
 test('one sprint missing makes speed partial', () => {

@@ -23,7 +23,7 @@ const FOOTBALL = {
     sprint_10m: { status: 'completed', value: '1.70' },
     sprint_30m: { status: 'completed', value: '4.21' },
     ruler_drop: { status: 'completed', value: '14.5' },
-    beep_test: { status: 'injured', level: '', shuttle: '' },
+    cod_505: { status: 'injured', left: '', right: '' },
     single_leg_stand: { status: 'completed', left: '18', right: '22', cutoffs: ['3', '8', '15', '25'] },
     trunk_rotation: { status: 'completed', left: '42', right: '40', cutoffs: ['20', '30', '40', '55'] },
     overhead_squat: { status: 'completed', value: '68', cutoffs: ['', '', '', ''], band: 'within_normal' },
@@ -55,7 +55,7 @@ test('form entry becomes the same session as sample_session.json', () => {
   assert.equal(profile.age, 19);
   assert.equal(profile.bodyweight, 71.4);
   assert.deepEqual(session.athlete, { id: 'PP-0142', age: 19, sex: 'M', position: 'MID' });
-  assert.deepEqual(session.tests.beep_test, { status: 'injured' });
+  assert.deepEqual(session.tests.cod_505, { status: 'injured' });
   assert.deepEqual(session.tests.overhead_squat, { status: 'completed', value: 68, band: 'within_normal' });
   assert.deepEqual(session.tests.knee_extension, { status: 'completed', left: 612, right: 533, cutoffs: [200, 300, 450, 600] });
 });
@@ -79,8 +79,12 @@ test('completed tests need their values; bad entries are explained', () => {
   assert.throws(() => validateFootballInput(PROFILE, f), /30m Sprint: enter a value/);
 
   const b = copy(FOOTBALL);
-  b.tests.beep_test = { status: 'completed', level: '11', shuttle: '20' };
-  assert.throws(() => validateFootballInput(PROFILE, b), /shuttle must be a whole number from 0 to 12/);
+  b.tests.cod_505 = { status: 'completed', left: '', right: '' };
+  assert.throws(() => validateFootballInput(PROFILE, b), /505 Agility: enter at least one foot's time/);
+  b.tests.cod_505 = { status: 'completed', left: '2.61', right: '2.55' };
+  assert.deepEqual(validateFootballInput(PROFILE, b).session.tests.cod_505, { status: 'completed', left: 2.61, right: 2.55 });
+  b.tests.beep_test = { status: 'completed', level: '11', shuttle: '4' };            // no longer in the battery: ignored
+  assert.equal(validateFootballInput(PROFILE, b).session.tests.beep_test, undefined);
 
   const c = copy(FOOTBALL);
   c.tests.hip_extension.cutoffs = ['150', '500', '350', '250'];
@@ -105,8 +109,8 @@ test('Gemini payload follows the spec and carries no athlete name', () => {
   const scored = scoreSession(session);
   const payload = buildGeminiPayload(scored, session);
   assert.equal(JSON.stringify(payload).includes('Ali'), false);
-  assert.equal(payload.config_version, 'football-v1.1');
-  assert.deepEqual(payload.ovr, { value: 71, provisional: true, reasons: ['Beep Test not completed: injured'] });
+  assert.equal(payload.config_version, 'football-v1.2');
+  assert.deepEqual(payload.ovr, { value: 71, provisional: true, reasons: ['505 Agility not completed: injured'] });
   const knee = payload.tests.find(t => t.name === 'Knee Extension');
   assert.equal(knee.raw_left, 612);
   assert.equal(knee.unit, 'N');
@@ -150,10 +154,11 @@ test('wording: never "comprehensive"/"complete" when anything is Not tested; LSI
   const { findWordingProblems } = require('./scoredReport.service');
   const { session } = validateFootballInput(PROFILE, FOOTBALL);
   const payload = buildGeminiPayload(scoreSession(session), session);
-  // Beep Test injured and Agility not in the battery: not everything was tested.
+  // 505 injured and Endurance not in the battery: not everything was tested.
   assert.equal(payload.session.everything_tested, false);
-  assert.ok(payload.session.not_tested.includes('Beep Test'));
+  assert.ok(payload.session.not_tested.includes('505 Agility'));
   assert.ok(payload.session.not_tested.includes('Agility (stat)'));
+  assert.ok(payload.session.not_tested.includes('Endurance (stat)'));
   assert.equal(payload.tests.find(t => t.name === 'Knee Extension').lsi_gap_pct, 12.9);
   for (const rule of ['never call the session', '"comprehensive" or "complete"', '% symmetry', 'Never write "asymmetry of <number>"']) {
     assert.ok(SYSTEM_PROMPT.includes(rule), rule);
@@ -178,7 +183,7 @@ test('wording: never "comprehensive"/"complete" when anything is Not tested; LSI
   };
   const { attempts } = await generateNarrative(payload, { callModel });
   assert.equal(attempts, 2);
-  assert.match(prompts[1], /"comprehensive" or "complete" although some tests or stats were not tested \(Beep Test/);
+  assert.match(prompts[1], /"comprehensive" or "complete" although some tests or stats were not tested \(505 Agility/);
 });
 
 test('report fails cleanly after three bad answers', async () => {
@@ -188,6 +193,20 @@ test('report fails cleanly after three bad answers', async () => {
   const callModel = async () => { calls++; return '{"summary": "Probably a 64 for endurance."}'; };
   await assert.rejects(generateNarrative(payload, { callModel }), /rejected 3 times/);
   assert.equal(calls, 3);
+});
+
+test('5-0-5 both feet: the card shows both times, the faster one is scored', async () => {
+  const f = copy(FOOTBALL);
+  f.tests.cod_505 = { status: 'completed', left: '2.62', right: '2.55' };
+  const { profile, session } = validateFootballInput(PROFILE, f);
+  const callModel = async (system, prompt) => goodNarrative(JSON.parse(prompt.slice(prompt.indexOf('{'))));
+  const { reportContent: rc, scored } = await runFootballPipeline(profile, session, { callModel });
+  const t = scored.tests.find(x => x.name === 'cod_505');
+  assert.deepEqual([t.raw_left, t.raw_right, t.raw], [2.62, 2.55, 2.55]);
+  assert.equal(rc.manualBattery.find(x => x.test === '505 Agility').raw, '2.55 s (L 2.62 · R 2.55)');
+  assert.equal(rc.testTable.find(x => x.test === '505 Agility').result, 'L 2.62 · R 2.55');
+  assert.equal(rc.ovrScores.find(x => x.name === 'Agility').score, scored.stats.agility.value);
+  assert.notEqual(scored.stats.agility.value, null);
 });
 
 test('full pipeline: sample session gives OVR 71 provisional on the card', async () => {
@@ -202,12 +221,14 @@ test('full pipeline: sample session gives OVR 71 provisional on the card', async
   assert.equal(scored.ovr.value, 71);
   assert.equal(rc.overallOVR, 71);
   assert.equal(rc.ovrStatus, 'provisional');
-  assert.deepEqual(rc.ovrReasons, ['Beep Test not completed: injured']);
+  assert.deepEqual(rc.ovrReasons, ['505 Agility not completed: injured']);
   assert.deepEqual(rc.ovrScores.map(s => [s.name, s.score]),
     [['Speed', 61], ['Agility', null], ['Power', 79], ['Endurance', null], ['Reaction', 74], ['Balance', 78]]);
-  const beep = rc.manualBattery.find(t => t.test === 'Beep Test');
-  assert.equal(beep.score, null);
-  assert.equal(beep.avg, 'Not tested — injured');
+  const cod = rc.manualBattery.find(t => t.test === '505 Agility');
+  assert.equal(cod.score, null);
+  assert.equal(cod.avg, 'Not tested — injured');
+  assert.equal(rc.manualBattery.some(t => /beep/i.test(t.test)), false);
+  assert.deepEqual(rc.ovrScores.find(s => s.name === 'Endurance'), { name: 'Endurance', score: null, status: 'not_in_battery' });
   assert.equal(rc.manualBattery[0].raw, '1.7 s (hand)');
   assert.deepEqual(rc.dynamoStrength.map(d => [d.joint, d.lsi, d.status]),
     [['Hip Extension', 96.3, 'WITHIN RANGE'], ['Knee Extension', 87.1, 'REVIEW — AMBER']]);
@@ -215,12 +236,12 @@ test('full pipeline: sample session gives OVR 71 provisional on the card', async
   assert.equal(rc.fieldMeaning.developmentPriority, 'Speed');
   assert.equal(rc.fieldMeaning.stats.find(s => s.name === 'Agility').tag, 'NOT TESTED');
   assert.equal(rc.flags[0].note, 'Knee Extension: an area to work on.');
-  assert.equal(rc.configVersion, 'football-v1.1');
+  assert.equal(rc.configVersion, 'football-v1.2');
   assert.deepEqual(rc.testTable.map(r => [r.test, r.result, r.unit, r.score, r.status]), [
     ['10m Sprint', '1.7', 's', 59.5, 'completed'],
     ['30m Sprint', '4.21', 's', 62.2, 'completed'],
     ['Ruler Drop', '14.5', 'cm', 74.5, 'completed'],
-    ['Beep Test', '—', 'level.shuttle', null, 'injured'],
+    ['505 Agility', '—', 's', null, 'injured'],
     ['Single Leg Stand (Eyes Closed)', 'L 18 · R 22', 's', 77.5, 'completed'],
     ['Trunk Rotation', 'L 42 · R 40', '°', 71, 'completed'],
     ['Overhead Squat', '68', 'score', 63, 'completed'],

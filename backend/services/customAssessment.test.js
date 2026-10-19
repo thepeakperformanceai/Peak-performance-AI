@@ -139,9 +139,9 @@ test('VALD pull for custom: every latest test becomes a form test with its stat 
 
 test('manual test list for the form', () => {
   const lib = Object.fromEntries(manualLibrary('football').map(t => [t.key, t]));
-  assert.deepEqual(Object.keys(lib), ['sprint_10m', 'sprint_20m', 'sprint_30m', 'ruler_drop', 'beep_test', 'cod_505', 'yoyo_ir1', 'medicine_ball']);
+  assert.deepEqual(Object.keys(lib), ['sprint_10m', 'sprint_20m', 'sprint_30m', 'ruler_drop', 'cod_505', 'medicine_ball']);   // no Beep Test or Yo-Yo
   assert.equal(lib.sprint_10m.benchmarkFrom, 'football');
-  assert.equal(lib.yoyo_ir1.benchmarkFrom, 'cricket');
+  assert.equal(lib.cod_505.benchmarkFrom, 'cricket');                 // one time, cricket's own scale
   assert.equal(lib.medicine_ball.benchmarkPending, true);
 });
 
@@ -149,7 +149,7 @@ test('football, padel and cricket are unchanged', () => {
   for (const sport of ['football', 'padel', 'cricket']) {
     const p = forSport(sport);
     assert.equal(p.cfg, loadConfig(sport));
-    assert.match(p.SYSTEM_PROMPT, /Agility is not in the current test battery: say it was not tested this session\./);
+    assert.match(p.SYSTEM_PROMPT, /Endurance is not in the current test battery: say it was not tested this session\./);
     assert.match(p.SYSTEM_PROMPT, /If the OVR value is null, say the overall rating is pending until testing is complete\./);
     assert.throws(() => p.validateInput({ ...PROFILE, position: 'Wing' }, {}), /required/);
   }

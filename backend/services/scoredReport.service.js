@@ -17,7 +17,6 @@ const ALL_TEST_INFO = {
   sprint_10m:       { label: '10m Sprint',              unit: 's' },
   sprint_30m:       { label: '30m Sprint',              unit: 's' },
   ruler_drop:       { label: 'Ruler Drop',              unit: 'cm' },
-  beep_test:        { label: 'Beep Test',               unit: 'level.shuttle' },
   single_leg_stand: { label: 'Single Leg Stand (Eyes Closed)', unit: 's' },
   trunk_rotation:   { label: 'Trunk Rotation',          unit: '°' },
   overhead_squat:   { label: 'Overhead Squat',          unit: 'composite score' },
@@ -29,7 +28,6 @@ const ALL_TEST_INFO = {
   sprint_20m:       { label: '20m Sprint',              unit: 's' },
   cod_505:          { label: '505 Agility',             unit: 's' },
   medicine_ball:    { label: 'Medicine Ball Throw (seated, 4 kg)', unit: 'm' },
-  yoyo_ir1:         { label: 'Yo-Yo IR1',               unit: 'level.shuttle' },
   shoulder_ir:      { label: 'Shoulder Internal Rotation', unit: 'N' },
   elbow_extension:  { label: 'Elbow Extension',         unit: 'N' }
 };
@@ -87,8 +85,7 @@ const SPORT_PROFILES = {
     extraRules: [
       'A test with benchmark "pending" was measured but has no agreed benchmark yet, so it has no score. You may mention its raw result, but never rate it, score it or compare it with any norm. A stat with status "benchmark_pending" is "not scored yet: benchmarks pending", never estimated.',
       'A flag with level "monitor" and dominant_side_weaker true means the bowling arm is the weaker side. This is common in cricketers: describe it as something to monitor, never as a problem or a red flag.',
-      'A "shoulder_balance" flag means external rotation strength on the bowling arm is low relative to internal rotation (its value is external as a percentage of internal). Describe it as an area to strengthen, never as an injury or injury prediction.',
-      'Yo-Yo IR1 results are written as level.shuttle (for example 17.4) and also given in metres (distance_m).'
+      'A "shoulder_balance" flag means external rotation strength on the bowling arm is low relative to internal rotation (its value is external as a percentage of internal). Describe it as an area to strengthen, never as an injury or injury prediction.'
     ]
   }
 };
@@ -110,9 +107,7 @@ const CUSTOM_PROFILE = {
   nullStatRule: 'This is a custom assessment: only the tests in the payload were done, so never mention tests that are not in it.',
   nullOvrRule: 'If the OVR value is null, say there is no overall rating for this custom session because too few stats were scored, and that the stats and tests still stand on their own.',
   noOvrMessage: 'No OVR: custom session',
-  extraRules: [
-    'Yo-Yo IR1 results are written as level.shuttle (for example 17.4) and also given in metres (distance_m).'
-  ]
+  extraRules: []
 };
 
 const STAT_LABELS = {
@@ -196,7 +191,7 @@ const parseDate = (v, field) => {
 const systemPromptFor = (sp) => {
   const rules = [
     'Use only numbers present in the payload. Never compute, adjust, estimate, average or invent any number. If you mention a number, copy it exactly as it appears in the payload. When in doubt, describe in words instead of numbers.',
-    `A stat whose value is null is "not tested this session". Do not speculate on why and never estimate it. ${sp.nullStatRule ?? 'Agility is not in the current test battery: say it was not tested this session.'}`,
+    `A stat whose value is null is "not tested this session". Do not speculate on why and never estimate it. ${sp.nullStatRule ?? 'Endurance is not in the current test battery: say it was not tested this session.'} A test with raw_left and raw_right but no side bands is a timed test done both ways (for example the 505 turning off each foot): its score comes from the faster time (raw).`,
     `If ovr.provisional is true, say once, plainly, that the rating will firm up after the remaining tests. ${sp.nullOvrRule ?? 'If the OVR value is null, say the overall rating is pending until testing is complete.'}`,
     'Describe flags as areas to work on, never as diagnoses, injuries or injury predictions.',
     'If session.everything_tested is false (anything is Not tested, listed in session.not_tested), never call the session, testing, battery, assessment, profile or picture "comprehensive" or "complete". Say what was tested instead.',
@@ -348,33 +343,12 @@ const makePipeline = (sp, cfg, testInfoAll) => {
     if (!STATUSES.has(status)) throw badRequest(`${label}: unknown status "${status}"`);
     if (status !== 'completed') return { status };
 
-    if (name === 'beep_test') {
-      const level = toNum(raw.level, `${label} level`);
-      const shuttle = toNum(raw.shuttle, `${label} shuttle`);
-      if (level === undefined || shuttle === undefined) throw badRequest(`${label}: enter level and shuttle, or change the status`);
-      if (!Number.isInteger(level) || !cfg.beep_shuttles_per_level[String(level)]) {
-        throw badRequest(`${label}: level must be a whole number from 1 to 21`);
-      }
-      const maxShuttle = cfg.beep_shuttles_per_level[String(level)];
-      if (!Number.isInteger(shuttle) || shuttle < 0 || shuttle > maxShuttle) {
-        throw badRequest(`${label}: shuttle must be a whole number from 0 to ${maxShuttle} at level ${level}`);
-      }
-      return { status, level, shuttle };
-    }
-
-    if (name === 'yoyo_ir1') {
-      const level = toNum(raw.level, `${label} level`);
-      const shuttle = toNum(raw.shuttle, `${label} shuttle`);
-      if (level === undefined || shuttle === undefined) throw badRequest(`${label}: enter level and shuttle, or change the status`);
-      const table = cfg.yoyo_shuttles_per_level;
-      if (!Number.isInteger(level) || table[String(level)] === undefined) {
-        throw badRequest(`${label}: level must be one of ${Object.keys(table).join(', ')}`);
-      }
-      const maxShuttle = table[String(level)];
-      if (!Number.isInteger(shuttle) || shuttle < 1 || shuttle > maxShuttle) {
-        throw badRequest(`${label}: shuttle must be a whole number from 1 to ${maxShuttle} at level ${level}`);
-      }
-      return { status, level, shuttle };
+    // Timed both ways (5-0-5 off each foot): both times kept, the faster one scored.
+    if (tdef.best_of_left_right) {
+      const left = toNum(raw.left, `${label} left foot`);
+      const right = toNum(raw.right, `${label} right foot`);
+      if (left === undefined && right === undefined) throw badRequest(`${label}: enter at least one foot's time, or change the status`);
+      return { status, ...(left !== undefined ? { left } : {}), ...(right !== undefined ? { right } : {}) };
     }
 
     if (tdef.source === 'manual') {
@@ -509,17 +483,10 @@ const makePipeline = (sp, cfg, testInfoAll) => {
       if (t.raw_left !== undefined || t.raw_right !== undefined) {
         if (t.raw_left !== null) out.raw_left = t.raw_left;
         if (t.raw_right !== null) out.raw_right = t.raw_right;
+        // Timed both ways: the faster time is the one scored.
+        if (tdef.best_of_left_right) out.raw = t.raw;
       } else {
         out.raw = t.raw;
-      }
-      if (t.name === 'beep_test') {
-        out.level = session.tests.beep_test.level;
-        out.shuttle = session.tests.beep_test.shuttle;
-      }
-      if (t.name === 'yoyo_ir1') {
-        out.level = session.tests.yoyo_ir1.level;
-        out.shuttle = session.tests.yoyo_ir1.shuttle;
-        out.distance_m = t.distance_m;
       }
       out.unit = info.unit;
       if (t.timing) out.timing = t.timing;
@@ -629,7 +596,9 @@ const makePipeline = (sp, cfg, testInfoAll) => {
       const t = byName[n];
       const info = TEST_INFO[n];
       const done = t.status === 'completed';
-      let raw = done ? (n === 'beep_test' || n === 'yoyo_ir1' ? `Level ${t.raw}` : fmt(t.raw, info.unit)) : '—';
+      let raw = done ? fmt(t.raw, info.unit) : '—';
+      // Timed both ways: the scored (faster) time, then both feet.
+      if (done && cfg.tests[n].best_of_left_right) raw += ` (L ${t.raw_left ?? '—'} · R ${t.raw_right ?? '—'})`;
       if (done && t.timing === 'hand') raw += ' (hand)';
       const pending = t.benchmark === 'pending';
       return {
@@ -691,7 +660,6 @@ const makePipeline = (sp, cfg, testInfoAll) => {
         } else {
           result = String(t.raw);
         }
-        if (t.distance_m !== undefined) result += ` (${t.distance_m} m)`;
       }
       return {
         test: info.label,

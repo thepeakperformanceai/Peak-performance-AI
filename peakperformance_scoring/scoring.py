@@ -9,7 +9,7 @@ Input (one testing session):
   "timing_method": "hand" | "electronic",
   "tests": {
     "sprint_30m":  {"status": "completed", "value": 4.21},
-    "beep_test":   {"status": "completed", "level": 11, "shuttle": 4},
+    "cod_505":     {"status": "completed", "left": 2.52, "right": 2.47},  # best of both feet
     "knee_extension": {"status": "completed", "left": 612, "right": 533,
                        "cutoffs": [200, 300, 450, 600]},   # VALD band cut-offs
     "overhead_squat": {"status": "completed", "value": 70, "band": "within_normal"},
@@ -95,11 +95,10 @@ def vald_band_index(value, cutoffs, higher_is_better=True):
     return idx
 
 
-def beep_decimal(level, shuttle, cfg):
-    per_level = cfg["beep_shuttles_per_level"].get(str(int(level)))
-    if per_level is None:
-        raise ValueError(f"unknown beep level {level}")
-    return level + shuttle / per_level
+def best_of(values, anchors):
+    """The better of two results on a manual scale (lower is better for times)."""
+    pts = sorted(anchors, key=lambda p: p[1])
+    return max(values) if pts[-1][0] > pts[0][0] else min(values)
 
 
 def _plausible(value, rng):
@@ -133,9 +132,16 @@ def score_test(name, test_in, tdef, cfg, timing_method):
 
     if tdef["source"] == "manual":
         out["benchmark"] = "research"
-        if name == "beep_test":
-            raw = beep_decimal(test_in["level"], test_in["shuttle"], cfg)
-            out["raw"] = f'{test_in["level"]}.{test_in["shuttle"]}'
+        if tdef.get("best_of_left_right"):
+            # Timed both ways (e.g. 5-0-5 turning off each foot): both kept, the better one scored.
+            left, right = test_in.get("left"), test_in.get("right")
+            out["raw_left"], out["raw_right"] = left, right
+            sides = [v for v in (left, right) if v is not None]
+            if not sides or any(not _plausible(v, rng) for v in sides):
+                out["status"] = "invalid"
+                return out
+            raw = best_of(sides, cfg["manual_anchors"][name])
+            out["raw"] = raw
         else:
             raw = test_in["value"]
             out["raw"] = raw

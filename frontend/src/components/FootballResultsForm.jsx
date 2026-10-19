@@ -49,16 +49,14 @@ const BANDS = [
   { value: 'well_above', label: 'Well above' },
 ]
 
-const BEEP_SHUTTLES = {
-  1: 7, 2: 8, 3: 8, 4: 9, 5: 9, 6: 10, 7: 10, 8: 11, 9: 11, 10: 11,
-  11: 12, 12: 12, 13: 13, 14: 13, 15: 13, 16: 14, 17: 14, 18: 15, 19: 15, 20: 16, 21: 16,
-}
+// 5-0-5 timed off each foot (football and padel): both times kept, the faster one scored.
+const COD_505_FEET = { key: 'cod_505', label: '5-0-5 Agility', kind: 'twofeet', unit: 's', range: [1.8, 4.0], step: '0.01', group: 'Manual tests', hint: 'Best time turning off each foot; the faster one is scored. Interim benchmark (cricket norms)' }
 
 const FOOTBALL_TESTS = [
   { key: 'sprint_10m', label: '10m Sprint', kind: 'manual', unit: 's', range: [1.4, 3.5], step: '0.01', group: 'Manual tests' },
   { key: 'sprint_30m', label: '30m Sprint', kind: 'manual', unit: 's', range: [3.5, 8.0], step: '0.01', group: 'Manual tests' },
   { key: 'ruler_drop', label: 'Ruler Drop', kind: 'manual', unit: 'cm', range: [0, 30], step: '0.1', group: 'Manual tests', hint: 'Ruler not caught = 30' },
-  { key: 'beep_test', label: 'Beep Test', kind: 'beep', group: 'Manual tests', hint: 'Stopped early through injury = Injured, never a low score' },
+  COD_505_FEET,
   { key: 'single_leg_stand', label: 'Single Leg Stand (eyes closed)', kind: 'bilateral', unit: 's', range: [0, 30], step: '0.1', group: 'HumanTrak (from the VALD report)' },
   { key: 'trunk_rotation', label: 'Trunk Rotation', kind: 'bilateral', unit: '°', range: [0, 90], step: '1', group: 'HumanTrak (from the VALD report)' },
   { key: 'overhead_squat', label: 'Overhead Squat', kind: 'single', unit: 'composite', range: null, step: '1', group: 'HumanTrak (from the VALD report)' },
@@ -69,7 +67,7 @@ const FOOTBALL_TESTS = [
 const PADEL_TESTS = [
   { key: 'sprint_10m', label: '10m Sprint', kind: 'manual', unit: 's', range: [1.4, 3.5], step: '0.01', group: 'Manual tests' },
   { key: 'ruler_drop', label: 'Ruler Drop', kind: 'manual', unit: 'cm', range: [0, 30], step: '0.1', group: 'Manual tests', hint: 'Ruler not caught = 30' },
-  { key: 'beep_test', label: 'Beep Test', kind: 'beep', group: 'Manual tests', hint: 'Stopped early through injury = Injured, never a low score' },
+  COD_505_FEET,
   { key: 'single_leg_stand', label: 'Single Leg Stand (eyes closed)', kind: 'bilateral', unit: 's', range: [0, 30], step: '0.1', group: 'HumanTrak (from the VALD report)' },
   { key: 'trunk_rotation', label: 'Trunk Rotation', kind: 'bilateral', unit: '°', range: [0, 90], step: '1', group: 'HumanTrak (from the VALD report)' },
   { key: 'overhead_squat', label: 'Overhead Squat', kind: 'single', unit: 'composite', range: null, step: '1', group: 'HumanTrak (from the VALD report)', faults: true },
@@ -78,8 +76,6 @@ const PADEL_TESTS = [
   { key: 'hip_adduction', label: 'Hip Adduction', kind: 'bilateral', unit: 'N', range: [50, 3000], step: '1', group: 'Dynamo (from the VALD report)' },
 ]
 
-// Yo-Yo IR1 levels and shuttles per level (each shuttle is 2 x 20 m).
-const YOYO_SHUTTLES = { 5: 1, 9: 1, 11: 2, 12: 3, 13: 4, 14: 8, 15: 8, 16: 8, 17: 8, 18: 8, 19: 8, 20: 8, 21: 8, 22: 8, 23: 8 }
 const PENDING_HINT = 'Recorded only: benchmarks pending, not scored yet'
 
 const CRICKET_TESTS = [
@@ -87,7 +83,6 @@ const CRICKET_TESTS = [
   { key: 'sprint_20m', label: '20m Sprint', kind: 'manual', unit: 's', range: [2.4, 5.5], step: '0.01', group: 'Manual tests' },
   { key: 'cod_505', label: '505 Agility', kind: 'manual', unit: 's', range: [1.8, 4.0], step: '0.01', group: 'Manual tests', hint: 'Timing gates, 5 m either side of the turn; best of two' },
   { key: 'medicine_ball', label: 'Medicine Ball Throw (seated, 4 kg)', kind: 'manual', unit: 'm', range: [1.5, 12.0], step: '0.01', group: 'Manual tests', hint: PENDING_HINT },
-  { key: 'yoyo_ir1', label: 'Yo-Yo IR1', kind: 'yoyo', group: 'Manual tests', hint: 'Level.shuttle, e.g. 17.4. Stopped through injury = Injured' },
   { key: 'ruler_drop', label: 'Ruler Drop', kind: 'manual', unit: 'cm', range: [0, 30], step: '0.1', group: 'Manual tests', hint: 'Ruler not caught = 30' },
   { key: 'single_leg_stand', label: 'Single Leg Stand (eyes closed)', kind: 'bilateral', unit: 's', range: [0, 30], step: '0.1', group: 'HumanTrak (from the VALD report)' },
   { key: 'shoulder_er', label: 'Shoulder External Rotation', kind: 'bilateral', unit: 'N', range: [20, 1500], step: '1', group: 'Dynamo (from the VALD report)' },
@@ -106,9 +101,7 @@ const MANUAL_LIBRARY = [
   { key: 'sprint_20m', label: '20m Sprint', kind: 'manual', unit: 's', range: [2.4, 5.5], step: '0.01', norms: ['cricket'] },
   { key: 'sprint_30m', label: '30m Sprint', kind: 'manual', unit: 's', range: [3.5, 8.0], step: '0.01', norms: ['football'] },
   { key: 'ruler_drop', label: 'Ruler Drop', kind: 'manual', unit: 'cm', range: [0, 30], step: '0.1', norms: ['football', 'padel', 'cricket'], hint: 'Ruler not caught = 30' },
-  { key: 'beep_test', label: 'Beep Test', kind: 'beep', norms: ['football', 'padel'], hint: 'Stopped early through injury = Injured, never a low score' },
   { key: 'cod_505', label: '505 Agility', kind: 'manual', unit: 's', range: [1.8, 4.0], step: '0.01', norms: ['cricket'], hint: 'Timing gates, 5 m either side of the turn; best of two' },
-  { key: 'yoyo_ir1', label: 'Yo-Yo IR1', kind: 'yoyo', norms: ['cricket'], hint: 'Level.shuttle, e.g. 17.4. Stopped through injury = Injured' },
   { key: 'medicine_ball', label: 'Medicine Ball Throw (seated, 4 kg)', kind: 'manual', unit: 'm', range: [1.5, 12.0], step: '0.01', norms: [], hint: PENDING_HINT },
 ]
 const BENCHMARK_SPORTS = [{ value: 'football', label: 'Football' }, { value: 'padel', label: 'Padel' }, { value: 'cricket', label: 'Cricket' }]
@@ -147,7 +140,7 @@ const customTestDefs = (results) => (results.customTests || []).map(c => {
 const testsFor = (sportKey = 'football', results = {}) => (sportKey === 'custom' ? customTestDefs(results) : TESTS_BY_SPORT[sportKey])
 
 const emptyTest = () => ({
-  status: 'completed', value: '', left: '', right: '', level: '', shuttle: '',
+  status: 'completed', value: '', left: '', right: '',
   cutoffs: ['', '', '', ''], band: '', band_left: '', band_right: '', fault: '',
 })
 
@@ -190,7 +183,7 @@ export function footballProblems(results, sportKey = 'football') {
     completed++
     if (t.scored === false) continue                      // shown only: no band needed
     if (t.kind === 'manual' && !filled(r.value)) problems.push(`${t.label}: enter a value or change the status.`)
-    if ((t.kind === 'beep' || t.kind === 'yoyo') && (!filled(r.level) || !filled(r.shuttle))) problems.push(`${t.label}: enter level and shuttle or change the status.`)
+    if (t.kind === 'twofeet' && !filled(r.left) && !filled(r.right)) problems.push(`${t.label}: enter at least one foot's time or change the status.`)
     if (t.kind === 'single' && !filled(r.value)) problems.push(`${t.label}: enter a value or change the status.`)
     if (t.kind === 'bilateral' && !filled(r.left) && !filled(r.right)) problems.push(`${t.label}: enter at least one side or change the status.`)
     if (t.kind === 'bilateral' || t.kind === 'single') {
@@ -259,7 +252,6 @@ function ValdBenchmark({ test, r, set }) {
 
 function TestRow({ test, r, set, onRemove }) {
   const done = r.status === 'completed'
-  const maxShuttle = BEEP_SHUTTLES[Number(r.level)]
   return (
     <div className="py-3 border-t border-gray-100 first:border-t-0">
       <div className="flex flex-wrap items-start gap-3">
@@ -287,32 +279,17 @@ function TestRow({ test, r, set, onRemove }) {
           </div>
         )}
 
-        {done && test.kind === 'yoyo' && (
+        {done && test.kind === 'twofeet' && (
           <div>
             <div className="flex items-center gap-2">
-              <span className="text-xs text-gray-500">Level</span>
-              <NumberInput value={r.level} onChange={v => set({ level: v })} step="1" width="w-20" placeholder="e.g. 17" />
-              <span className="text-xs text-gray-500">Shuttle</span>
-              <NumberInput value={r.shuttle} onChange={v => set({ shuttle: v })} step="1" width="w-20" placeholder="e.g. 3" />
+              <span className="text-xs text-gray-500">Left foot</span>
+              <NumberInput value={r.left} onChange={v => set({ left: v })} step={test.step} placeholder="Left" />
+              <span className="text-xs text-gray-500">Right foot</span>
+              <NumberInput value={r.right} onChange={v => set({ right: v })} step={test.step} placeholder="Right" />
+              <span className="text-xs text-gray-500">{test.unit}</span>
             </div>
-            {filled(r.level) && !YOYO_SHUTTLES[Number(r.level)] && <Warn>Yo-Yo IR1 levels are {Object.keys(YOYO_SHUTTLES).join(', ')}.</Warn>}
-            {YOYO_SHUTTLES[Number(r.level)] && filled(r.shuttle) && (Number(r.shuttle) < 1 || Number(r.shuttle) > YOYO_SHUTTLES[Number(r.level)]) && (
-              <Warn>Level {r.level} has shuttles 1 to {YOYO_SHUTTLES[Number(r.level)]}.</Warn>
-            )}
-          </div>
-        )}
-
-        {done && test.kind === 'beep' && (
-          <div>
-            <div className="flex items-center gap-2">
-              <span className="text-xs text-gray-500">Level</span>
-              <NumberInput value={r.level} onChange={v => set({ level: v })} step="1" width="w-20" placeholder="e.g. 11" />
-              <span className="text-xs text-gray-500">Shuttle</span>
-              <NumberInput value={r.shuttle} onChange={v => set({ shuttle: v })} step="1" width="w-20" placeholder="e.g. 4" />
-            </div>
-            {filled(r.level) && !maxShuttle && <Warn>Level must be a whole number from 1 to 21.</Warn>}
-            {maxShuttle && filled(r.shuttle) && (Number(r.shuttle) < 0 || Number(r.shuttle) > maxShuttle) && (
-              <Warn>Level {r.level} has {maxShuttle} shuttles.</Warn>
+            {(outOfRange(r.left, test.range) || outOfRange(r.right, test.range)) && (
+              <Warn>Outside {test.range[0]}–{test.range[1]} {test.unit}: will be marked invalid. Re-check.</Warn>
             )}
           </div>
         )}

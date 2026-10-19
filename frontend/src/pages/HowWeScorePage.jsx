@@ -28,14 +28,14 @@ const Pill = ({ children, tone = 'gray' }) => {
 
 function Anchors({ b, unit }) {
   if (!b.anchors) return null
-  const u = b.anchorUnit === 'm' ? 'm' : b.anchorUnit === 'level' ? '' : unit
   return (
     <div className="mt-1 flex flex-wrap gap-1.5 text-[11px] text-gray-600">
       {b.anchors.map(a => (
         <span key={a.score} className="rounded bg-gray-50 border border-gray-100 px-1.5 py-0.5">
-          {b.anchorUnit === 'level' ? `level ${a.value}` : `${a.value} ${u}`} → <b>{a.score}</b>
+          {`${a.value} ${unit}`} → <b>{a.score}</b>
         </span>
       ))}
+      {b.bestOfLeftRight && <span className="text-gray-500">timed off each foot; the faster time is scored</span>}
       <span className="text-gray-500">({b.higherIsBetter ? 'higher is better' : 'lower is better'}; in between is scored on a straight line)</span>
     </div>
   )

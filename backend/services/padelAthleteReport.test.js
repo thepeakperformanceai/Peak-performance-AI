@@ -19,7 +19,7 @@ const MD = fs.readFileSync(path.join(__dirname, '../../docs/library/padel.md'), 
 const CARD_TIERS = require('../scoring/card_tiers.json');
 
 const PROFILE = { name: 'Ali Khan', position: 'RIGHT', testDate: '2026-10-18' };
-// Engine scores: sprint 60.8, ruler 82, beep 64.5, SLS 68.1, trunk 73.5, OHS 60,
+// Engine scores: sprint 60.8, 5-0-5 74.6 (faster foot 2.55 s), ruler 82, SLS 68.1, trunk 73.5, OHS 60,
 // shoulder 69.6, hip abd 76.6, hip add 63.4.
 const SESSION = {
   athlete: { age: 24, sex: 'M', position: 'RIGHT', dominant_hand: 'R' },
@@ -28,7 +28,7 @@ const SESSION = {
   tests: {
     sprint_10m: { status: 'completed', value: 2.05 },
     ruler_drop: { status: 'completed', value: 12.0 },
-    beep_test: { status: 'completed', level: 9, shuttle: 5 },
+    cod_505: { status: 'completed', left: 2.62, right: 2.55 },
     single_leg_stand: { status: 'completed', left: 9, right: 21, cutoffs: [3, 8, 15, 25] },
     trunk_rotation: { status: 'completed', left: 38, right: 50, cutoffs: [20, 30, 40, 55] },
     overhead_squat: { status: 'completed', value: 55, cutoffs: [30, 50, 65, 80] },
@@ -48,9 +48,8 @@ const build = (session = SESSION, profile = PROFILE) =>
 test('library: one entry per test in docs/library/padel.md, in its order', () => {
   assert.deepEqual(LIB.tests.map(t => t.name), ['10m Sprint', '5-0-5 Agility Test', 'Ruler Drop Test', 'Overhead Squat',
     'Trunk Rotation', 'Single Leg Stand, Eyes Closed', 'Shoulder External Rotation Strength', 'Hip Abduction Strength', 'Hip Adduction Strength']);
-  // The scoring engine is unchanged: the 5-0-5 isn't in its padel battery, and its Beep Test has no library entry.
-  assert.deepEqual(LIB.tests.filter(t => !cfg.tests[t.key]).map(t => t.key), ['cod_505']);
-  assert.deepEqual(Object.keys(cfg.tests).filter(k => !LIB.tests.some(t => t.key === k)), ['beep_test']);
+  // The library and the padel scoring battery cover exactly the same 9 tests (5-0-5 in, Beep Test out).
+  assert.deepEqual(LIB.tests.map(t => t.key).sort(), Object.keys(cfg.tests).sort());
 });
 
 test('library: padel.json is exactly what docs/library/padel.md builds (run scripts/build-padel-library.js after editing)', () => {
@@ -263,6 +262,20 @@ test('Why: only the version(s) whose rule matches, filled from the engine', () =
   assert.deepEqual(priority(build(s), 'trunk_rotation').why, ['Your rotation scored 61. Silver starts at 65, so you\'re 4 points away.']);
 });
 
+test('5-0-5: the fastest foot is scored; one foot more than 5% slower shows the slower-foot Why', () => {
+  const s = copy(SESSION);
+  s.tests.cod_505 = { status: 'completed', left: 2.92, right: 2.75 };     // fastest 2.75 (score 52); left 6% slower
+  const p = priority(build(s), 'cod_505');
+  assert.equal(p.rank, 1);
+  assert.deepEqual(p.why, [
+    'You turned and came back in 2.75 seconds. Silver starts at 2.63 seconds, so you\'re 0.12 seconds away.',
+    'You turn 6% slower off your left foot.'
+  ]);
+  assert.deepEqual(p.fixes.map(f => f.key), ['A', 'B']);                  // brake and turn + even both turns
+  s.tests.cod_505 = { status: 'completed', left: 2.78, right: 2.75 };     // 1% apart: no slower-foot line
+  assert.deepEqual(priority(build(s), 'cod_505').fixes.map(f => f.key), ['A']);
+});
+
 test('Why: {fault} is the "Fault seen" in plain words; none recorded says the coach will choose', () => {
   const squat = (fault) => {
     const s = copy(SESSION);
@@ -362,8 +375,9 @@ test('observations: only known values are kept', () => {
 
 test('full results: one plain line per test actually done, in library order; tests not done are skipped', () => {
   const ar = build();
-  assert.deepEqual(ar.fullResults.map(r => r.key), ['sprint_10m', 'ruler_drop', 'overhead_squat', 'trunk_rotation',
-    'single_leg_stand', 'shoulder_er', 'hip_abduction', 'hip_adduction']);           // no 5-0-5 (not done)
+  assert.deepEqual(ar.fullResults.map(r => r.key), ['sprint_10m', 'cod_505', 'ruler_drop', 'overhead_squat', 'trunk_rotation',
+    'single_leg_stand', 'shoulder_er', 'hip_abduction', 'hip_adduction']);
+  assert.deepEqual(ar.fullResults.find(r => r.key === 'cod_505').result, '2.55 seconds');      // the faster foot
   const sprintLib = LIB.tests.find(t => t.key === 'sprint_10m').fix_it;
   assert.deepEqual(ar.fullResults[0], { key: 'sprint_10m', test: '10m sprint', result: '2.05 seconds', tier: 'Bronze', next: '4 points from Silver', fixIt: `Fix it and ${sprintLib}` });
   const { fixIt, ...hipAdd } = ar.fullResults.find(r => r.key === 'hip_adduction');

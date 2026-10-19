@@ -1,11 +1,10 @@
 {
-  "config_version": "cricket-v1.1",
+  "config_version": "cricket-v1.2",
   "sport": "cricket",
-  "notes": "Interim. Anchors are adult male. Sprint and Yo-Yo anchors are derived from published cricket data (see sources); figures were taken from search excerpts and should be checked against the full papers. The medicine ball throw has no agreed benchmarks yet: they are recorded but not scored (benchmark_pending). VALD tests use VALD's age-and-sex bands.",
+  "notes": "Interim. Anchors are adult male. Sprint anchors are derived from published cricket data (see sources); figures were taken from search excerpts and should be checked against the full papers. The medicine ball throw has no agreed benchmarks yet: they are recorded but not scored (benchmark_pending). VALD tests use VALD's age-and-sex bands.",
   "sources": {
     "sprint_10m": "Weldon et al. 2021, IJSPP (PMID 34937959): 19 male international cricketers, 10 m 1.84 +/- 0.08 s. Anchors: 85 = international mean; 95 = mean - 1.25 SD; 70/55/40 = mean + 1/2/3 SD.",
     "sprint_20m": "Weldon et al. 2021: 20 m 3.13 +/- 0.12 s (85 = mean; 70/55/40 = mean + 1/2/3 SD). 95 = 2.96 s, mean of 15 professional fast bowlers (Relationship between physical fitness and the physical demands of 50-over cricket in fast bowlers, Univ. of Salford repository).",
-    "yoyo_ir1": "Anchors in level.shuttle, scored on cumulative metres: 85 = 18.3 (Weldon et al. 2021 international mean, level 18.34); 70 = 17.4 (reported PCB pass score, unofficial source); 95 = 20.1 (2400 m, close to the fast-bowler mean 2419 m, Salford study); 55 = 16.4 and 40 = 15.4 extrapolated one level apart.",
     "ruler_drop": "Davis (2000) rating bands (16-19 years, general population), via brianmac.co.uk; same as football.",
     "cod_505": "505 agility test (devised for cricket, Draper & Lancaster 1985). 85 = 2.46 s, male cricketers' mean 2.458 +/- 0.133 s (left turn), Thomas et al. 2018, Sports 6(4):174, PMC6315619; 70/55/40 = mean + 1/2/3 SD; 95 = 2.30 s, Draper & Lancaster 'elite' male cut-off (via topendsports.com). Timed with gates over the 5 m either side of the turn; no hand-timing correction.",
     "medicine_ball": "Benchmarks pending: seated 4 kg chest throw; no cricket or matching-protocol norms found.",
@@ -19,7 +18,6 @@
   "manual_anchors": {
     "sprint_10m": [[2.08, 40], [2.00, 55], [1.92, 70], [1.84, 85], [1.74, 95]],
     "sprint_20m": [[3.49, 40], [3.37, 55], [3.25, 70], [3.13, 85], [2.96, 95]],
-    "yoyo_ir1":   [[920, 40], [1240, 55], [1560, 70], [1840, 85], [2400, 95]],
     "ruler_drop": [[28.0, 40], [20.4, 55], [16.0, 70], [11.0, 85], [7.5, 95]],
     "cod_505":    [[2.86, 40], [2.72, 55], [2.59, 70], [2.46, 85], [2.30, 95]]
   },
@@ -28,10 +26,6 @@
   "vald_band_edge_scores": [25, 40, 55, 70, 85, 99],
   "vald_band_midpoints": [33, 48, 63, 78, 92],
 
-  "yoyo_shuttles_per_level": {
-    "5": 1, "9": 1, "11": 2, "12": 3, "13": 4, "14": 8, "15": 8, "16": 8, "17": 8,
-    "18": 8, "19": 8, "20": 8, "21": 8, "22": 8, "23": 8
-  },
 
   "references": {
     "springer2007": {"authors": "Springer BA, Marin R, Cyhan T, Roberts H, Gill NW", "year": 2007, "title": "Normative values for the unipedal stance test with eyes open and closed", "journal": "Journal of Geriatric Physical Therapy", "volume": "30", "issue": "1", "pages": "8-15", "url": "https://geriatrictoolkit.missouri.edu/balance/Normative_Values_for_the_Unipedal_Stance_Test_Springer-JGPT.pdf"},
@@ -43,7 +37,6 @@
     "sprint_20m":      {"source": "manual", "stat": "speed",     "stat_weight": 0.5, "plausible": [2.40, 5.50], "citation": "interim"},
     "cod_505":         {"source": "manual", "stat": "agility",   "stat_weight": 1.0, "plausible": [1.80, 4.00], "citation": "interim"},
     "medicine_ball":   {"source": "manual", "stat": "power",     "stat_weight": 0.5, "plausible": [1.5, 12.0], "benchmark_pending": true, "citation": "pending"},
-    "yoyo_ir1":        {"source": "manual", "stat": "endurance", "stat_weight": 1.0, "plausible": [40, 3640], "citation": "interim"},
     "ruler_drop":      {"source": "manual", "stat": "reaction",  "stat_weight": 1.0, "plausible": [0, 30], "citation": "interim"},
     "single_leg_stand":{"source": "vald", "bilateral": true, "stat": "balance", "stat_weight": 1.0, "plausible": [0, 30], "citation": {"basis": "vald_norms", "test_reference": "springer2007"}},
     "shoulder_er":     {"source": "vald", "bilateral": true, "dynamo": true, "stat": "power", "stat_weight": 0.125, "plausible": [20, 1500], "citation": "vald_norms"},
@@ -53,7 +46,7 @@
   },
 
   "stat_weights": {"speed": 20, "agility": 20, "power": 20, "endurance": 15, "reaction": 15, "balance": 10},
-  "stats_not_in_battery": [],
+  "stats_not_in_battery": ["endurance"],
 
   "lsi": {"amber_below": 90, "red_below": 85, "power_cap": 75},
   "flags": {"sls_side_diff_s": 10, "trunk_rotation_min_deg": 40, "trunk_rotation_side_diff_deg": 10},

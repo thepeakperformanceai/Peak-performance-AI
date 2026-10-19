@@ -22,7 +22,7 @@ const RESULTS_IN = {
   tests: {
     sprint_10m: { status: 'completed', value: '2.05' },
     ruler_drop: { status: 'completed', value: '12.0' },
-    beep_test: { status: 'completed', level: '9', shuttle: '5' },
+    cod_505: { status: 'completed', left: '2.62', right: '2.55' },
     single_leg_stand: { status: 'completed', left: '9', right: '21', cutoffs: ['3', '8', '15', '25'] },
     trunk_rotation: { status: 'completed', left: '38', right: '50', cutoffs: ['20', '30', '40', '55'] },
     overhead_squat: { status: 'completed', value: '55', cutoffs: ['30', '50', '65', '80'], fault: 'arms_drop' },

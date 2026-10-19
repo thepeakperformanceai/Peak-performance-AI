@@ -1,6 +1,7 @@
 // Run: npm test   (from backend/)
 // Padel scoring (padel_v1): the football spec checks mirrored for padel's
 // battery, plus padel's own rules (weights, groin ratio, dominant arm).
+// padel-v1.1: Beep Test removed; 5-0-5 timed off each foot, the fastest scored.
 
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -14,7 +15,7 @@ const FULL = {
   tests: {
     sprint_10m: { status: 'completed', value: 1.97 },
     ruler_drop: { status: 'completed', value: 11.0 },
-    beep_test: { status: 'completed', level: 10, shuttle: 0 },
+    cod_505: { status: 'completed', left: 2.62, right: 2.59 },
     single_leg_stand: { status: 'completed', left: 20, right: 22, cutoffs: [3, 8, 15, 25] },
     trunk_rotation: { status: 'completed', left: 45, right: 47, cutoffs: [20, 30, 40, 55] },
     overhead_squat: { status: 'completed', value: 70, cutoffs: [30, 50, 65, 80] },
@@ -31,14 +32,21 @@ const findTest = (out, name) => out.tests.find(t => t.name === name);
 // ---------- config ----------
 
 test('padel config: battery, weights and interim anchors as specified', () => {
-  assert.equal(cfg.config_version, 'padel-v1.0');
-  assert.deepEqual(Object.keys(cfg.tests), ['sprint_10m', 'ruler_drop', 'beep_test', 'single_leg_stand',
+  assert.equal(cfg.config_version, 'padel-v1.1');
+  assert.deepEqual(Object.keys(cfg.tests), ['sprint_10m', 'ruler_drop', 'cod_505', 'single_leg_stand',
     'trunk_rotation', 'overhead_squat', 'shoulder_er', 'hip_abduction', 'hip_adduction']);
   assert.deepEqual(cfg.stat_weights, { reaction: 20, speed: 20, agility: 25, power: 15, balance: 10, endurance: 10 });
   assert.equal(Object.values(cfg.stat_weights).reduce((a, b) => a + b, 0), 100);
   assert.deepEqual(A.sprint_10m, [[2.25, 40], [2.10, 55], [1.97, 70], [1.85, 85], [1.78, 95]]);
   assert.deepEqual(A.ruler_drop, loadConfig('football').manual_anchors.ruler_drop);
-  assert.deepEqual(A.beep_test, [[7.0, 40], [8.5, 55], [10.0, 70], [11.5, 85], [12.5, 95]]);
+  // 5-0-5: cricket's anchors, an interim benchmark until padel norms are agreed; both feet timed.
+  assert.deepEqual(A.cod_505, loadConfig('cricket').manual_anchors.cod_505);
+  assert.deepEqual(cfg.tests.cod_505.citation, { basis: 'interim', borrowed_from: 'cricket' });
+  assert.equal(cfg.tests.cod_505.best_of_left_right, true);
+  assert.equal(cfg.tests.cod_505.stat, 'agility');
+  assert.equal(A.beep_test, undefined);
+  assert.equal(cfg.tests.beep_test, undefined);
+  assert.deepEqual(cfg.stats_not_in_battery, ['endurance']);
   assert.equal(cfg.tests.trunk_rotation.stat, null);
   assert.equal(cfg.tests.overhead_squat.stat, null);
   for (const n of ['shoulder_er', 'hip_abduction', 'hip_adduction']) {
@@ -54,13 +62,13 @@ test('anchor points exact', () => {
   assert.ok(close(scoreFromAnchors(1.97, A.sprint_10m), 70));
   assert.ok(close(scoreFromAnchors(2.25, A.sprint_10m), 40));
   assert.ok(close(scoreFromAnchors(11.0, A.ruler_drop), 85));
-  assert.ok(close(scoreFromAnchors(10.0, A.beep_test), 70));
-  assert.ok(close(scoreFromAnchors(12.5, A.beep_test), 95));
+  assert.ok(close(scoreFromAnchors(2.59, A.cod_505), 70));
+  assert.ok(close(scoreFromAnchors(2.30, A.cod_505), 95));
 });
 
 test('anchor interpolation and limits', () => {
   assert.ok(close(scoreFromAnchors(2.035, A.sprint_10m), 62.5));  // halfway 2.10 -> 1.97
-  assert.ok(close(scoreFromAnchors(9.25, A.beep_test), 62.5));    // halfway 8.5 -> 10.0
+  assert.ok(close(scoreFromAnchors(2.655, A.cod_505), 62.5));     // halfway 2.72 -> 2.59
   assert.equal(scoreFromAnchors(1.60, A.sprint_10m), 99);          // capped
   assert.equal(scoreFromAnchors(3.20, A.sprint_10m), 25);          // floored
 });
@@ -87,26 +95,26 @@ test('vald label only is midpoint and partial', () => {
   assert.ok(t.score === 63 && t.partial);
 });
 
-test('full session not provisional, agility excluded, weighted OVR', () => {
+test('full session not provisional, endurance excluded, weighted OVR', () => {
   const out = scoreSession(FULL, cfg);
   assert.deepEqual(
     Object.fromEntries(Object.entries(out.stats).map(([k, v]) => [k, v.value])),
-    { reaction: 85, speed: 70, agility: null, power: 76, balance: 79, endurance: 70 });
-  assert.equal(out.stats.agility.status, 'not_in_battery');
-  // (20*85 + 20*70 + 15*75.5 + 10*79 + 10*70) / 75 = 76.3 -> 76 (agility's 25% left out)
-  assert.equal(out.ovr.value, 76);
+    { reaction: 85, speed: 70, agility: 70, power: 76, balance: 79, endurance: null });
+  assert.equal(out.stats.endurance.status, 'not_in_battery');
+  // (20*85 + 20*70 + 25*70 + 15*75.5 + 10*79) / 90 = 75.25 -> 75 (endurance's 10% left out)
+  assert.equal(out.ovr.value, 75);
   assert.equal(out.ovr.provisional, false);
   assert.deepEqual(out.flags, []);
-  assert.equal(out.config_version, 'padel-v1.0');
+  assert.equal(out.config_version, 'padel-v1.1');
 });
 
-test('missing beep injured', () => {
+test('missing 5-0-5 injured', () => {
   const s = copy(FULL);
-  s.tests.beep_test = { status: 'injured' };
+  s.tests.cod_505 = { status: 'injured' };
   const out = scoreSession(s, cfg);
-  assert.equal(out.stats.endurance.status, 'not_tested');
+  assert.equal(out.stats.agility.status, 'not_tested');
   assert.ok(out.ovr.provisional);
-  assert.ok(out.ovr.reasons.includes('beep_test: injured'));
+  assert.ok(out.ovr.reasons.includes('cod_505: injured'));
 });
 
 test('one test missing in power is partial (mean of the other two)', () => {

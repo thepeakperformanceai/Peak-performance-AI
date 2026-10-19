@@ -23,9 +23,14 @@ const randomSession = (cfg, rand) => {
     const roll = rand();
     if (roll < 0.12) { tests[k] = { status: ['not_done', 'injured', 'equipment_fault'][Math.floor(rand() * 3)] }; continue; }
     if (d.source === 'manual') {
-      if (k === 'beep_test') { const level = 3 + Math.floor(rand() * 12); tests[k] = { status: 'completed', level, shuttle: Math.floor(rand() * cfg.beep_shuttles_per_level[String(level)]) }; continue; }
-      if (k === 'yoyo_ir1') { const lv = Object.keys(cfg.yoyo_shuttles_per_level); const level = Number(lv[Math.floor(rand() * lv.length)]); tests[k] = { status: 'completed', level, shuttle: 1 + Math.floor(rand() * cfg.yoyo_shuttles_per_level[String(level)]) }; continue; }
       const [lo, hi] = d.plausible;
+      if (d.best_of_left_right) {                                          // timed off each foot
+        const t = { status: 'completed' };
+        if (rand() < 0.85) t.left = pyRound(lo + (hi - lo) * rand(), 2);
+        if (rand() < 0.85 || t.left === undefined) t.right = pyRound(lo + (hi - lo) * rand(), 2);
+        tests[k] = t;
+        continue;
+      }
       tests[k] = { status: 'completed', value: pyRound(lo + (hi - lo) * (rand() * 1.1 - 0.02), 2) };   // a few out of range -> invalid
       continue;
     }
@@ -86,7 +91,7 @@ test('breakdown agrees with the engine for custom sessions', () => {
   const rand = rng(7);
   const { cfg } = buildCustomConfig({
     testsIn: [{ key: 'sprint_10m', kind: 'manual' }, { key: 'sprint_30m', kind: 'manual' }, { key: 'cod_505', kind: 'manual' }, { key: 'ruler_drop', kind: 'manual' },
-      { key: 'beep_test', kind: 'manual' }, { key: 'knee_extension', kind: 'vald', valdKey: 'dynamo:kneeextension', bilateral: true },
+      { key: 'knee_extension', kind: 'vald', valdKey: 'dynamo:kneeextension', bilateral: true },
       { key: 'hip_adduction', kind: 'vald', valdKey: 'dynamo:hipadduction', bilateral: true }, { key: 'hip_abduction', kind: 'vald', valdKey: 'dynamo:hipabduction', bilateral: true }],
     benchmarkSport: 'padel'
   });
@@ -183,7 +188,8 @@ test('benchmark sources: a study is named only when the config cites one; otherw
       assert.ok(['study', 'vald', 'interim', 'pending'].includes(b.basis), `${sport} ${b.key}`);
       if (b.basis === 'study') assert.ok(b.reference && b.reference.title, `${sport} ${b.key}`);
       else assert.equal(b.reference, null, `${sport} ${b.key}`);
-      if (b.basis === 'interim') assert.equal(b.citation, INTERIM_LABEL, `${sport} ${b.key}`);
+      // Interim anchors reused from another sport say where from (football and padel 5-0-5: cricket).
+      if (b.basis === 'interim') assert.ok(b.citation === INTERIM_LABEL || b.citation.startsWith(`${INTERIM_LABEL} (reused from `), `${sport} ${b.key}`);
       if (b.basis === 'vald') assert.equal(b.citation, VALD_LABEL, `${sport} ${b.key}`);
     }
     if (m.tests) {
@@ -224,6 +230,20 @@ test('citations: every test has one, every reference it names exists, and the pa
   }
 });
 
+test('5-0-5 in football and padel: cricket\'s anchors, labelled as an interim benchmark reused from cricket', () => {
+  for (const sport of ['football', 'padel']) {
+    const t = methodology(sport).tests.find(x => x.key === 'cod_505');
+    assert.equal(t.stat, 'agility', sport);
+    assert.deepEqual(loadConfig(sport).manual_anchors.cod_505, loadConfig('cricket').manual_anchors.cod_505);
+    assert.equal(t.benchmark.interim, true);
+    assert.equal(t.benchmark.bestOfLeftRight, true);
+    assert.equal(t.benchmark.citation.label, `${INTERIM_LABEL} (reused from Cricket until ${sport} norms are agreed)`);
+  }
+  for (const sport of ['football', 'padel', 'cricket']) {
+    assert.equal(methodology(sport).tests.some(x => x.key === 'beep_test' || x.key === 'yoyo_ir1'), false, sport);
+  }
+});
+
 test('citations: Springer on single leg stand, Mann on hand timing, Tyler on the padel groin flag', () => {
   for (const sport of SPORTS) {
     const m = methodology(sport);
@@ -237,7 +257,7 @@ test('citations: Springer on single leg stand, Mann on hand timing, Tyler on the
       assert.equal(t.handTimingReference.id, 'mann2015', `${sport} ${t.key}`);
       assert.equal(t.benchmark.citation.label, INTERIM_LABEL, `${sport} ${t.key}`);
     }
-    for (const k of ['beep_test', 'ruler_drop']) {
+    for (const k of ['ruler_drop']) {
       const t = m.tests.find(x => x.key === k);
       if (t) assert.equal(t.benchmark.citation.label, INTERIM_LABEL, `${sport} ${k}`);
     }

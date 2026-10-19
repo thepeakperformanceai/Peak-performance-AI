@@ -11,7 +11,7 @@ FULL = {
         "sprint_10m": {"status": "completed", "value": 1.85},
         "sprint_30m": {"status": "completed", "value": 4.30},
         "ruler_drop": {"status": "completed", "value": 11.0},
-        "beep_test": {"status": "completed", "level": 10, "shuttle": 0},
+        "cod_505": {"status": "completed", "left": 2.62, "right": 2.59},
         "single_leg_stand": {"status": "completed", "left": 20, "right": 22, "cutoffs": [3, 8, 15, 25]},
         "trunk_rotation": {"status": "completed", "left": 45, "right": 47, "cutoffs": [20, 30, 40, 55]},
         "overhead_squat": {"status": "completed", "value": 70, "cutoffs": [30, 50, 65, 80]},
@@ -33,7 +33,7 @@ def close(a, b, tol=0.15):
 def test_anchor_points_exact():
     assert close(score_from_anchors(4.30, A["sprint_30m"]), 70)
     assert close(score_from_anchors(11.0, A["ruler_drop"]), 85)
-    assert close(score_from_anchors(10.0, A["beep_test"]), 55)
+    assert close(score_from_anchors(2.59, A["cod_505"]), 70)
 
 
 def test_anchor_interpolation_and_limits():
@@ -66,20 +66,35 @@ def test_vald_label_only_is_midpoint_and_partial():
     assert t["score"] == 63 and t["partial"]
 
 
-def test_full_session_not_provisional_agility_excluded():
+def test_full_session_not_provisional_endurance_excluded():
     out = score_session(FULL, cfg)
     assert out["ovr"]["value"] is not None
     assert not out["ovr"]["provisional"]
-    assert out["stats"]["agility"]["status"] == "not_in_battery"
+    assert out["stats"]["endurance"]["status"] == "not_in_battery"
+    assert "beep_test" not in cfg["tests"]
 
 
-def test_missing_beep_injured():
+def test_missing_505_injured():
     s = copy(FULL)
-    s["tests"]["beep_test"] = {"status": "injured"}
+    s["tests"]["cod_505"] = {"status": "injured"}
     out = score_session(s, cfg)
-    assert out["stats"]["endurance"]["status"] == "not_tested"
+    assert out["stats"]["agility"]["status"] == "not_tested"
     assert out["ovr"]["provisional"]
-    assert "beep_test: injured" in out["ovr"]["reasons"]
+    assert "cod_505: injured" in out["ovr"]["reasons"]
+
+
+def test_505_best_of_both_feet():
+    out = score_session(FULL, cfg)
+    t = next(t for t in out["tests"] if t["name"] == "cod_505")
+    assert (t["raw_left"], t["raw_right"], t["raw"]) == (2.62, 2.59, 2.59)
+    assert close(t["score"], 70)
+    s = copy(FULL)
+    s["tests"]["cod_505"] = {"status": "completed", "right": 2.46}
+    t = next(t for t in score_session(s, cfg)["tests"] if t["name"] == "cod_505")
+    assert close(t["score"], 85)
+    s["tests"]["cod_505"] = {"status": "completed", "left": 2.5, "right": 9.9}
+    t = next(t for t in score_session(s, cfg)["tests"] if t["name"] == "cod_505")
+    assert t["status"] == "invalid"
 
 
 def test_one_test_missing_in_speed_is_partial():

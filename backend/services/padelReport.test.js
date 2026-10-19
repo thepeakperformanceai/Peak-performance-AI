@@ -18,7 +18,7 @@ const RESULTS = {
   tests: {
     sprint_10m: { status: 'completed', value: '1.82' },
     ruler_drop: { status: 'completed', value: '12.5' },
-    beep_test: { status: 'not_done' },
+    cod_505: { status: 'not_done' },
     single_leg_stand: { status: 'completed', left: '21', right: '24', cutoffs: ['3', '8', '15', '25'] },
     trunk_rotation: { status: 'completed', left: '48', right: '50', cutoffs: ['20', '30', '40', '55'] },
     overhead_squat: { status: 'completed', value: '66', band: 'within_normal' },
@@ -47,7 +47,7 @@ test('form entry becomes the engine session, with dominant hand', () => {
   assert.deepEqual(session.athlete, { id: 'PP-0201', age: 26, sex: 'F', position: 'LEFT', dominant_hand: 'R' });
   assert.deepEqual(Object.keys(session.tests), Object.keys(padel.cfg.tests));
   assert.deepEqual(session.tests.shoulder_er, { status: 'completed', left: 150, right: 118, cutoffs: [50, 80, 120, 170] });
-  assert.deepEqual(session.tests.beep_test, { status: 'not_done' });
+  assert.deepEqual(session.tests.cod_505, { status: 'not_done' });
 });
 
 test('dominant hand and court side are required; football positions rejected', () => {
@@ -73,9 +73,9 @@ test('Gemini payload: padel battery, dominant hand, no athlete name', () => {
   const payload = padel.buildGeminiPayload(scored, session);
   assert.equal(JSON.stringify(payload).includes('Sara'), false);
   assert.equal(payload.sport, 'padel');
-  assert.equal(payload.config_version, 'padel-v1.0');
+  assert.equal(payload.config_version, 'padel-v1.1');
   assert.equal(payload.athlete.dominant_hand, 'R');
-  assert.deepEqual(payload.tests.map(t => t.name), ['10m Sprint', 'Ruler Drop', 'Beep Test',
+  assert.deepEqual(payload.tests.map(t => t.name), ['10m Sprint', 'Ruler Drop', '505 Agility',
     'Single Leg Stand (Eyes Closed)', 'Trunk Rotation', 'Overhead Squat',
     'Shoulder External Rotation', 'Hip Abduction', 'Hip Adduction']);
   // R (dominant) is the weaker shoulder: monitor, not red. Adduction 193 / abduction 255 = 75.7%: groin flag.
@@ -83,8 +83,8 @@ test('Gemini payload: padel battery, dominant hand, no athlete name', () => {
     { type: 'LSI', test: 'Shoulder External Rotation', value: 78.7, level: 'monitor', dominant_side_weaker: true, gap_pct: 21.3 },
     { type: 'groin_risk', test: 'Hip Adduction', value: 75.7, level: 'amber' }
   ]);
-  assert.equal(payload.stats.agility.status, 'not_in_battery');
-  assert.equal(payload.stats.endurance.status, 'not_tested');
+  assert.equal(payload.stats.agility.status, 'not_tested');
+  assert.equal(payload.stats.endurance.status, 'not_in_battery');
 });
 
 test('padel system prompt: the football rules plus the padel rules', () => {
@@ -121,12 +121,12 @@ test('full pipeline: padel card content', async () => {
   assert.equal(rc.batteryLabel, 'Padel Battery v1');
   assert.equal(rc.position, 'LEFT');
   assert.equal(rc.dominantHand, 'R');
-  assert.equal(rc.configVersion, 'padel-v1.0');
+  assert.equal(rc.configVersion, 'padel-v1.1');
   assert.equal(rc.overallOVR, scored.ovr.value);
-  assert.equal(rc.ovrStatus, 'provisional');                       // beep not done + female
-  assert.deepEqual(rc.ovrReasons, ['Beep Test not completed: not done', 'benchmarks are adult male only']);
-  assert.deepEqual(rc.ovrScores.find(s => s.name === 'Agility'), { name: 'Agility', score: null, status: 'not_in_battery' });
-  assert.deepEqual(rc.manualBattery.map(t => t.test), ['10m Sprint', 'Ruler Drop', 'Beep Test']);
+  assert.equal(rc.ovrStatus, 'provisional');                       // 505 not done + female
+  assert.deepEqual(rc.ovrReasons, ['505 Agility not completed: not done', 'benchmarks are adult male only']);
+  assert.deepEqual(rc.ovrScores.find(s => s.name === 'Endurance'), { name: 'Endurance', score: null, status: 'not_in_battery' });
+  assert.deepEqual(rc.manualBattery.map(t => t.test), ['10m Sprint', 'Ruler Drop', '505 Agility']);
   assert.deepEqual(rc.dynamoStrength.map(d => [d.joint, d.lsi, d.status]), [
     ['Shoulder External Rotation', 78.7, 'MONITOR — DOMINANT ARM'],
     ['Hip Abduction', 96.2, 'WITHIN RANGE'],

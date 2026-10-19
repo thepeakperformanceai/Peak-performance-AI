@@ -177,6 +177,10 @@ const conditionHolds = (when, ctx) => {
       return !!racket && isSet(t[`raw_${racket}`]) && isSet(t[`raw_${other}`]) &&
         t[`raw_${racket}`] < t[`raw_${other}`] * (1 - when.pct / 100);
     case 'side_gap_pct_over': return gapPctOver(t.raw_left, t.raw_right, when.pct);
+    // Timed both ways (5-0-5): the slower foot more than pct% slower than the faster.
+    case 'slower_side_pct_over':
+      return isSet(t.raw_left) && isSet(t.raw_right) && Math.min(t.raw_left, t.raw_right) > 0 &&
+        Math.max(t.raw_left, t.raw_right) > Math.min(t.raw_left, t.raw_right) * (1 + when.pct / 100);
     case 'same_side_ratio_below': {
       const den = ctx.byName[when.denominator];
       if (!den || den.status !== 'completed') return false;
@@ -307,6 +311,10 @@ const whyValues = (when, template, ctx) => {
   if (when.type === 'side_gap_pct_over' && isSet(l) && isSet(r)) {
     v.weaker_side = l < r ? 'left' : 'right';
     v.gap = pct(1 - Math.min(l, r) / Math.max(l, r));
+  }
+  if (when.type === 'slower_side_pct_over' && isSet(l) && isSet(r)) {
+    v.weaker_side = l > r ? 'left' : 'right';                          // the slower foot
+    v.gap = pct(Math.max(l, r) / Math.min(l, r) - 1);
   }
   if (when.type === 'racket_side_weaker_pct_over') {
     const k = racketSide(session);
