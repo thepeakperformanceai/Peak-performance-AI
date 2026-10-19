@@ -1,4 +1,4 @@
-// Athlete report (padel, cricket: one format) as a real-text PDF (selectable, searchable, readable
+// Athlete report (padel, cricket, football: one format) as a real-text PDF (selectable, searchable, readable
 // on a phone): drawn with jsPDF's own text and shapes, not a screenshot.
 // The report page shows this same PDF, so screen and download always match.
 // Built from reportContent.athleteReport; every number is the engine's.
@@ -38,7 +38,7 @@ export function buildPadelReportPdf(report, opts = {}) {
   const prose = ar.prose || {}
   const t = TIERS[tierKeyOf(rc.overallOVR)]
   // Same layout for every sport; only the sport's name and drills label change.
-  const sport = /cricket/i.test(rc.sport || '') ? 'Cricket' : 'Padel'
+  const sport = /cricket/i.test(rc.sport || '') ? 'Cricket' : /football/i.test(rc.sport || '') ? 'Football' : 'Padel'
   const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' })
   doc.setProperties({ title: `${sport} athlete report: ${report.athleteName || ar.athleteName}`, subject: 'What it means for your game · How to improve', author: 'PeakPerformance' })
 

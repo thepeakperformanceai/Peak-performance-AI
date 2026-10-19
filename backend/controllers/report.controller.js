@@ -10,6 +10,7 @@ const { extractDashboardMetrics } = require('../services/metricExtract.service')
 const footballReport = require('../services/footballReport.service');
 const scoredReport = require('../services/scoredReport.service');
 const padelAthleteReport = require('../services/padelAthleteReport.service');
+const { loadConfig } = require('../scoring/scoring');
 const customAssessment = require('../services/customAssessment.service');
 const ValdTestMapping = require('../models/ValdTestMapping.model');
 
@@ -179,11 +180,14 @@ const generateFootballReport = async (req, res, next) => {
     }
 
     const { profile, session } = footballReport.validateFootballInput(profileIn, footballIn);
+    // Tester observations the library's rules need (overhead squat fault).
+    session.observations = padelAthleteReport.cleanObservations({ overhead_squat_fault: footballIn.tests?.overhead_squat?.fault });
 
     const pdfData = uploadedFiles.length ? await pdfExtractService.processPdfs(uploadedFiles) : [];
 
     const { scored, payload, rawResponse, reportContent } =
       await footballReport.runFootballPipeline(profile, session);
+    await addAthleteReport('football', { reportContent, profile, scored, session, cfg: loadConfig('football') });
 
     const report = new Report({
       user: req.user._id,
@@ -246,7 +250,7 @@ const reportResponse = (report, message) => ({
  * current config (so new benchmarks apply) and rewrites the text.
  */
 /**
- * Padel and cricket: the separate athlete report ("What it means for your
+ * Padel, cricket and football: the separate athlete report ("What it means for your
  * game", "How to improve", "Your full results"), chosen in code from the
  * engine's existing scores and the sport's library (library/<sport>.json).
  * Same format for every sport. Gemini only rewords it; see
@@ -480,6 +484,7 @@ const regenerateFootballReport = async (existingReport, res) => {
   };
   const { scored, payload, rawResponse, reportContent } =
     await footballReport.runFootballPipeline(profile, existingReport.footballSession);
+  await addAthleteReport('football', { reportContent, profile, scored, session: existingReport.footballSession, cfg: loadConfig('football') });
 
   existingReport.reportContent = reportContent;
   existingReport.rawAiResponse = rawResponse;

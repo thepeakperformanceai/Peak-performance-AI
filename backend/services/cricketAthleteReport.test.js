@@ -67,5 +67,6 @@ test('padel keeps its own library and wording; Gemini is told the right sport', 
   assert.equal(R.LIBRARY.sport, 'padel');
   assert.match(R.SYSTEM_PROMPT, /You are a padel coach/);
   assert.match(C.SYSTEM_PROMPT, /You are a cricket coach/);
-  assert.equal(R.forSport('football'), null);
+  assert.equal(R.forSport('football').LIBRARY.sport, 'football');
+  assert.equal(R.forSport('hockey'), null);
 });

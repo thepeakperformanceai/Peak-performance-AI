@@ -1,6 +1,6 @@
 // scripts/build-padel-library.js
 // Rebuilds every sport's test library from docs/library/<sport>.md:
-// library/padel.json and library/cricket.json.
+// library/padel.json, library/cricket.json and library/football.json.
 //
 //   node scripts/build-padel-library.js           write the JSON files
 //   node scripts/build-padel-library.js --check   exit 1 if any is out of date
@@ -9,10 +9,12 @@ const fs = require('fs');
 const path = require('path');
 const { buildPadelLibrary } = require('../library/buildPadelLibrary');
 const { buildCricketLibrary } = require('../library/buildCricketLibrary');
+const { buildFootballLibrary } = require('../library/buildFootballLibrary');
 
 const LIBRARIES = [
   { sport: 'padel', build: buildPadelLibrary },
-  { sport: 'cricket', build: buildCricketLibrary }
+  { sport: 'cricket', build: buildCricketLibrary },
+  { sport: 'football', build: buildFootballLibrary }
 ];
 
 let stale = false;

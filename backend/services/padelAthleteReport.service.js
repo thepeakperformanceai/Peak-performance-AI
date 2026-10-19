@@ -24,6 +24,7 @@
 
 const PADEL_LIBRARY = require('../library/padel.json');
 const CRICKET_LIBRARY = require('../library/cricket.json');
+const FOOTBALL_LIBRARY = require('../library/football.json');
 const { findUnsupportedNumbers } = require('./scoredReport.service');
 const { scoreFromVald, pyRound } = require('../scoring/scoring');
 const aiEngine = require('./aiEngine.service');
@@ -35,6 +36,7 @@ const MANUAL_UNITS = {
   sprint_10m: { word: 'seconds', dp: 2 },
   cod_505: { word: 'seconds', dp: 2 },
   sprint_20m: { word: 'seconds', dp: 2 },
+  sprint_30m: { word: 'seconds', dp: 2 },
   ruler_drop: { word: 'cm', dp: 1 }
 };
 
@@ -599,11 +601,12 @@ const cleanObservations = (raw = {}) => {
 
 const padel = makeAthleteReport(PADEL_LIBRARY);
 const cricket = makeAthleteReport(CRICKET_LIBRARY);
+const football = makeAthleteReport(FOOTBALL_LIBRARY);
 
 module.exports = {
   ...padel,
   makeAthleteReport,
-  forSport: (sport) => ({ padel, cricket })[sport] || null,
+  forSport: (sport) => ({ padel, cricket, football })[sport] || null,
   OBSERVATIONS,
   cleanObservations
 };

@@ -158,7 +158,7 @@ function BreakdownSection({ report }) {
   )
 }
 
-// Athlete report (padel, cricket): the PDF itself, shown on the page, so the screen and
+// Athlete report (padel, cricket, football): the PDF itself, shown on the page, so the screen and
 // the download are the same document (one layout that never runs into the footer).
 function PadelReportPreview({ report }) {
   const [url, setUrl] = useState(null)
@@ -214,7 +214,7 @@ export default function ReportPage() {
 
   // Football (engine-scored) reports: the one-page player card, identical to the PDF.
   if (engineScored) {
-    // Padel and cricket: the athlete report ("What it means for your game", "How to
+    // Padel, cricket and football: the athlete report ("What it means for your game", "How to
     // improve", "Your full results") under the card, with its own PDF.
     const hasAthleteReport = !!rc.athleteReport
     const handleAthleteDownload = async () => {
