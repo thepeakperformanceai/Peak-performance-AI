@@ -25,6 +25,7 @@
   "vald_band_labels": ["well_below", "below", "within_normal", "slightly_above", "well_above"],
   "vald_band_edge_scores": [25, 40, 55, 70, 85, 99],
   "vald_band_midpoints": [33, 48, 63, 78, 92],
+  "vald_percentile_anchors": [[0, 25], [100, 99]],
 
 
   "references": {

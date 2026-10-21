@@ -49,10 +49,12 @@ const valdBilateral = (lo, hi, dp) => {
   const sides = pick(['both', 'both', 'both', 'left', 'right', 'none']);
   if (sides === 'both' || sides === 'left') t.left = between(lo, hi, dp);
   if (sides === 'both' || sides === 'right') t.right = between(lo, hi, dp);
-  const mode = pick(['cutoffs', 'cutoffs', 'band', 'side_bands', 'nothing']);
+  const mode = pick(['cutoffs', 'cutoffs', 'band', 'side_bands', 'percentiles', 'percentiles', 'left_percentile', 'nothing']);
   if (mode === 'cutoffs') t.cutoffs = randomCutoffs(lo, hi);
   if (mode === 'band') t.band = pick(BANDS);
   if (mode === 'side_bands') { t.band_left = pick(BANDS); t.band_right = pick(BANDS); }
+  if (mode === 'percentiles') { t.percentile_left = Math.floor(rand() * 101); t.percentile_right = Math.floor(rand() * 101); }
+  if (mode === 'left_percentile') t.percentile_left = between(0, 100, 1);
   if (rand() < 0.1) t.higher_is_better = false;
   return t;
 };
@@ -70,8 +72,11 @@ const randomSession = () => {
   const ohs = { status: ohsStatus };
   if (ohsStatus === 'completed') {
     ohs.value = between(10, 100, 0);
-    if (rand() < 0.5) ohs.cutoffs = randomCutoffs(20, 90);
-    else ohs.band = pick(BANDS);
+    const r = rand();
+    if (r < 0.4) ohs.cutoffs = randomCutoffs(20, 90);
+    else if (r < 0.7) ohs.band = pick(BANDS);
+    else if (r < 0.9) ohs.percentile = between(0, 100, 0);
+    // else: measured, not rated
   }
   const tests = {
     sprint_10m: manual(1.2, 3.8, 2),

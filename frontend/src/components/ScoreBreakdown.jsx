@@ -9,8 +9,9 @@ const STATUS_TEXT = {
 }
 const BENCHMARK_TEXT = {
   research: 'Published research norms',
-  vald_age_sex: 'VALD bands (same age and sex)',
+  vald_age_sex: 'VALD percentile or band (same age and sex)',
   pending: 'No norms yet (recorded only)',
+  not_rated: 'Measured, not rated (VALD gave no band)',
 }
 
 const fmt = (v) => (v === null || v === undefined ? '—' : String(v))
@@ -34,7 +35,8 @@ function TestLine({ t }) {
         {t.handTimingAddSeconds != null && (
           <div className="text-[11px] text-gray-500">Hand-timed: +{t.handTimingAddSeconds} s → {t.adjustedValue} s scored</div>
         )}
-        {t.bands && <div className="text-[11px] text-gray-500">VALD band: {t.bands.filter(Boolean).join(' / ')}{t.partial ? ' (band only)' : ''}</div>}
+        {t.percentiles && <div className="text-[11px] text-gray-500">VALD percentile: {t.percentiles.filter(p => p != null).join(' / ')} (not the score)</div>}
+        {t.bands && t.bands.some(Boolean) && <div className="text-[11px] text-gray-500">VALD band: {t.bands.filter(Boolean).join(' / ')}{t.partial ? ' (band only)' : ''}</div>}
         {t.lsi != null && <div className="text-[11px] text-gray-500">Weaker side = {t.lsi}% of stronger</div>}
       </td>
       <td className="py-2 pr-3 text-right font-semibold">{t.score == null ? '—' : t.score}</td>

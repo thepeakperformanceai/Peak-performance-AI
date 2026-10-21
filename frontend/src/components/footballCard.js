@@ -192,6 +192,8 @@ function testsTable(rc, t, rowsIn = null) {
     let status
     if (done && r.benchmarkPending) {
       status = chip('RECORDED · BENCHMARK PENDING', MON_TXT, MON_BG, chipExtra)
+    } else if (done && r.notRated) {
+      status = chip('MEASURED · NOT RATED', MON_TXT, MON_BG, chipExtra)
     } else if (done) {
       const notes = [r.partial ? 'band only' : '', r.oneSideOnly ? 'one side' : ''].filter(Boolean).join(' · ')
       status = `<span style="font-family:${TEXT};font-size:10px;font-weight:600;color:${TXT}">✓ Scored</span>${notes ? `<span style="font-family:${TEXT};font-size:9.5px;color:${MUTED}"> · ${esc(notes)}</span>` : ''}`
@@ -546,7 +548,12 @@ ${look ? look.motif : `    <div style="position:absolute;left:232px;top:-120px;w
 // admin assigned them to; unassigned ones are listed under "Other".
 
 const ADDITIONAL_GROUPS = ['speed', 'power', 'agility', 'balance', 'reaction', 'endurance', null]
-const BAND_TEXT = { well_below: 'Well below', below: 'Below', within_normal: 'Within normal', slightly_above: 'Slightly above', well_above: 'Well above' }
+// VALD's own wording for each band (athletes always see VALD's words).
+const BAND_TEXT = { well_below: 'Significantly below', below: 'Slightly below', within_normal: 'Within normal', slightly_above: 'Slightly above', well_above: 'Significantly above' }
+const ordinal = (n) => {
+  const v = Math.round(n)
+  return `${v}${(v % 100 >= 11 && v % 100 <= 13) ? 'th' : ({ 1: 'st', 2: 'nd', 3: 'rd' }[v % 10] || 'th')}`
+}
 const ROWS_PER_PAGE = 26
 
 const num = (v) => (v === undefined || v === null ? '—' : esc(v))
@@ -573,9 +580,12 @@ function additionalTable(rows, t) {
       return `<tr><td colspan="7" style="padding:12px 8px 4px;font-family:${DISPLAY};font-size:17px;letter-spacing:1px;color:${t.deep}">${esc(r.group.toUpperCase())}</td></tr>`
     }
     const sided = r.left !== undefined || r.right !== undefined
+    // VALD's percentile (from a VALD Hub PDF) or band, per side.
+    const rating = (b, p) => (p != null ? `${ordinal(p)} pct.` : BAND_TEXT[b] || '—')
     const band = sided
-      ? (r.band_left || r.band_right ? [r.band_left, r.band_right].map(b => BAND_TEXT[b] || '—').join(' / ') : '—')
-      : (BAND_TEXT[r.band] || '—')
+      ? (r.band_left || r.band_right || r.percentile_left != null || r.percentile_right != null
+          ? [rating(r.band_left, r.percentile_left), rating(r.band_right, r.percentile_right)].join(' / ') : '—')
+      : rating(r.band, r.percentile)
     const bg = stripe++ % 2 ? '#faf6ef' : BODY
     const td = (v, extra = '') => `<td style="padding:4px 8px;font-family:${TEXT};font-size:10.5px;color:${TXT};${extra}">${v}</td>`
     return `<tr style="background:${bg}">
@@ -589,7 +599,7 @@ function additionalTable(rows, t) {
     </tr>`
   }).join('')
   return `<table style="width:100%;border-collapse:collapse">
-    <thead><tr>${th('TEST')}${th('LEFT', 'right')}${th('RIGHT / RESULT', 'right')}${th('UNIT')}${th('SYMMETRY', 'right')}${th('VALD BAND')}${th('DATE')}</tr></thead>
+    <thead><tr>${th('TEST')}${th('LEFT', 'right')}${th('RIGHT / RESULT', 'right')}${th('UNIT')}${th('SYMMETRY', 'right')}${th('VALD BAND / PERCENTILE')}${th('DATE')}</tr></thead>
     <tbody>${body}</tbody>
   </table>`
 }
@@ -635,9 +645,73 @@ export function continuedTestsPagesHtml(report) {
     esc(rc.benchmarkNote || '')))
 }
 
-/** Every page after the card: continued tests (custom), then additional VALD results. */
+/** Every page after the card: continued tests (custom), how you compare (VALD), then additional VALD results. */
 export function extraPagesHtml(report) {
-  return [...continuedTestsPagesHtml(report), ...additionalValdPagesHtml(report)]
+  return [...continuedTestsPagesHtml(report), ...valdNormsPagesHtml(report), ...additionalValdPagesHtml(report)]
+}
+
+// ---------- how you compare (VALD) ----------
+// The battery's VALD tests in VALD's own terms: the percentile in plain words
+// ("stronger than 31% of people your age and sex") or VALD's band, next to the
+// card score. The two are different numbers, so each is labelled.
+
+function valdNormsTable(rows, t) {
+  const th = (txt, align = 'left', sub = '') =>
+    `<th style="text-align:${align};vertical-align:bottom;font-family:${TEXT};font-size:9px;font-weight:700;letter-spacing:0.8px;color:${FAINT};padding:0 8px 6px;border-bottom:1.5px solid ${t.deep}">${txt}${sub ? `<div style="font-weight:500;letter-spacing:0;font-size:8.5px">${sub}</div>` : ''}</th>`
+  const body = rows.map((r, i) => {
+    const bg = i % 2 ? '#faf6ef' : BODY
+    const n = r.sides.length || 1
+    const sideRows = (r.sides.length ? r.sides : [{ side: '—', result: '—' }]).map((sd, j) => {
+      let rating, words
+      if (r.notRated) {
+        rating = chip('MEASURED · NOT RATED', MON_TXT, MON_BG, 'font-size:8.5px;padding:2px 6px 3px')
+        words = 'VALD gave no band for this test, so it is shown but not rated.'
+      } else if (sd.percentile != null) {
+        rating = `<b>${esc(sd.percentileLabel)}</b>`
+        words = `${esc(sd.percentileText)}.`
+      } else if (sd.band) {
+        rating = `<b>${esc(sd.band)}</b>`
+        words = `${esc(sd.band)} for your age and sex.`
+      } else {
+        rating = '—'
+        words = ''
+      }
+      const td = (v, extra = '', attrs = '') => `<td ${attrs}style="padding:5px 8px;font-family:${TEXT};font-size:10.5px;color:${TXT};vertical-align:top;${extra}">${v}</td>`
+      const first = j === 0
+      const span = `rowspan="${n}" `
+      return `<tr style="background:${bg}">
+        ${first ? td(`<b>${esc(r.test)}</b><div style="color:${FAINT};font-size:9.5px">${esc(r.device)}</div>`, 'width:150px', span) : ''}
+        ${td(esc(sd.side), `color:${MUTED};white-space:nowrap`)}
+        ${td(`<b>${esc(sd.result)}</b>`, 'white-space:nowrap')}
+        ${td(rating, 'white-space:nowrap')}
+        ${td(words, `color:${MUTED}`)}
+        ${first ? td(r.cardScore == null ? '—' : esc(r.cardScore), `text-align:right;font-family:${DISPLAY};font-size:22px;line-height:1;color:${r.cardScore == null ? FAINT : TXT}`, span) : ''}
+      </tr>`
+    }).join('')
+    return sideRows
+  }).join('')
+  return `<table style="width:100%;border-collapse:collapse">
+    <thead><tr>${th('TEST')}${th('SIDE')}${th('RESULT')}${th('VALD RATING', 'left', 'percentile or band')}${th('IN PLAIN WORDS')}${th('CARD SCORE', 'right', 'out of 99')}</tr></thead>
+    <tbody>${body}</tbody>
+  </table>`
+}
+
+/** One page: the battery's VALD tests against people of the same age and sex. */
+export function valdNormsPagesHtml(report) {
+  const rc = report.reportContent || {}
+  const rows = Array.isArray(rc.valdNorms) ? rc.valdNorms : []
+  // Only worth a page when VALD rated something in its own terms (or a test is unrated).
+  if (!rows.some(r => r.notRated || r.sides.some(sd => sd.percentile != null || sd.band))) return []
+  const t = TIERS[tierFor(rc.overallOVR)]
+  return [framePage(report, 'HOW YOU COMPARE · VALD', '',
+    `<div style="font-family:${TEXT};font-size:10.5px;color:${MUTED};margin-bottom:10px;line-height:1.5">
+       VALD compares each result with <b style="color:${TXT}">people of the same age and sex</b>.
+       The <b style="color:${TXT}">VALD rating</b> is VALD's own: a percentile for Dynamo strength tests, a band for HumanTrak movement tests.
+       The <b style="color:${TXT}">card score</b> (out of 99) is what feeds your stats and OVR. They are different numbers:
+       the 31st percentile is not a score of 31.
+     </div>
+     ${valdNormsTable(rows, t)}`,
+    'VALD ratings as printed on the VALD report. Card scores from the Peak Performance scoring engine.')]
 }
 
 /**
@@ -666,7 +740,7 @@ export function additionalValdPagesHtml(report) {
           <b style="color:${TXT}">not scored and not counted in the OVR</b>. Symmetry = weaker side as a % of the stronger side.
         </div>
         ${additionalTable(chunk, t)}`,
-    'Raw results from VALD Dynamo and HumanTrak. VALD bands as entered by the tester.'))
+    'Raw results from VALD Dynamo and HumanTrak. VALD bands and percentiles from VALD (pct. = percentile for your age and sex).'))
 }
 
 // The PDF renderer draws with whatever fonts are loaded at that moment, so

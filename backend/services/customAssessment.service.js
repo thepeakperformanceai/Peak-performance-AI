@@ -6,7 +6,7 @@
 //
 //   Manual tests  -> scored by the existing research anchors (from the chosen
 //                    sport's config, or the only config that has that test).
-//   VALD tests    -> scored by VALD cut-offs / band, as in every battery.
+//   VALD tests    -> scored by VALD's percentile / band (or cut-offs), as in every battery.
 //   Stats         -> VALD tests feed the stat set on the "VALD test mapping"
 //                    admin screen (battery tests keep their usual stat unless
 //                    an admin changed it). Unmapped / "show only" VALD tests
@@ -195,6 +195,7 @@ const buildCustomConfig = ({ testsIn = [], benchmarkSport = 'football', mappings
     vald_band_labels: base.vald_band_labels,
     vald_band_edge_scores: base.vald_band_edge_scores,
     vald_band_midpoints: base.vald_band_midpoints,
+    vald_percentile_anchors: base.vald_percentile_anchors,
     tests,
     // Equal weights: the OVR is the plain mean of the stats that have a score.
     stat_weights: Object.fromEntries(STATS.map(s => [s, 1])),

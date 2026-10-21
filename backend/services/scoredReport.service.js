@@ -12,6 +12,7 @@
 
 const { scoreSession, loadConfig, STATUSES } = require('../scoring/scoring');
 const aiEngine = require('./aiEngine.service');
+const { VALD_BAND_WORDS, ordinal, percentileWords } = require('./vald/valdHubPdf');
 
 const ALL_TEST_INFO = {
   sprint_10m:       { label: '10m Sprint',              unit: 's' },
@@ -135,6 +136,7 @@ const cleanAdditionalVald = (rows, bandLabels) => {
   const num = (v) => (v === null || v === undefined || v === '' || !Number.isFinite(Number(v)) ? undefined : Math.round(Number(v) * 10) / 10);
   const str = (v, n) => String(v ?? '').trim().slice(0, n);
   const band = (v) => (bandLabels.includes(v) ? v : null);
+  const pct = (v) => { const n = num(v); return n !== undefined && n >= 0 && n <= 100 ? n : null; };
   return rows.slice(0, MAX_ADDITIONAL).map(r => {
     const left = num(r?.left);
     const right = num(r?.right);
@@ -154,7 +156,10 @@ const cleanAdditionalVald = (rows, bandLabels) => {
       stat: ADDITIONAL_STATS.includes(r.stat) ? r.stat : null,
       ...(left !== undefined || right !== undefined
         ? { band_left: band(r.band_left), band_right: band(r.band_right) }
-        : { band: band(r.band) })
+        : { band: band(r.band) }),
+      // VALD's percentile, when the row came from a VALD Hub PDF.
+      ...Object.fromEntries(['percentile_left', 'percentile_right', 'percentile']
+        .map(k => [k, pct(r[k])]).filter(([, v]) => v !== null))
     };
   }).filter(Boolean);
 };
@@ -197,6 +202,9 @@ const systemPromptFor = (sp) => {
     'If session.everything_tested is false (anything is Not tested, listed in session.not_tested), never call the session, testing, battery, assessment, profile or picture "comprehensive" or "complete". Say what was tested instead.',
     'Left/right strength (lsi) is SYMMETRY: the weaker side as a percentage of the stronger, so higher is better and 100 is perfectly even. Write it as "<lsi>% symmetry" (for example "88.9% symmetry") or as "a <lsi_gap_pct>% gap" between sides (for example "an 11.1% gap"), copying the payload numbers. An LSI flag\'s value is the same symmetry figure (its gap is gap_pct). Never write "asymmetry of <number>" or call the symmetry figure an asymmetry.',
     `Benchmark wording: tests with benchmark "research" are "compared with published international norms". Tests with benchmark "vald_age_sex" (HumanTrak and Dynamo) are "compared with others of the same age and sex". Never say a VALD result is compared with ${sp.comparedWith}.`,
+    'A VALD test with vald_percentile (or vald_percentile_left / vald_percentile_right) has VALD\'s own percentile against people of the same age and sex. Say it as "stronger than <percentile>% of people your age and sex" for Dynamo strength tests, copying the number. The percentile is NOT the score: never call one the other, and never write the percentile as "/99" or "out of 99".',
+    'VALD bands (vald_band, vald_band_left, vald_band_right) are VALD\'s own words: copy them as written ("Within normal", "Slightly below", ...).',
+    'A test with benchmark "not_rated" is measured, not rated: VALD gave no band or percentile for it. You may mention its raw result, but never rate it, judge it, score it or compare it with any norm.',
     `Write for ${sp.coachLine}, encouraging but honest. Refer to the athlete as "the athlete" (no name is given).`,
     ...sp.extraRules
   ];
@@ -357,8 +365,10 @@ const makePipeline = (sp, cfg, testInfoAll) => {
       return { status, value };
     }
 
-    // VALD tests, entered by hand from the VALD report.
-    const out = { status };
+    // VALD tests: read from the VALD Hub PDF (source "vald_pdf": VALD's own
+    // percentile or band, never cut-offs) or entered by hand.
+    const fromPdf = raw.source === 'vald_pdf';
+    const out = { status, ...(fromPdf ? { source: 'vald_pdf' } : {}) };
     if (tdef.bilateral) {
       const left = toNum(raw.left, `${label} left`);
       const right = toNum(raw.right, `${label} right`);
@@ -372,6 +382,17 @@ const makePipeline = (sp, cfg, testInfoAll) => {
     }
 
     const cutoffs = Array.isArray(raw.cutoffs) ? raw.cutoffs.filter(c => c !== '' && c !== null && c !== undefined) : [];
+    if (fromPdf && cutoffs.length) throw badRequest(`${label}: read from the VALD PDF, so cut-offs are not used`);
+
+    // VALD's age/sex-matched percentile (0-100), per side entered.
+    const pctKeys = tdef.bilateral ? [['left', 'percentile_left'], ['right', 'percentile_right']] : [['value', 'percentile']];
+    for (const [side, key] of pctKeys) {
+      const p = toNum(raw[key], `${label} percentile`);
+      if (p === undefined || out[side] === undefined) continue;
+      if (p < 0 || p > 100) throw badRequest(`${label}: VALD percentile must be 0–100`);
+      out[key] = p;
+    }
+
     if (cutoffs.length) {
       const nums = cutoffs.map((c, i) => toNum(c, `${label} cut-off ${i + 1}`));
       if (nums.length !== 4 || nums.some((c, i) => i > 0 && c < nums[i - 1])) {
@@ -387,10 +408,12 @@ const makePipeline = (sp, cfg, testInfoAll) => {
         }
       }
       const needed = tdef.bilateral
-        ? [['left', 'band_left'], ['right', 'band_right']].filter(([side]) => out[side] !== undefined).map(([, k]) => k)
-        : ['band'];
-      if (needed.some(k => !out[k])) {
-        throw badRequest(`${label}: enter the 4 VALD cut-offs, or the VALD band for each side entered`);
+        ? [['left', 'band_left', 'percentile_left'], ['right', 'band_right', 'percentile_right']].filter(([side]) => out[side] !== undefined)
+        : [['value', 'band', 'percentile']];
+      // From the PDF, a test VALD printed no percentile or band for is
+      // "measured, not rated": shown with its raw result, never scored.
+      if (!fromPdf && needed.some(([, b, p]) => !out[b] && out[p] === undefined)) {
+        throw badRequest(`${label}: enter the 4 VALD cut-offs, or the VALD band or percentile for each side entered`);
       }
     }
     return out;
@@ -463,11 +486,20 @@ const makePipeline = (sp, cfg, testInfoAll) => {
 
   // ---------- Gemini payload ----------
 
-  const bandLabel = (i) => (i === null || i === undefined ? null : cfg.vald_band_labels[i]);
+  // Engine arrays hold one entry per side entered (left first): -> [left, right].
+  const sidePairs = (t, arr) => {
+    const hasL = t.raw_left !== null && t.raw_left !== undefined;
+    const hasR = t.raw_right !== null && t.raw_right !== undefined;
+    return [hasL ? arr[0] ?? null : null, hasR ? arr[hasL ? 1 : 0] ?? null : null];
+  };
+
+  // VALD's own wording for a band index ("Within normal", "Slightly below").
+  const bandLabel = (i) => (i === null || i === undefined ? null : VALD_BAND_WORDS[cfg.vald_band_labels[i]] || cfg.vald_band_labels[i]);
 
   const reasonText = (reason) => {
     const m = /^(\w+): (\w+)$/.exec(reason);
     if (m && TEST_INFO[m[1]] && m[2] === 'benchmark_pending') return `${TEST_INFO[m[1]].label}: benchmarks pending`;
+    if (m && TEST_INFO[m[1]] && m[2] === 'not_rated') return `${TEST_INFO[m[1]].label}: measured, not rated`;
     if (m && TEST_INFO[m[1]]) return `${TEST_INFO[m[1]].label} not completed: ${STATUS_LABELS[m[2]] || m[2]}`;
     return reason;
   };
@@ -491,10 +523,15 @@ const makePipeline = (sp, cfg, testInfoAll) => {
       out.unit = info.unit;
       if (t.timing) out.timing = t.timing;
       out.benchmark = t.benchmark;
-      if (t.bands) {
+      if (t.bands && t.bands.some(b => b !== null)) {
         const labels = t.bands.map(bandLabel);
         if (labels.length === 1) out.vald_band = labels[0];
         else { out.vald_band_left = labels[0]; out.vald_band_right = labels[1]; }
+      }
+      if (t.percentiles) {
+        const [l, r] = sidePairs(t, t.percentiles);
+        if (t.raw !== undefined) out.vald_percentile = t.percentiles[0];
+        else { if (l !== null) out.vald_percentile_left = l; if (r !== null) out.vald_percentile_right = r; }
       }
       out.score = t.score;
       if (t.partial) out.partial = true;
@@ -621,8 +658,11 @@ const makePipeline = (sp, cfg, testInfoAll) => {
         else if (t.lsi < cfg.lsi.amber_below) status = 'REVIEW — AMBER';
         else status = 'WITHIN RANGE';
       }
+      if (done && t.benchmark === 'not_rated') status = 'MEASURED, NOT RATED';
+      const [pl, pr] = t.percentiles ? sidePairs(t, t.percentiles) : [null, null];
       return {
         joint: TEST_INFO[n].label,
+        ...(pl !== null || pr !== null ? { percentileLeft: pl, percentileRight: pr } : {}),
         left: done ? fmt(t.raw_left, 'N') : '—',
         right: done ? fmt(t.raw_right, 'N') : '—',
         lsi: t.lsi !== undefined ? t.lsi : null,
@@ -641,7 +681,8 @@ const makePipeline = (sp, cfg, testInfoAll) => {
       return {
         test: info.label,
         result,
-        band: done && t.bands ? t.bands.map(b => (b === null ? '' : cfg.vald_band_labels[b].replace(/_/g, ' '))).join(' / ') : '',
+        band: !done ? '' : t.benchmark === 'not_rated' ? 'Measured, not rated'
+          : t.bands ? t.bands.map(b => bandLabel(b) || '').join(' / ') : '',
         score: t.score,
         feedsOvr: !!cfg.tests[n].stat,
         status: t.status
@@ -671,7 +712,35 @@ const makePipeline = (sp, cfg, testInfoAll) => {
         partial: !!t.partial,
         oneSideOnly: !!t.one_side_only,
         feedsOvr: !!cfg.tests[t.name].stat,
-        ...(t.benchmark === 'pending' && done ? { benchmarkPending: true } : {})
+        ...(t.benchmark === 'pending' && done ? { benchmarkPending: true } : {}),
+        ...(t.benchmark === 'not_rated' && done ? { notRated: true } : {})
+      };
+    });
+
+    // How the athlete compares, in VALD's own terms: every VALD battery test
+    // done this session, per side. The card score (25-99) and VALD's
+    // percentile are different numbers and are labelled apart.
+    const valdNorms = scored.tests.filter(t => cfg.tests[t.name].source === 'vald' && t.status === 'completed').map(t => {
+      const info = TEST_INFO[t.name];
+      const device = cfg.tests[t.name].dynamo ? 'Dynamo' : 'HumanTrak';
+      const sides = t.raw !== undefined ? [['Result', t.raw, 0]]
+        : [['Left', t.raw_left], ['Right', t.raw_right]].filter(([, v]) => v !== null && v !== undefined)
+          .map(([side, v], i) => [side, v, i]);
+      return {
+        test: info.label,
+        device,
+        cardScore: t.score,
+        notRated: t.benchmark === 'not_rated',
+        sides: sides.map(([side, v, i]) => {
+          const pct = t.percentiles ? t.percentiles[i] : null;
+          const band = t.bands ? bandLabel(t.bands[i]) : null;
+          return {
+            side,
+            result: fmt(v, info.unit),
+            ...(pct !== null && pct !== undefined ? { percentile: pct, percentileLabel: `${ordinal(pct)} percentile`, percentileText: `${percentileWords(pct, device)[0].toUpperCase()}${percentileWords(pct, device).slice(1)}` } : {}),
+            ...(band ? { band } : {})
+          };
+        })
       };
     });
 
@@ -704,6 +773,7 @@ const makePipeline = (sp, cfg, testInfoAll) => {
       dynamoStrength,
       movementScreen,
       testTable,
+      valdNorms,
       flags: scored.flags.map((f, i) => ({
         level: f.level,
         test: TEST_INFO[f.test].label,

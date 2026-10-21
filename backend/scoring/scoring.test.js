@@ -184,3 +184,32 @@ test('pyRound matches Python round() on ties and float edge cases', () => {
   assert.equal(pyRound(59.45, 1), 59.5); // 59.45 is stored just above .45
   assert.equal(pyRound(-1.5), -2);
 });
+
+// ---------- VALD's own percentile; measured, not rated ----------
+
+test("VALD percentile -> card score through vald_percentile_anchors (not the same number)", () => {
+  const s = scoreSession({ ...FULL, tests: { ...FULL.tests, hip_extension: { status: 'completed', left: 400, right: 390, percentile_left: 22, percentile_right: 46 } } });
+  const t = s.tests.find(x => x.name === 'hip_extension');
+  assert.deepEqual(cfg.vald_percentile_anchors, [[0, 25], [100, 99]]);
+  assert.equal(t.score, 50.2);                     // (41.28 + 59.04) / 2
+  assert.deepEqual(t.percentiles, [22, 46]);
+  assert.equal(t.partial, false);                  // exact, unlike a band-only score
+  assert.deepEqual(t.bands, [null, null]);
+});
+
+test('no cut-offs, percentile or band: measured, not rated (no score, no range check, no flags)', () => {
+  const s = scoreSession({ ...FULL, tests: { ...FULL.tests, trunk_rotation: { status: 'completed', left: 84, right: 124 } } });
+  const t = s.tests.find(x => x.name === 'trunk_rotation');
+  assert.equal(t.status, 'completed');
+  assert.equal(t.benchmark, 'not_rated');
+  assert.equal(t.score, null);
+  assert.equal(t.raw_right, 124);                   // above the 0-90 range, still shown
+  assert.ok(!s.flags.some(f => f.test === 'trunk_rotation'));
+  assert.ok(!s.ovr.reasons.some(r => r.startsWith('trunk_rotation')));   // flag-only test: OVR unaffected
+});
+
+test('a not-rated test that feeds a stat leaves the stat "benchmark pending", never estimated', () => {
+  const s = scoreSession({ ...FULL, tests: { ...FULL.tests, hip_extension: { status: 'completed', left: 400, right: 390 }, knee_extension: { status: 'not_done' } } });
+  assert.deepEqual(s.stats.power, { value: null, status: 'benchmark_pending' });
+  assert.ok(s.ovr.reasons.includes('hip_extension: not_rated'));
+});

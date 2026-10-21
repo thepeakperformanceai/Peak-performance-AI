@@ -19,6 +19,7 @@
 //     cod_505:        { status: 'completed', left: 2.52, right: 2.47 },   // best of both feet
 //     knee_extension: { status: 'completed', left: 612, right: 533, cutoffs: [200, 300, 450, 600] },
 //     overhead_squat: { status: 'completed', value: 70, band: 'within_normal' },
+//     shoulder_er:    { status: 'completed', left: 90, right: 117, percentile_left: 22, percentile_right: 46 },
 //     ...
 //   }
 // }
@@ -141,21 +142,35 @@ const plausible = (value, rng) => rng == null || (rng[0] <= value && value <= rn
 
 const isSet = (v) => v !== undefined && v !== null;
 
+// VALD's own age/sex-matched percentile (0-100, from the VALD report) onto
+// the card scale, through config vald_percentile_anchors.
+const scoreFromPercentile = (pct, cfg) =>
+  piecewise(pct, cfg.vald_percentile_anchors.map(a => a[0]), cfg.vald_percentile_anchors.map(a => a[1]), cfg.score_floor, cfg.score_cap);
+
 // ---------- per-test scoring ----------
 
-// Returns [score, partial, bandIndex] for one value/side.
-const scoreValdSide = (value, testIn, sideBandKey, cfg) => {
+// Returns [score, partial, bandIndex, percentile] for one value/side.
+// VALD cut-offs first, then VALD's percentile, then VALD's band (midpoint,
+// partial). With none of them the side is not rated: [null, false, null, null].
+const scoreValdSide = (value, testIn, side, cfg) => {
   const hib = isSet(testIn.higher_is_better) ? testIn.higher_is_better : true;
   const cutoffs = testIn.cutoffs;
   if (cutoffs && cutoffs.length) {
-    return [scoreFromVald(value, cutoffs, cfg, hib), false, valdBandIndex(value, cutoffs, hib)];
+    return [scoreFromVald(value, cutoffs, cfg, hib), false, valdBandIndex(value, cutoffs, hib), null];
   }
-  const label = testIn[sideBandKey] || testIn.band;
-  if (!isSet(label)) return [null, false, null];
+  const pct = side ? testIn[`percentile_${side}`] : testIn.percentile;
+  if (isSet(pct)) return [scoreFromPercentile(pct, cfg), false, null, pct];
+  const label = (side ? testIn[`band_${side}`] : null) || testIn.band;
+  if (!isSet(label)) return [null, false, null, null];
   const i = cfg.vald_band_labels.indexOf(label);
   if (i === -1) throw new Error(`unknown VALD band ${label}`);
-  return [cfg.vald_band_midpoints[i], true, i];
+  return [cfg.vald_band_midpoints[i], true, i, null];
 };
+
+// No cut-offs, percentile or band for any side: measured, not rated.
+const hasValdRating = (testIn, sides) =>
+  (testIn.cutoffs && testIn.cutoffs.length > 0) || isSet(testIn.band) || isSet(testIn.percentile) ||
+  sides.some(s => isSet(testIn[`percentile_${s}`]) || isSet(testIn[`band_${s}`]));
 
 const scoreTest = (name, testIn, tdef, cfg, timingMethod) => {
   const out = {
@@ -217,9 +232,16 @@ const scoreTest = (name, testIn, tdef, cfg, timingMethod) => {
     const right = isSet(testIn.right) ? testIn.right : null;
     out.raw_left = left;
     out.raw_right = right;
-    const sides = [[left, 'band_left'], [right, 'band_right']].filter(([v]) => v !== null);
+    const sides = [[left, 'left'], [right, 'right']].filter(([v]) => v !== null);
     if (!sides.length) {
       out.status = 'invalid';
+      return out;
+    }
+    // Measured, not rated: the raw result is kept and shown, never scored,
+    // so the believable range (a typing check for scored results) is not applied.
+    if (!hasValdRating(testIn, sides.map(([, s]) => s))) {
+      out.benchmark = 'not_rated';
+      out.one_side_only = sides.length === 1;
       return out;
     }
     if (sides.some(([v]) => !plausible(v, rng))) {
@@ -228,18 +250,21 @@ const scoreTest = (name, testIn, tdef, cfg, timingMethod) => {
     }
     const scores = [];
     const bands = [];
-    for (const [v, key] of sides) {
-      const [s, partial, b] = scoreValdSide(v, testIn, key, cfg);
+    const percentiles = [];
+    for (const [v, side] of sides) {
+      const [s, partial, b, p] = scoreValdSide(v, testIn, side, cfg);
       if (s === null) {
         out.status = 'invalid';
         return out;
       }
       scores.push(s);
       bands.push(b);
+      percentiles.push(p);
       out.partial = out.partial || partial;
     }
     out.score = pyRound(scores.reduce((a, b) => a + b, 0) / scores.length, 1);
     out.bands = bands;
+    if (percentiles.some(isSet)) out.percentiles = percentiles;
     out.one_side_only = sides.length === 1;
     if (left !== null && right !== null && Math.max(left, right) > 0) {
       out.lsi = pyRound(Math.min(left, right) / Math.max(left, right) * 100, 1);
@@ -247,11 +272,19 @@ const scoreTest = (name, testIn, tdef, cfg, timingMethod) => {
   } else {
     const v = isSet(testIn.value) ? testIn.value : null;
     out.raw = v;
-    if (v === null || !plausible(v, rng)) {
+    if (v === null) {
       out.status = 'invalid';
       return out;
     }
-    const [s, partial, b] = scoreValdSide(v, testIn, 'band', cfg);
+    if (!hasValdRating(testIn, [])) {
+      out.benchmark = 'not_rated';
+      return out;
+    }
+    if (!plausible(v, rng)) {
+      out.status = 'invalid';
+      return out;
+    }
+    const [s, partial, b, p] = scoreValdSide(v, testIn, null, cfg);
     if (s === null) {
       out.status = 'invalid';
       return out;
@@ -259,6 +292,7 @@ const scoreTest = (name, testIn, tdef, cfg, timingMethod) => {
     out.score = pyRound(s, 1);
     out.partial = partial;
     out.bands = [b];
+    if (isSet(p)) out.percentiles = [p];
   }
   return out;
 };
@@ -271,6 +305,8 @@ const buildFlags = (tests, cfg, athlete = {}) => {
   const fcfg = cfg.flags;
   for (const [name, t] of Object.entries(tests)) {
     if (t.status !== 'completed') continue;
+    // Measured, not rated: shown as measured, never judged (no flags either).
+    if (t.benchmark === 'not_rated') continue;
     const tdef = cfg.tests[name];
     if (t.one_side_only) {
       flags.push({ type: 'one_side_only', test: name, level: 'amber' });
@@ -363,7 +399,7 @@ const scoreSession = (session, cfg = loadConfig()) => {
       .filter(([n]) => tests[n].score !== null)
       .map(([n, d]) => [tests[n].score, d.stat_weight, tests[n].partial]);
     if (!got.length) {
-      const pending = feeders.some(([n]) => tests[n].benchmark === 'pending');
+      const pending = feeders.some(([n]) => tests[n].benchmark === 'pending' || tests[n].benchmark === 'not_rated');
       stats[stat] = { value: null, status: pending ? 'benchmark_pending' : 'not_tested' };
       continue;
     }
@@ -392,6 +428,7 @@ const scoreSession = (session, cfg = loadConfig()) => {
   for (const [name, t] of Object.entries(tests)) {
     if (t.status !== 'completed') reasons.push(`${name}: ${t.status}`);
     else if (t.benchmark === 'pending') reasons.push(`${name}: benchmark_pending`);
+    else if (t.benchmark === 'not_rated' && cfg.tests[name].stat) reasons.push(`${name}: not_rated`);
   }
   if (cfg.provisional_sexes.includes(athlete.sex)) {
     reasons.push('benchmarks are adult male only');
@@ -429,6 +466,7 @@ module.exports = {
   pyRound,
   scoreFromAnchors,
   scoreFromVald,
+  scoreFromPercentile,
   valdBandIndex,
   bestOf,
   scoreTest,

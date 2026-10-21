@@ -22,6 +22,16 @@ const pdfParse = require('pdf-parse');
 
 // VALD's normative bands, as printed, lowest first.
 const VALD_BANDS = ['Significantly below', 'Slightly below', 'Within normal', 'Slightly above', 'Significantly above'];
+// The engine's band labels, paired with VALD's wording in order. Athletes
+// always see VALD's wording.
+const VALD_BAND_LABEL = {
+  'Significantly below': 'well_below',
+  'Slightly below': 'below',
+  'Within normal': 'within_normal',
+  'Slightly above': 'slightly_above',
+  'Significantly above': 'well_above'
+};
+const VALD_BAND_WORDS = Object.fromEntries(Object.entries(VALD_BAND_LABEL).map(([words, label]) => [label, words]));
 const bandKey = (s) => String(s).toLowerCase().replace(/\s+/g, ' ').trim();
 const BAND_BY_TEXT = new Map(VALD_BANDS.map(b => [bandKey(b), b]));
 
@@ -297,4 +307,84 @@ const matchToMaster = (tests, master) => {
   return { matched, unmatched, notInPdf: Object.keys(master).filter(k => !keysFound.has(k)) };
 };
 
-module.exports = { parseValdHubPdf, parsePages, readPages, matchToMaster, matchName, VALD_BANDS };
+// ---------- wording ----------
+
+const ordinal = (n) => {
+  const v = Math.round(n);
+  const s = (v % 100 >= 11 && v % 100 <= 13) ? 'th' : ({ 1: 'st', 2: 'nd', 3: 'rd' }[v % 10] || 'th');
+  return `${v}${s}`;
+};
+
+/** "stronger than 31% of people your age and sex" (Dynamo strength), "higher than ..." otherwise. */
+const percentileWords = (pct, device = 'Dynamo') =>
+  `${device === 'Dynamo' ? 'stronger' : 'higher'} than ${Math.round(pct)}% of people your age and sex`;
+
+// ---------- PDF -> test form ----------
+
+/**
+ * Parsed PDF -> the results form's shape for one battery.
+ *   battery: the sport config's tests ({ key: { source, bilateral, ... } })
+ *   master:  every VALD battery test ({ key: { label, unit, bilateral } })
+ * Tests in this battery fill `tests` (value, VALD's percentile or band; no
+ * cut-offs, ever). Every other test, matched or not, goes to `additionalVald`
+ * (shown on the report, not scored). Returns { tests, additionalVald,
+ * matched, unmatched, notes }.
+ */
+const pdfToResults = (parsed, battery, master) => {
+  const match = matchToMaster(parsed.tests, master);
+  const keyFor = new Map(match.matched.map(m => [m.test, m.key]));
+  const tests = {};
+  const additionalVald = [];
+  const notes = [];
+  const date = parsed.athlete?.reportDate ? toIsoDate(parsed.athlete.reportDate) : '';
+
+  for (const t of parsed.tests) {
+    const key = keyFor.get(t.test);
+    const sides = Object.fromEntries(t.results.map(r => [r.side, r]));
+    const inBattery = key && battery[key] && battery[key].source === 'vald' && !tests[key];
+    if (inBattery) {
+      const out = { status: 'completed', source: 'vald_pdf' };
+      const put = (r, suffix) => {
+        if (!r || r.value === null) return;
+        out[suffix ? suffix : 'value'] = r.value;
+        const tail = suffix ? `_${suffix}` : '';
+        if (r.percentile !== null) out[`percentile${tail}`] = r.percentile;
+        else if (r.band) out[`band${tail}`] = VALD_BAND_LABEL[r.band];
+      };
+      if (battery[key].bilateral) {
+        put(sides.left, 'left');
+        put(sides.right, 'right');
+        if (out.left === undefined && out.right === undefined) { notes.push(`${t.test}: no left/right result in the PDF`); continue; }
+      } else {
+        put(sides.value, null);
+        if (out.value === undefined) { notes.push(`${t.test}: the PDF has left/right, this battery needs one value`); continue; }
+      }
+      tests[key] = out;
+      continue;
+    }
+    // A matched test keeps its master name (PDF names can be cut short: "Sea...").
+    const row = { test: key ? master[key].label : t.test, device: t.device, unit: t.results.find(r => r.unit)?.unit || '', date, stat: null };
+    for (const r of t.results) {
+      if (r.value === null) continue;
+      row[r.side] = r.value;
+      const tail = r.side === 'value' ? '' : `_${r.side}`;
+      if (r.percentile !== null) row[`percentile${tail}`] = r.percentile;
+      if (r.band) row[`band${tail}`] = VALD_BAND_LABEL[r.band];
+    }
+    additionalVald.push(row);
+  }
+  return { tests, additionalVald, matched: match.matched, unmatched: match.unmatched, notes };
+};
+
+// "21 Oct 2026" -> "2026-10-21" ('' if it isn't a date).
+const MONTHS = ['jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec'];
+const toIsoDate = (s) => {
+  const m = /^(\d{1,2})\s+([A-Za-z]{3})[a-z]*\s+(\d{4})$/.exec(String(s).trim());
+  const mon = m ? MONTHS.indexOf(m[2].toLowerCase()) : -1;
+  return mon === -1 ? '' : `${m[3]}-${String(mon + 1).padStart(2, '0')}-${m[1].padStart(2, '0')}`;
+};
+
+module.exports = {
+  parseValdHubPdf, parsePages, readPages, matchToMaster, matchName, pdfToResults,
+  ordinal, percentileWords, toIsoDate, VALD_BANDS, VALD_BAND_LABEL, VALD_BAND_WORDS
+};

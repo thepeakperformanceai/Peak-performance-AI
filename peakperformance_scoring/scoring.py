@@ -13,14 +13,19 @@ Input (one testing session):
     "knee_extension": {"status": "completed", "left": 612, "right": 533,
                        "cutoffs": [200, 300, 450, 600]},   # VALD band cut-offs
     "overhead_squat": {"status": "completed", "value": 70, "band": "within_normal"},
+    "hip_extension": {"status": "completed", "left": 410, "right": 395,
+                      "percentile_left": 31, "percentile_right": 46},  # VALD's percentiles
     ...
   }
 }
 Statuses: completed, not_done, injured, equipment_fault, invalid.
-VALD tests take "cutoffs" (4 ascending values) for precise scoring, or only
-"band" / "band_left" / "band_right" labels as a fallback (scored at the band
-midpoint and marked partial). Add "higher_is_better": false if a VALD metric
-is better when lower.
+VALD tests take "cutoffs" (4 ascending values) for precise scoring, VALD's
+own age/sex-matched "percentile" / "percentile_left" / "percentile_right"
+(0-100, mapped through vald_percentile_anchors), or only "band" /
+"band_left" / "band_right" labels as a fallback (scored at the band midpoint
+and marked partial). With none of these a VALD test is measured, not rated:
+benchmark "not_rated", no score, no flags. Add "higher_is_better": false if a
+VALD metric is better when lower.
 """
 
 import json
@@ -88,6 +93,13 @@ def score_from_vald(value, cutoffs, cfg, higher_is_better=True):
                       cfg["score_floor"], cfg["score_cap"])
 
 
+def score_from_percentile(pct, cfg):
+    """VALD's own age/sex-matched percentile (0-100) onto the card scale."""
+    anchors = cfg["vald_percentile_anchors"]
+    return _piecewise(pct, [a[0] for a in anchors], [a[1] for a in anchors],
+                      cfg["score_floor"], cfg["score_cap"])
+
+
 def vald_band_index(value, cutoffs, higher_is_better=True):
     """0 = well_below ... 4 = well_above."""
     idx = sum(1 for c in cutoffs if value > c) if higher_is_better \
@@ -107,17 +119,28 @@ def _plausible(value, rng):
 
 # ---------- per-test scoring ----------
 
-def _score_vald_side(value, test_in, side_band_key, cfg):
-    """Returns (score, partial, band_index) for one value/side."""
+def _score_vald_side(value, test_in, side, cfg):
+    """Returns (score, partial, band_index, percentile) for one value/side.
+    Cut-offs first, then VALD's percentile, then VALD's band."""
     hib = test_in.get("higher_is_better", True)
     cutoffs = test_in.get("cutoffs")
     if cutoffs:
-        return score_from_vald(value, cutoffs, cfg, hib), False, vald_band_index(value, cutoffs, hib)
-    label = test_in.get(side_band_key) or test_in.get("band")
+        return score_from_vald(value, cutoffs, cfg, hib), False, vald_band_index(value, cutoffs, hib), None
+    pct = test_in.get(f"percentile_{side}") if side else test_in.get("percentile")
+    if pct is not None:
+        return score_from_percentile(pct, cfg), False, None, pct
+    label = (test_in.get(f"band_{side}") if side else None) or test_in.get("band")
     if label is None:
-        return None, False, None
+        return None, False, None, None
     i = cfg["vald_band_labels"].index(label)
-    return float(cfg["vald_band_midpoints"][i]), True, i
+    return float(cfg["vald_band_midpoints"][i]), True, i, None
+
+
+def _has_vald_rating(test_in, sides):
+    """No cut-offs, percentile or band for any side: measured, not rated."""
+    return bool(test_in.get("cutoffs")) or test_in.get("band") is not None \
+        or test_in.get("percentile") is not None \
+        or any(test_in.get(f"percentile_{s}") is not None or test_in.get(f"band_{s}") is not None for s in sides)
 
 
 def score_test(name, test_in, tdef, cfg, timing_method):
@@ -161,38 +184,54 @@ def score_test(name, test_in, tdef, cfg, timing_method):
     if tdef.get("bilateral"):
         left, right = test_in.get("left"), test_in.get("right")
         out["raw_left"], out["raw_right"] = left, right
-        sides = [(v, k) for v, k in ((left, "band_left"), (right, "band_right")) if v is not None]
+        sides = [(v, k) for v, k in ((left, "left"), (right, "right")) if v is not None]
         if not sides:
             out["status"] = "invalid"
+            return out
+        # Measured, not rated: kept and shown, never scored, so no range check.
+        if not _has_vald_rating(test_in, [k for _, k in sides]):
+            out["benchmark"] = "not_rated"
+            out["one_side_only"] = len(sides) == 1
             return out
         if any(not _plausible(v, rng) for v, _ in sides):
             out["status"] = "invalid"
             return out
-        scores, bands = [], []
-        for v, key in sides:
-            s, partial, b = _score_vald_side(v, test_in, key, cfg)
+        scores, bands, percentiles = [], [], []
+        for v, side in sides:
+            s, partial, b, p = _score_vald_side(v, test_in, side, cfg)
             if s is None:
                 out["status"] = "invalid"
                 return out
             scores.append(s)
             bands.append(b)
+            percentiles.append(p)
             out["partial"] = out["partial"] or partial
         out["score"] = round(sum(scores) / len(scores), 1)
         out["bands"] = bands
+        if any(p is not None for p in percentiles):
+            out["percentiles"] = percentiles
         out["one_side_only"] = len(sides) == 1
         if left is not None and right is not None and max(left, right) > 0:
             out["lsi"] = round(min(left, right) / max(left, right) * 100, 1)
     else:
         v = test_in.get("value")
         out["raw"] = v
-        if v is None or not _plausible(v, rng):
+        if v is None:
             out["status"] = "invalid"
             return out
-        s, partial, b = _score_vald_side(v, test_in, "band", cfg)
+        if not _has_vald_rating(test_in, []):
+            out["benchmark"] = "not_rated"
+            return out
+        if not _plausible(v, rng):
+            out["status"] = "invalid"
+            return out
+        s, partial, b, p = _score_vald_side(v, test_in, None, cfg)
         if s is None:
             out["status"] = "invalid"
             return out
         out["score"], out["partial"], out["bands"] = round(s, 1), partial, [b]
+        if p is not None:
+            out["percentiles"] = [p]
     return out
 
 
@@ -203,6 +242,8 @@ def build_flags(tests, cfg):
     lsi_cfg, fcfg = cfg["lsi"], cfg["flags"]
     for name, t in tests.items():
         if t["status"] != "completed":
+            continue
+        if t["benchmark"] == "not_rated":   # measured, not rated: never judged
             continue
         tdef = cfg["tests"][name]
         if t.get("one_side_only"):
@@ -249,7 +290,8 @@ def score_session(session, cfg=None):
         got = [(tests[n]["score"], d["stat_weight"], tests[n]["partial"])
                for n, d in feeders if tests[n]["score"] is not None]
         if not got:
-            stats[stat] = {"value": None, "status": "not_tested"}
+            pending = any(tests[n]["benchmark"] == "not_rated" for n, _ in feeders)
+            stats[stat] = {"value": None, "status": "benchmark_pending" if pending else "not_tested"}
             continue
         wsum = sum(w for _, w, _ in got)
         val = sum(s * w for s, w, _ in got) / wsum
@@ -272,6 +314,8 @@ def score_session(session, cfg=None):
     for name, t in tests.items():
         if t["status"] != "completed":
             reasons.append(f"{name}: {t['status']}")
+        elif t["benchmark"] == "not_rated" and cfg["tests"][name].get("stat"):
+            reasons.append(f"{name}: not_rated")
     if athlete.get("sex") in cfg["provisional_sexes"]:
         reasons.append("benchmarks are adult male only")
     if athlete.get("age") is not None and athlete["age"] < cfg["provisional_under_age"]:

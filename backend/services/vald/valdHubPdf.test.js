@@ -76,3 +76,54 @@ test('name matching: flexible, but never a different test', () => {
   assert.deepEqual(matchName('Knee Flexion'), []);
   assert.deepEqual(matchName('Hip Flexion'), []);
 });
+
+test('PDF -> padel form: percentiles and bands from VALD, never cut-offs; the rest shown, not scored', () => {
+  const { pdfToResults } = require('./valdHubPdf');
+  const { loadConfig } = require('../../scoring/scoring');
+  const r = pdfToResults(parsePages(PAGES), loadConfig('padel').tests, MASTER);
+  assert.deepEqual(r.tests, {
+    hip_abduction: { status: 'completed', source: 'vald_pdf', left: 149, percentile_left: 31, right: 151, percentile_right: 31 },
+    shoulder_er: { status: 'completed', source: 'vald_pdf', left: 90, percentile_left: 22, right: 117, percentile_right: 46 },
+    trunk_rotation: { status: 'completed', source: 'vald_pdf', left: 84, right: 124 }
+  });
+  assert.ok(Object.values(r.tests).every(t => !('cutoffs' in t)));
+  assert.deepEqual(r.additionalVald.map(a => a.test), ['Shoulder Internal Rotation', 'Shoulder Arc of Motion', 'Countermovement Jump', 'Single Leg Squat']);
+  assert.deepEqual(r.additionalVald[1], { test: 'Shoulder Arc of Motion', device: 'HumanTrak', unit: '°', date: '2026-10-21', stat: null, left: 142, band_left: 'within_normal', right: 102, band_right: 'well_below' });
+});
+
+test('VALD band wording pairs with the engine bands in order', () => {
+  const { VALD_BAND_LABEL } = require('./valdHubPdf');
+  const { loadConfig } = require('../../scoring/scoring');
+  assert.deepEqual(Object.values(VALD_BAND_LABEL), loadConfig('football').vald_band_labels);
+  assert.deepEqual(Object.keys(VALD_BAND_LABEL), ['Significantly below', 'Slightly below', 'Within normal', 'Slightly above', 'Significantly above']);
+});
+
+test('report from the PDF: percentiles in plain words, VALD band words, not rated, cut-offs refused', async () => {
+  const { pdfToResults } = require('./valdHubPdf');
+  const { forSport } = require('../scoredReport.service');
+  const padel = forSport('padel');
+  const r = pdfToResults(parsePages(PAGES), padel.cfg.tests, MASTER);
+  const profile = { name: 'Test Athlete', dob: '2003-01-01', testDate: '2026-10-21', sex: 'M', position: 'RIGHT', dominantHand: 'R', bodyweight: '70' };
+  const { profile: p, session } = padel.validateInput(profile, { timingMethod: 'electronic', tests: r.tests, additionalVald: r.additionalVald });
+
+  const withCuts = { ...r.tests, hip_abduction: { ...r.tests.hip_abduction, cutoffs: [100, 180, 260, 340] } };
+  assert.throws(() => padel.validateInput(profile, { timingMethod: 'electronic', tests: withCuts }), /read from the VALD PDF, so cut-offs are not used/);
+
+  const callModel = async () => JSON.stringify({ playerProfile: '', summary: '', stats: {}, symmetry: '', recommendation: '', flags: [] });
+  const { reportContent: rc, payload } = await padel.runPipeline(p, session, { callModel });
+  const er = rc.valdNorms.find(n => n.test === 'Shoulder External Rotation');
+  assert.equal(er.cardScore, 50.2);
+  assert.deepEqual(er.sides.map(s => [s.side, s.result, s.percentileLabel, s.percentileText]), [
+    ['Left', '90 N', '22nd percentile', 'Stronger than 22% of people your age and sex'],
+    ['Right', '117 N', '46th percentile', 'Stronger than 46% of people your age and sex']
+  ]);
+  const trunk = rc.valdNorms.find(n => n.test === 'Trunk Rotation');
+  assert.equal(trunk.notRated, true);
+  assert.deepEqual(trunk.sides.map(s => s.result), ['84°', '124°']);
+  assert.equal(rc.testTable.find(t => t.test === 'Trunk Rotation').notRated, true);
+  assert.equal(rc.additionalVald.find(a => a.test === 'Shoulder Internal Rotation').percentile_left, 45);
+  const pt = payload.tests.find(t => t.name === 'Shoulder External Rotation');
+  assert.equal(pt.vald_percentile_left, 22);
+  assert.equal(pt.vald_percentile_right, 46);
+  assert.equal(payload.tests.find(t => t.name === 'Trunk Rotation').benchmark, 'not_rated');
+});

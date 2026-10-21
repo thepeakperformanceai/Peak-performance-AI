@@ -16,6 +16,7 @@
   "vald_band_labels": ["well_below", "below", "within_normal", "slightly_above", "well_above"],
   "vald_band_edge_scores": [25, 40, 55, 70, 85, 99],
   "vald_band_midpoints": [33, 48, 63, 78, 92],
+  "vald_percentile_anchors": [[0, 25], [100, 99]],
 
   "references": {
     "springer2007": {"authors": "Springer BA, Marin R, Cyhan T, Roberts H, Gill NW", "year": 2007, "title": "Normative values for the unipedal stance test with eyes open and closed", "journal": "Journal of Geriatric Physical Therapy", "volume": "30", "issue": "1", "pages": "8-15", "url": "https://geriatrictoolkit.missouri.edu/balance/Normative_Values_for_the_Unipedal_Stance_Test_Springer-JGPT.pdf"},

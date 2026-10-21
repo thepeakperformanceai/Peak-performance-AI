@@ -277,8 +277,9 @@ export default function HowWeScorePage({ sport }) {
               </ul>
             </Section>
 
-            <Section title="VALD tests: bands">
-              <p className="text-sm text-gray-700">VALD compares each result with athletes of the same age and sex, and gives four cut-offs that split results into five bands. A result scores within its band’s range, higher the further it sits in the band. If only the band is known (no cut-offs), it scores the middle of the band and the stat is marked “partial”.</p>
+            <Section title="VALD tests: percentiles and bands">
+              <p className="text-sm text-gray-700">VALD compares each result with people of the same age and sex. For Dynamo strength tests the VALD report gives a percentile: the 31st percentile means stronger than 31% of people your age and sex. The card score follows it in a straight line{m.valdPercentileAnchors ? <> from <b>{m.valdPercentileAnchors[0][1]}</b> at the {m.valdPercentileAnchors[0][0]}th percentile to <b>{m.valdPercentileAnchors[m.valdPercentileAnchors.length - 1][1]}</b> at the {m.valdPercentileAnchors[m.valdPercentileAnchors.length - 1][0]}th</> : null}. The percentile and the card score are different numbers.</p>
+              <p className="text-sm text-gray-700">For HumanTrak tests the VALD report gives a band. A band scores the middle of its range and the stat is marked “partial”. A test VALD gives no band for is shown as “Measured, not rated”: its result is on the report, but it is never scored.</p>
               <div className="overflow-x-auto">
                 <table className="text-sm">
                   <thead><tr className="text-left text-xs text-gray-500"><th className="pb-1 pr-6">VALD band</th><th className="pb-1 pr-6">Score range</th><th className="pb-1">Band only</th></tr></thead>

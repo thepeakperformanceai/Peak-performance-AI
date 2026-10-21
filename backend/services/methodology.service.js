@@ -23,7 +23,8 @@ const SPORTS = {
 };
 const STAT_ORDER = ['speed', 'power', 'agility', 'endurance', 'balance', 'reaction'];
 const STAT_LABELS = { speed: 'Speed', power: 'Power', agility: 'Agility', endurance: 'Endurance', balance: 'Balance', reaction: 'Reaction' };
-const BAND_TEXT = { well_below: 'Well below', below: 'Below', within_normal: 'Within normal', slightly_above: 'Slightly above', well_above: 'Well above' };
+// VALD's own wording for each band (athletes always see VALD's words).
+const { VALD_BAND_WORDS: BAND_TEXT } = require('./vald/valdHubPdf');
 
 const pct = (part, whole) => (whole ? pyRound(part / whole * 100, 1) : 0);
 const r1 = (x) => pyRound(x, 1);
@@ -117,7 +118,7 @@ const describeTest = (key, tdef, cfg, { sport, testInfo = {}, benchmarkFrom = nu
       out.handTimingReference = referenceOf(cfg, cfg.hand_timing_citation);
     }
   } else {
-    out.benchmark = { type: 'vald_age_sex', text: "Compared with VALD's own bands for athletes of the same age and sex.", interim: false, citation: citationOf(cfg, tdef) };
+    out.benchmark = { type: 'vald_age_sex', text: "Compared with VALD's own percentiles and bands for people of the same age and sex.", interim: false, citation: citationOf(cfg, tdef) };
   }
   return out;
 };
@@ -267,8 +268,9 @@ const explain = (scored, session, cfg, testInfo = {}) => {
       key: name, label: i.label, unit: i.unit, status: t.status,
       ...rawText(t, session.tests?.[name]),
       score: t.score, partial: !!t.partial,
-      benchmark: tdef.source === 'manual' ? (tdef.benchmark_pending ? 'pending' : 'research') : 'vald_age_sex'
+      benchmark: tdef.source === 'manual' ? (tdef.benchmark_pending ? 'pending' : 'research') : t.benchmark === 'not_rated' ? 'not_rated' : 'vald_age_sex'
     };
+    if (t.percentiles) row.percentiles = t.percentiles;
     if (t.timing === 'hand') {
       row.handTimingAddSeconds = cfg.hand_timing_offset_s;
       row.adjustedValue = pyRound(t.raw + cfg.hand_timing_offset_s, 2);
@@ -358,6 +360,7 @@ const sportMethodology = (sport) => {
     otherReferences: otherReferences(cfg, { hasSprint: tests.some(t => t.key.startsWith('sprint_')), flags: flagRules(cfg, labelOf) }),
     flagOnlyTests: tests.filter(t => !t.feedsOvr).map(t => t.key),
     valdBands: valdBands(cfg),
+    valdPercentileAnchors: cfg.vald_percentile_anchors,
     ovr: ovrRules(cfg),
     flags: flagRules(cfg, labelOf),
     tiers: tiers(),
@@ -399,6 +402,7 @@ const customMethodology = () => {
     statRule: 'VALD tests count towards the stat chosen for them in our VALD test mapping (standard battery tests keep their usual stat, for example Knee Extension counts towards Power). VALD tests with no stat are shown on the report but not scored. Inside a stat, every test counts equally.',
     statWeights: STAT_ORDER.map(s => ({ key: s, label: STAT_LABELS[s], description: TEXT.stats[s], ovrWeight: cfg.stat_weights[s] })),
     valdBands: valdBands(cfg),
+    valdPercentileAnchors: cfg.vald_percentile_anchors,
     ovr: ovrRules(cfg),
     flags: flagRules(cfg, labelOf),
     tiers: tiers(),
