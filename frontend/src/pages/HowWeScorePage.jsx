@@ -174,7 +174,7 @@ function ClientCardPage({ m }) {
         <p className="text-sm text-gray-800"><b>{m.source}</b></p>
         <ol className="list-decimal pl-5 text-sm text-gray-700 space-y-1">
           <li><b>Five stats</b> are scored from your VALD machine tests: Strength, Symmetry, Balance, Movement and Mobility. Speed is locked and unlocks with the Performance add-on.</li>
-          <li><b>Each stat is out of 99.</b> A stat that isn't in your VALD report shows “--” (not tested). It is never guessed.</li>
+          <li><b>Each stat is out of 99</b>, compared with people of your age and sex.</li>
           <li><b>{m.ovr.text}</b></li>
         </ol>
       </Section>
@@ -220,7 +220,7 @@ function ClientCardPage({ m }) {
 
       <Section title="Card colours">
         <p className="text-sm text-gray-700">
-          {m.tiers.map(t => `${t.label}: ${t.minOvr}+`).join(' · ')}. Until 3 stats are scored, the card shows “Rating pending”.
+          {m.tiers.map((t, i) => (t.minOvr > 0 ? `${t.label}: ${t.minOvr}+` : `${t.label}: under ${m.tiers[i - 1]?.minOvr}`)).join(' · ')}. Until {m.ovr.minStats} stats are scored, the card shows “Rating pending”.
         </p>
       </Section>
 
