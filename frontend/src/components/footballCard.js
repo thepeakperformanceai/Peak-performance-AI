@@ -90,8 +90,8 @@ const MACHINE_STATS = [
 ]
 const MACHINE_HEX_ORDER = ['Strength', 'Symmetry', 'Mobility', 'Movement', 'Speed', 'Balance']
 const MACHINE_CAPTIONS = {
-  Strength: 'Dynamo strength', Symmetry: 'Left vs right', Balance: 'Single leg stand',
-  Movement: 'Overhead squat', Mobility: 'Rotation range', Speed: 'Performance add-on',
+  Strength: 'Dynamo strength', Symmetry: 'Left vs right', Balance: 'Single leg squat',
+  Movement: 'Overhead squat', Mobility: 'Range of motion', Speed: 'Performance add-on',
 }
 const isMachine = (rc) => rc.statSet === 'machine_v1'
 const statsFor = (rc) => (isMachine(rc) ? MACHINE_STATS : STATS)
@@ -126,7 +126,7 @@ function hexagon(rc, t) {
   const scoreOf = (n) => (rc.ovrScores || []).find(s => s.name === n)?.score
   const missing = (n) => scoreOf(n) == null
   const statusOf = (n) => (rc.ovrScores || []).find(s => s.name === n)?.status
-  const missingText = (n) => ({ benchmark_pending: 'PENDING', locked: 'LOCKED' })[statusOf(n)] || 'NOT TESTED'
+  const missingText = (n) => ({ benchmark_pending: 'PENDING', locked: 'LOCKED', hidden: 'PENDING' })[statusOf(n)] || 'NOT TESTED'
   const mark = (n) => ((rc.ovrScores || []).find(s => s.name === n)?.proposed ? '*' : '')
   const measured = order.filter(n => !missing(n))
   const angles = [0, -60, -120, 180, 120, 60].map(d => (d * Math.PI) / 180)
@@ -169,10 +169,10 @@ function statBars(rc, t, captions = {}) {
     const s = (rc.ovrScores || []).find(x => x.name === name) || {}
     const missing = s.score == null
     // Client cards: the locked slot, and stats with no VALD rating in this report.
-    const machineMissing = machine && missing && (s.status === 'locked' || s.status === 'not_in_report')
+    const machineMissing = machine && missing && ['locked', 'not_in_report', 'hidden'].includes(s.status)
     const bar = machineMissing
       ? `<div style="flex:1;height:22px;border:1.5px dashed #c9c3b8;border-radius:6px;display:flex;align-items:center;padding-left:10px;box-sizing:border-box">
-           <span style="font-family:${TEXT};font-size:10px;font-weight:700;letter-spacing:0.8px;color:${MUTED}">${s.status === 'locked' ? '&#128274; LOCKED' : 'NOT TESTED'}</span>
+           <span style="font-family:${TEXT};font-size:10px;font-weight:700;letter-spacing:0.8px;color:${MUTED}">${s.status === 'locked' ? '&#128274; LOCKED' : s.status === 'hidden' ? 'PENDING CLINICAL REVIEW' : 'NOT TESTED'}</span>
            ${s.status === 'locked' ? `<span style="font-family:${TEXT};font-size:9.5px;color:${FAINT};margin-left:6px">${esc(s.lockedText || 'Unlocks with Performance add-on')}</span>` : ''}
          </div>`
       : missing
@@ -189,7 +189,7 @@ function statBars(rc, t, captions = {}) {
         <div style="font-family:${TEXT};font-size:8.5px;font-weight:600;letter-spacing:0.4px;color:${FAINT};text-transform:uppercase">${s.proposed ? 'Proposed*' : (captions[name] || name)}${s.partial ? ' · partial' : ''}</div>
       </div>
       ${bar}
-      <div style="flex:0 0 44px;text-align:right;font-family:${DISPLAY};font-size:32px;line-height:1;color:${missing ? FAINT : TXT}">${missing ? (machineMissing && s.status !== 'locked' ? '--' : '—') : esc(s.score)}</div>
+      <div style="flex:0 0 44px;text-align:right;font-family:${DISPLAY};font-size:32px;line-height:1;color:${missing ? FAINT : TXT}">${missing ? (machineMissing && s.status === 'not_in_report' ? '--' : '—') : esc(s.score)}</div>
     </div>`
   }).join('')
 }
@@ -225,8 +225,10 @@ function testsTable(rc, t, rowsIn = null) {
       status = chip('RECORDED · BENCHMARK PENDING', MON_TXT, MON_BG, chipExtra)
     } else if (done && r.notRated) {
       status = chip('MEASURED · NOT RATED', MON_TXT, MON_BG, chipExtra)
+    } else if (done && r.chip) {
+      status = chip(r.chip, MON_TXT, MON_BG, chipExtra)
     } else if (done) {
-      const notes = [r.partial ? 'band only' : '', r.oneSideOnly ? 'one side' : ''].filter(Boolean).join(' · ')
+      const notes = [r.stat || '', r.partial ? 'band only' : '', r.oneSideOnly ? 'one side' : ''].filter(Boolean).join(' · ')
       status = `<span style="font-family:${TEXT};font-size:10px;font-weight:600;color:${TXT}">✓ Scored</span>${notes ? `<span style="font-family:${TEXT};font-size:9.5px;color:${MUTED}"> · ${esc(notes)}</span>` : ''}`
     } else if (r.status === 'invalid') {
       status = chip(STATUS_TEXT.invalid, RED_TXT, RED_BG, chipExtra)
@@ -445,7 +447,7 @@ const isCustom = (rc) => /^custom/.test(rc.configVersion || '') || rc.sport === 
 const CARD_MAX_ROWS = 12
 const cardRows = (rc) => {
   const rows = testRows(rc)
-  if (!isCustom(rc) || rows.length <= CARD_MAX_ROWS) return rows
+  if (!(isCustom(rc) || isMachine(rc)) || rows.length <= CARD_MAX_ROWS) return rows
   const more = rows.length - (CARD_MAX_ROWS - 1)
   return [...rows.slice(0, CARD_MAX_ROWS - 1), { test: `+ ${more} more test${more > 1 ? 's' : ''} on the next page`, result: '', unit: '', score: null, status: 'completed', more: true }]
 }
@@ -471,6 +473,8 @@ export function footballCardHtml(report) {
     ['AGE', rc.age],
     ['SESSION', rc.testDate],
     ['HAND', rc.dominantHand === 'R' ? 'Right' : rc.dominantHand === 'L' ? 'Left' : null],
+    // Client cards: position as a chip (e.g. "SIDE Left"), never in the OVERALL area.
+    ...(rc.positionChip ? [[rc.positionChip.label, rc.positionChip.value]] : []),
   ].filter(([, v]) => v != null && v !== '')
 
   const custom = isCustom(rc)
@@ -500,7 +504,7 @@ ${look ? look.motif : `    <div style="position:absolute;left:232px;top:-120px;w
       <div style="font-family:${DISPLAY};font-size:${pending ? 104 : 118}px;line-height:0.86;color:${t.ink};letter-spacing:1px">${pending ? '—' : esc(rc.overallOVR)}</div>
       <div style="font-family:${TEXT};font-size:10px;font-weight:700;letter-spacing:2px;color:${t.soft};margin-top:4px">OVERALL</div>
       <div style="height:2px;background:${t.ink};opacity:0.35;margin:8px 22px"></div>
-      <div style="font-family:${DISPLAY};font-size:46px;line-height:0.9;color:${t.ink};letter-spacing:2px">${esc(rc.position || '—')}</div>
+      ${isMachine(rc) ? '' : `<div style="font-family:${DISPLAY};font-size:46px;line-height:0.9;color:${t.ink};letter-spacing:2px">${esc(rc.position || '—')}</div>`}
       <div style="margin-top:10px">${statusBadge}</div>
     </div>
 
@@ -671,7 +675,7 @@ function framePage(report, title, sub, inner, footLeft) {
 export function continuedTestsPagesHtml(report) {
   const rc = report.reportContent || {}
   const rows = testRows(rc)
-  if (!isCustom(rc) || rows.length <= CARD_MAX_ROWS) return []
+  if (!(isCustom(rc) || isMachine(rc)) || rows.length <= CARD_MAX_ROWS) return []
   const t = TIERS[tierFor(rc.overallOVR)]
   const rest = rows.slice(CARD_MAX_ROWS - 1)
   const PER_PAGE = 28
@@ -700,16 +704,18 @@ export function machineStatsPagesHtml(report) {
   const short = Object.fromEntries(MACHINE_STATS.map(x => [x.name, x.short]))
   const statusChip = (s) => (s.status === 'locked' ? chip('LOCKED', MUTED, '#eef0f2')
     : s.status === 'not_tested' ? chip('NOT TESTED', MUTED, '#eef0f2')
-      : s.status === 'proposed' ? chip('PROPOSED · NOT IN OVR YET', MON_TXT, MON_BG) : '')
+      : s.status === 'proposed' ? chip('PROPOSED · NOT IN OVR YET', MON_TXT, MON_BG)
+        : s.status === 'hidden' ? chip('PENDING CLINICAL REVIEW', MON_TXT, MON_BG) : '')
   const rows = (fm.stats || []).map((s, i) => `
     <div style="display:flex;gap:16px;padding:10px 0;${i ? `border-top:1px solid ${RULE}` : ''}">
       <div style="flex:0 0 120px">
-        <div style="font-family:${DISPLAY};font-size:30px;line-height:1;color:${s.score == null ? FAINT : t.deep}">${esc(short[s.name] || s.name)} <span style="color:${s.score == null ? FAINT : TXT}">${s.score == null ? (s.status === 'locked' ? '' : '--') : esc(s.score)}</span></div>
+        <div style="font-family:${DISPLAY};font-size:30px;line-height:1;color:${s.score == null ? FAINT : t.deep}">${esc(short[s.name] || s.name)} <span style="color:${s.score == null ? FAINT : TXT}">${s.score == null ? (s.status === 'not_tested' ? '--' : '') : esc(s.score)}</span></div>
         <div style="font-family:${TEXT};font-size:10px;font-weight:700;letter-spacing:0.6px;color:${MUTED};margin-top:2px">${esc(String(s.name).toUpperCase())}</div>
       </div>
       <div style="flex:1;font-family:${TEXT};font-size:11px;line-height:1.5;color:${TXT}">
         <div style="color:${MUTED};margin-bottom:2px">${esc(s.what || '')} ${statusChip(s)}</div>
         <div>${esc(s.body || '')}</div>
+        ${s.sportLine ? `<div style="margin-top:3px;color:${TXT}"><b style="color:${t.deep}">What it means for ${esc(s.sportLine.sport)}:</b> ${esc(s.sportLine.text)}</div>` : ''}
       </div>
     </div>`).join('')
   const arms = Array.isArray(rc.armComparison) ? rc.armComparison : []

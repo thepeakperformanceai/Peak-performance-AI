@@ -36,7 +36,9 @@ const bandKey = (s) => String(s).toLowerCase().replace(/\s+/g, ' ').trim();
 const BAND_BY_TEXT = new Map(VALD_BANDS.map(b => [bandKey(b), b]));
 
 const PERCENTILE = /^(\d{1,3})\s*(?:st|nd|rd|th)\s*pct\.?$/i;
-const VALUE = /^(-?\d+(?:\.\d+)?)\s*(N|Nm|°|deg|cm|mm|m|s|ms|kg|%|W)$/;
+// A result with its unit: force, angle, distance, time, and areas / rates
+// (Single Leg Stand prints sway as an ellipse area in mm²).
+const VALUE = /^(-?\d+(?:\.\d+)?)\s*(N|Nm|°|deg|cm|mm|m|s|ms|kg|%|W|mm²|cm²|m²|mm\/s|cm\/s|°\/s)$/;
 const ASYM = /^Asym\.\s*(\d+(?:\.\d+)?)\s*%\s*(Left|Right)?\b/i;   // axis ticks may follow on the same line
 
 // ---------- reading the PDF ----------
@@ -90,7 +92,9 @@ const segments = (items) => {
 };
 
 // Two segments on one line, the second just after the first ("149" "N").
-const sameLine = (a, b) => Math.abs(a.y - b.y) < 3;
+// A unit can sit raised beside its number ("88" "°" is 3 points higher), so
+// allow a little more than that.
+const sameLine = (a, b) => Math.abs(a.y - b.y) < 4.5;
 
 // ---------- one page -> cards ----------
 
@@ -198,9 +202,14 @@ const parseHeader = (page) => {
   };
   const ageSeg = segs.find(s => /^Age:/.test(s.str));
   const age = ageSeg && /^Age:\s*(\d+)\s*\(([^)]+)\)/.exec(ageSeg.str);
+  // The date the athlete was tested, only when the PDF prints one as such.
+  // "Report Date" is when the PDF was made, not the test.
+  const testDate = ['Test Date', 'Tested', 'Date Tested', 'Session Date', 'Assessment Date', 'Testing Date']
+    .map(after).find(Boolean) || null;
   return {
     name: after('Profile'),
     reportDate: after('Report Date'),
+    testDate,
     reportBy: after('Report By'),
     age: age ? Number(age[1]) : null,
     dob: age ? age[2].trim() : null
@@ -378,10 +387,20 @@ const pdfToResults = (parsed, battery, master) => {
 
 // "21 Oct 2026" -> "2026-10-21" ('' if it isn't a date).
 const MONTHS = ['jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec'];
+// "21 Oct 2026", "21 October 2026", "21-Oct-2026", "Oct 21, 2026", "2026-10-21",
+// and "21/10/2026" (day first, as VALD prints it outside the US). '' otherwise.
 const toIsoDate = (s) => {
-  const m = /^(\d{1,2})\s+([A-Za-z]{3})[a-z]*\s+(\d{4})$/.exec(String(s).trim());
-  const mon = m ? MONTHS.indexOf(m[2].toLowerCase()) : -1;
-  return mon === -1 ? '' : `${m[3]}-${String(mon + 1).padStart(2, '0')}-${m[1].padStart(2, '0')}`;
+  const t = String(s || '').trim();
+  const iso = (y, m, d) => (m >= 1 && m <= 12 && d >= 1 && d <= 31 ? `${y}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}` : '');
+  let m = /^(\d{1,2})[\s-]+([A-Za-z]{3})[a-z]*\.?[\s-]+(\d{4})$/.exec(t);
+  if (m) return iso(m[3], MONTHS.indexOf(m[2].toLowerCase()) + 1, Number(m[1]));
+  m = /^([A-Za-z]{3})[a-z]*\.?\s+(\d{1,2}),?\s+(\d{4})$/.exec(t);
+  if (m) return iso(m[3], MONTHS.indexOf(m[1].toLowerCase()) + 1, Number(m[2]));
+  m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(t);
+  if (m) return iso(m[1], Number(m[2]), Number(m[3]));
+  m = /^(\d{1,2})[/.](\d{1,2})[/.](\d{4})$/.exec(t);
+  if (m) return iso(m[3], Number(m[2]), Number(m[1]));
+  return '';
 };
 
 module.exports = {

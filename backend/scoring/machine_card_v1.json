@@ -15,11 +15,16 @@
   "locked": {
     "speed": "Unlocks with Performance add-on"
   },
-  "balance_tests": ["single_leg_stand"],
+  "balance_tests": ["single_leg_squat"],
   "movement_tests": ["overhead_squat"],
-  "mobility_tests": ["trunk_rotation", "arc_of_motion"],
+  "mobility_tests": ["trunk_flexion", "trunk_extension", "trunk_lateral_flexion", "arc_of_motion", "dorsiflexion", "hip_rotation"],
+  "never_scored": {
+    "single_leg_stand": "VALD has no HumanTrak norms for Single Leg Stand",
+    "trunk_rotation": "not rated"
+  },
   "symmetry": {
     "status": "proposed",
+    "show_on_card": false,
     "count_in_ovr": false,
     "label": "proposed – pending clinical review",
     "basis": "Limb symmetry index (LSI) per lower-body Dynamo test (hips, knees) = weaker side / stronger side x 100, scored on the card scale, then averaged across the battery's lower-body Dynamo tests with both sides. Arm tests are shown as playing arm vs other arm, not scored. LSI 90 (10% asymmetry) is the common return-to-sport strength criterion; beyond 15% asymmetry is associated with injury and poorer performance.",

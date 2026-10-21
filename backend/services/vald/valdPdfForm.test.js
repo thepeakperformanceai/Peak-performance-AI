@@ -17,7 +17,8 @@ const callModel = async (_s, prompt) => JSON.stringify({ playerProfile: '', summ
 
 test('padel: battery tests filled with VALD percentile/band, never cut-offs; the rest listed and flagged', async () => {
   const out = await valdPdfForForm({ files: [FILE], sport: 'padel' });
-  assert.deepEqual(out.athlete, { name: 'Test Athlete', dob: '2003-01-01', testDate: '2026-10-21' });
+  // The PDF's Report Date is when it was made, not the test: no test date is filled.
+  assert.deepEqual(out.athlete, { name: 'Test Athlete', dob: '2003-01-01', testDate: '', reportDate: '2026-10-21' });
   assert.deepEqual(Object.keys(out.tests), ['hip_abduction', 'shoulder_er', 'trunk_rotation']);
   assert.ok(Object.values(out.tests).every(t => t.source === 'vald_pdf' && !('cutoffs' in t)));
   assert.equal(out.review.length, 13);
@@ -97,10 +98,13 @@ test('client card: every PDF test with the stat it feeds, and the stats this PDF
   const out = await valdPdfForClient({ files: [FILE], sport: 'padel' });
   assert.equal(out.tests.length, 7);
   const role = Object.fromEntries(out.review.map(r => [r.master, r.goesTo.label]));
-  assert.equal(role['Hip Abduction'], 'Strength and Symmetry');
+  assert.equal(role['Hip Abduction'], 'Strength');
+  assert.equal(role['Single Leg Squat'], 'Balance');
+  assert.match(role['Trunk Rotation'], /^Shown, measured · not rated/);
   assert.equal(role['Shoulder Internal Rotation'], 'Shown as playing arm vs other arm, not scored');
   assert.equal(role['Countermovement Jump'], 'Additional result (shown, not scored)');
   const info = out.problems.filter(p => p.level === 'info').map(p => p.test);
-  assert.deepEqual(info, ['Trunk Rotation - Standing', 'Balance', 'Movement']);
+  assert.deepEqual(info, ['Movement']);
+  assert.ok(out.problems.some(p => /^Session date: the PDF doesn't print the test date \(its Report Date, 2026-10-21/.test(p.text)));
   await assert.rejects(() => valdPdfForClient({ files: [FILE], sport: 'tennis' }), /Unknown sport/);
 });

@@ -9,9 +9,17 @@
 //             scored (shown as playing arm vs other arm on the report).
 //             VALD's PDF prints no asymmetry band, so these anchors are
 //             PROPOSED – pending clinical review (symmetry.status)
-//   Balance   VALD band on Single Leg Stand (band midpoint)
-//   Movement  VALD band on Overhead Squat
-//   Mobility  VALD band on Trunk Rotation and/or Shoulder Arc of Motion
+//             Hidden on the card (symmetry.show_on_card false) until approved:
+//             not calculated, not shown, never in the OVR.
+//   Balance   Single Leg Squat (VALD band or percentile)
+//   Movement  Overhead Squat
+//   Mobility  average of the VALD-rated mobility tests in the PDF (trunk
+//             flexion / extension / lateral flexion, shoulder arc of motion,
+//             weight-bearing dorsiflexion, seated hip IR/ER)
+//   Band stats: each test scores the average of its rated sides (band
+//   midpoint, or VALD percentile on the card scale); the stat is the average
+//   of its rated tests. Tests with no VALD band or percentile never count.
+//   Never scored: never_scored (Single Leg Stand, Trunk Rotation).
 //   Speed     locked slot ("Unlocks with Performance add-on"): never scored,
 //             not in the OVR, not counted for Unrated
 //
@@ -48,19 +56,29 @@ const sidesOf = (t) => Object.entries(t.sides || {}).filter(([, s]) => isSet(s.v
 /** The battery's Dynamo tests (from a sport config's tests). */
 const dynamoKeys = (battery) => Object.keys(battery).filter(k => battery[k].source === 'vald' && battery[k].dynamo);
 
-const bandStat = (tests, keys, mcfg) => {
-  const used = tests.filter(t => keys.includes(t.key));
+/** One test's own score from VALD's rating: the average of its rated sides. Null if VALD gave none. */
+const ratedScore = (t, mcfg = loadMachineConfig()) => {
   const scores = [];
-  const from = [];
-  for (const t of used) {
-    for (const [side, s] of sidesOf(t)) {
+  for (const [, s] of sidesOf(t)) {
+    if (isSet(s.percentile)) scores.push(throughAnchors(s.percentile, mcfg.vald_percentile_anchors, mcfg.score_floor, mcfg.score_cap));
+    else {
       const i = mcfg.vald_band_labels.indexOf(s.band);
-      if (i === -1) continue;
-      scores.push(mcfg.vald_band_midpoints[i]);
-      from.push({ test: t.label, side, band: s.band });
+      if (i !== -1) scores.push(mcfg.vald_band_midpoints[i]);
     }
   }
-  return scores.length ? { value: pyRound(mean(scores)), from } : { value: null, from: [], measuredNotRated: used.map(t => t.label) };
+  return scores.length ? mean(scores) : null;
+};
+
+// A stat from VALD-rated tests: the average of each rated test's score.
+const bandStat = (tests, keys, mcfg) => {
+  const used = tests.filter(t => keys.includes(t.key));
+  const rated = used.map(t => ({ t, score: ratedScore(t, mcfg) })).filter(x => x.score !== null);
+  const from = rated.map(({ t, score }) => ({
+    test: t.label, score: pyRound(score, 1),
+    sides: sidesOf(t).map(([side, s]) => ({ side, band: s.band || null, percentile: isSet(s.percentile) ? s.percentile : null }))
+  }));
+  const measuredNotRated = used.filter(t => ratedScore(t, mcfg) === null).map(t => t.label);
+  return rated.length ? { value: pyRound(mean(rated.map(x => x.score))), from, measuredNotRated } : { value: null, from: [], measuredNotRated };
 };
 
 /** General / Gym clients (no sport): the Dynamo tests that count. */
@@ -91,18 +109,21 @@ const scoreMachineCard = (tests, battery, { useProposed = false, mcfg = loadMach
     ? { value: pyRound(throughAnchors(mean(pcts), mcfg.vald_percentile_anchors, mcfg.score_floor, mcfg.score_cap)), averagePercentile: pyRound(mean(pcts), 1), from: strengthFrom }
     : { value: null, from: [] };
 
-  // Symmetry: LSI per lower-body Dynamo test with both sides.
+  // Symmetry: LSI per lower-body Dynamo test with both sides. Hidden (not
+  // calculated at all) while its scale awaits clinical approval.
+  const hidden = mcfg.symmetry.show_on_card === false;
   const sym = [];
-  for (const t of dynamoTests.filter(x => mcfg.symmetry_tests.includes(x.key))) {
+  for (const t of hidden ? [] : dynamoTests.filter(x => mcfg.symmetry_tests.includes(x.key))) {
     const l = t.sides?.left?.value;
     const r = t.sides?.right?.value;
     if (!isSet(l) || !isSet(r) || Math.max(l, r) <= 0) continue;
     const lsi = pyRound(Math.min(l, r) / Math.max(l, r) * 100, 1);
     sym.push({ test: t.label, lsi, score: throughAnchors(lsi, mcfg.symmetry.lsi_anchors, mcfg.score_floor, mcfg.score_cap) });
   }
-  stats.symmetry = sym.length
-    ? { value: pyRound(mean(sym.map(s => s.score))), from: sym.map(s => ({ ...s, score: pyRound(s.score, 1) })), proposed: mcfg.symmetry.status === 'proposed' }
-    : { value: null, from: [], proposed: mcfg.symmetry.status === 'proposed' };
+  stats.symmetry = hidden ? { value: null, from: [], hidden: true, proposed: mcfg.symmetry.status === 'proposed' }
+    : sym.length
+      ? { value: pyRound(mean(sym.map(s => s.score))), from: sym.map(s => ({ ...s, score: pyRound(s.score, 1) })), proposed: mcfg.symmetry.status === 'proposed' }
+      : { value: null, from: [], proposed: mcfg.symmetry.status === 'proposed' };
 
   stats.balance = bandStat(tests, mcfg.balance_tests, mcfg);
   stats.movement = bandStat(tests, mcfg.movement_tests, mcfg);
@@ -111,7 +132,7 @@ const scoreMachineCard = (tests, battery, { useProposed = false, mcfg = loadMach
   // OVR: plain average of the scored stats (a proposed stat only if allowed).
   const counted = mcfg.stats.filter(k => isSet(stats[k].value) && (useProposed || !stats[k].proposed));
   const reasons = mcfg.stats.filter(k => !counted.includes(k))
-    .map(k => (isSet(stats[k].value) ? `${k}: proposed, not counted` : `${k}: not tested`));
+    .map(k => (stats[k].hidden ? `${k}: hidden until approved` : isSet(stats[k].value) ? `${k}: proposed, not counted` : `${k}: not tested`));
   const ovr = counted.length >= mcfg.ovr_min_stats
     ? { value: pyRound(mean(counted.map(k => stats[k].value))), counted, reasons }
     : { value: null, status: 'unrated', counted, reasons, message: `Rating pending: ${counted.length} of ${mcfg.stats.length} stats scored (needs ${mcfg.ovr_min_stats})` };
@@ -124,4 +145,4 @@ const scoreMachineCard = (tests, battery, { useProposed = false, mcfg = loadMach
   };
 };
 
-module.exports = { scoreMachineCard, loadMachineConfig, generalBattery, throughAnchors };
+module.exports = { scoreMachineCard, loadMachineConfig, generalBattery, throughAnchors, ratedScore };

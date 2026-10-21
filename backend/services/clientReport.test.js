@@ -13,6 +13,10 @@ const PAGES = require('./vald/fixtures/valdHubPdf.pages.json');
 const TESTS = machineTestsFromPdf(parsePages(PAGES));
 const PROFILE = { name: 'Test Athlete', dob: '2003-01-01', testDate: '2026-10-21', sex: 'M', dominantHand: 'R', position: 'right' };
 const input = (sport = 'padel') => validateClientInput(PROFILE, { sport, tests: TESTS });
+
+test('the session date is never today by default: the PDF\'s test date or the tester\'s', () => {
+  assert.throws(() => validateClientInput({ ...PROFILE, testDate: '' }, { sport: 'padel', tests: TESTS }), /Enter the test date/);
+});
 const noAi = { callModel: async () => { throw new Error('no key'); } };
 
 test('input: sport, profile and VALD tests are checked', () => {
@@ -34,11 +38,11 @@ test('no AI: the report uses the code\'s own sentences, and keeps the draft foot
   assert.equal(rc.proseSource, 'coach');
   assert.equal(rc.draftNotice, 'Draft – pending clinical review');
   assert.match(rc.benchmarkNote, /^Scores come from VALD's age- and sex-matched data/);
-  assert.equal(rc.summary, 'Your rating is pending: 2 of 5 stats are scored, and a rating needs 3. Your development priority is Mobility.');
+  assert.equal(rc.summary, 'Your overall rating is 51 (Bronze), the average of 3 scored stats. Your development priority is Mobility.');
   assert.deepEqual(rc.fieldMeaning.stats.map(s => [s.name, s.status]), [
-    ['Strength', 'scored'], ['Symmetry', 'proposed'], ['Balance', 'not_tested'], ['Movement', 'not_tested'], ['Mobility', 'scored'], ['Speed', 'locked']
+    ['Strength', 'scored'], ['Symmetry', 'hidden'], ['Balance', 'scored'], ['Movement', 'not_tested'], ['Mobility', 'scored'], ['Speed', 'locked']
   ]);
-  assert.match(rc.fieldMeaning.focus, /Add Single Leg Stand and Overhead Squat to your next session to complete your card\./);
+  assert.match(rc.fieldMeaning.focus, /Add Overhead Squat to your next session to complete your card\./);
 });
 
 test('arm tests: playing arm vs other arm, shown and never scored or flagged', async () => {
@@ -68,7 +72,7 @@ test('AI rewording is used only when it passes every check', async () => {
   assert.match(check({ focus: 'Do 3 sets of 10 to fix this.' }), /prescription/);
   assert.match(check({ focus: 'Add some lunges and planks.' }), /exercises or training.*lunges.*planks/);
   assert.match(check({ stats: { strength: 'Dynamo shows Strength 49.' } }), /testing device/);
-  assert.match(check({ stats: { balance: 'Balance looks fine.' } }), /balance was not tested and must still say "not tested"/);
+  assert.match(check({ stats: { movement: 'Movement looks fine.' } }), /movement was not tested and must still say "not tested"/);
 
   const bad = await runClientPipeline(input(), { callModel: async () => JSON.stringify({ ...good, focus: 'Try squats and lunges.' }) });
   assert.equal(bad.polish.source, 'coach');                      // 3 rejections -> the code's own text
@@ -95,5 +99,5 @@ test('breakdown of a saved client card', async () => {
   const b = reportBreakdown({ scoring: card, scoringSession: { client: true, ...i }, athleteName: 'Test Athlete', testDate: '2026-10-21', reportContent: { sport: 'General / Gym' } });
   assert.equal(b.kind, 'client_card');
   assert.equal(b.methodologyPath, '/how-we-score/general');
-  assert.deepEqual(b.stats.map(s => [s.key, s.value]), [['strength', 49], ['symmetry', 95], ['balance', null], ['movement', null], ['mobility', 48]]);
+  assert.deepEqual(b.stats.map(s => [s.key, s.value]), [['strength', 49], ['symmetry', null], ['balance', 56], ['movement', null], ['mobility', 48]]);
 });

@@ -36,7 +36,7 @@ test('reads every card: test, side, value, percentile or band', () => {
 
 test('reads the metric line, asymmetry and the header', () => {
   const { athlete, tests } = parsePages(PAGES);
-  assert.deepEqual(athlete, { name: 'Test Athlete', reportDate: '21 Oct 2026', reportBy: 'Coach Name', age: 23, dob: '1 Jan 2003' });
+  assert.deepEqual(athlete, { name: 'Test Athlete', reportDate: '21 Oct 2026', testDate: null, reportBy: 'Coach Name', age: 23, dob: '1 Jan 2003' });
   const er = tests.find(t => t.test.startsWith('Shoulder External'));
   assert.equal(er.metric, 'Max Force - Left and Right');
   assert.equal(er.truncated, true);

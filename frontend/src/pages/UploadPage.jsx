@@ -152,10 +152,14 @@ export default function UploadPage({ onReportGenerated }) {
         if (!isClient) setResultsBySport(prev => ({ ...prev, [sport]: applyPdfResults(prev[sport], read, scored.key) }))
         const a = read.athlete || {}
         if (a.name) setForm(prev => (prev.name.trim() ? prev : { ...prev, name: a.name }))
+        // Session date: the PDF's test date when it prints one. Otherwise an
+        // untouched default (today) is cleared so the tester enters the real
+        // date; a VALD "Report Date" is when the PDF was made.
         setFbProfile(prev => ({
           ...prev,
           dob: prev.dob || a.dob || '',
-          testDate: a.testDate && prev.testDate === todayISO() ? a.testDate : prev.testDate,
+          testDate: a.testDate ? (prev.testDate === todayISO() || !prev.testDate ? a.testDate : prev.testDate)
+            : (prev.testDate === todayISO() ? '' : prev.testDate),
         }))
         setPdfReads(prev => ({ ...prev, [key]: { sig, read, checked: false } }))
         const filled = isClient ? read.tests.length : Object.keys(read.tests).length
@@ -230,6 +234,7 @@ export default function UploadPage({ onReportGenerated }) {
     if (!fbProfile.dob)            { toast.error('Date of birth is required.'); return false }
     if (fbAge === null || fbAge < 5 || fbAge > 80) { toast.error('Please check the date of birth.'); return false }
     if (!fbProfile.sex)            { toast.error('Sex is required.'); return false }
+    if (!fbProfile.testDate)       { toast.error('Enter the test date: the VALD PDF doesn\'t print it.'); return false }
     if (fbProfile.bodyweight && (Number(fbProfile.bodyweight) < 30 || Number(fbProfile.bodyweight) > 160)) { toast.error('Bodyweight must be 30–160 kg. Please re-check it.'); return false }
     if (!pdfRead?.read?.tests?.length) { toast.error('Upload the athlete\'s VALD Hub PDF: the client card is built from it.'); return false }
     if (!pdfRead.checked) { toast.error('Check the results read from the VALD PDF, then tick “I\'ve checked these results”.'); return false }

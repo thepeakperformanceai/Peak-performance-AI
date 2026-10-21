@@ -21,7 +21,12 @@ const pageKeyOf = (sport) => (sport === 'general' ? 'general' : `client-${sport}
 
 const SOURCE = "Every score comes from VALD's age- and sex-matched data: VALD compares each of your results with people of the same age and sex, as a percentile (Dynamo strength tests) or a band (HumanTrak movement tests). We put those onto the card's 25–99 scale. Nothing is estimated, and nothing is compared with athletes of one sport.";
 
-const labelOf = (k) => (k === 'arc_of_motion' ? 'Shoulder Arc of Motion' : ALL_TEST_INFO[k]?.label || k);
+const CARD_TEST_LABELS = {
+  trunk_flexion: 'Trunk Flexion', trunk_extension: 'Trunk Extension', trunk_lateral_flexion: 'Trunk Lateral Flexion',
+  arc_of_motion: 'Shoulder Arc of Motion', dorsiflexion: 'Weight Bearing Dorsiflexion', hip_rotation: 'Seated Hip IR/ER',
+  single_leg_squat: 'Single Leg Squat'
+};
+const labelOf = (k) => CARD_TEST_LABELS[k] || ALL_TEST_INFO[k]?.label || k;
 
 const clientMethodology = (pageKey) => {
   const page = CLIENT_PAGES[pageKey];
@@ -46,12 +51,13 @@ const clientMethodology = (pageKey) => {
       { key: 'strength', name: 'Strength', tests: dynamo.map(labelOf),
         how: `The average of every VALD percentile on these Dynamo tests (left and right), put on a straight line from ${pa[0][1]} at the ${pa[0][0]}th percentile to ${pa[pa.length - 1][1]} at the ${pa[pa.length - 1][0]}th. Example: the 50th percentile (stronger than half of people your age and sex) scores ${pyRound(throughAnchors(50, pa, m.score_floor, m.score_cap))}.` },
       { key: 'symmetry', name: 'Symmetry', tests: symTests.map(labelOf), proposed: m.symmetry.status === 'proposed', countedInOvr: !!m.symmetry.count_in_ovr,
+        hidden: m.symmetry.show_on_card === false,
         how: 'For each lower-body Dynamo test (hips, knees) with both sides: your weaker side as a % of your stronger side, scored as below, then averaged. VALD gives no band for left/right differences, so this scale is ours.',
         anchors: m.symmetry.lsi_anchors.map(([lsi, score]) => ({ lsi, gapPct: 100 - lsi, score })),
         basis: m.symmetry.basis, references: m.symmetry.references, label: m.symmetry.label },
-      { key: 'balance', name: 'Balance', tests: m.balance_tests.map(labelOf), how: "VALD's band for each side, scored at the middle of the band." },
+      { key: 'balance', name: 'Balance', tests: m.balance_tests.map(labelOf), how: "VALD's band (or percentile) for each side, scored at the middle of the band, then averaged. Single Leg Stand is never scored: VALD has no age- and sex-matched norms for it, so the report shows its left and right result and which leg was steadier." },
       { key: 'movement', name: 'Movement', tests: m.movement_tests.map(labelOf), how: "VALD's band, scored at the middle of the band." },
-      { key: 'mobility', name: 'Mobility', tests: m.mobility_tests.map(labelOf), how: "VALD's band for each side, scored at the middle of the band. A test VALD gives no band for is shown as \"measured, not rated\" and isn't counted." },
+      { key: 'mobility', name: 'Mobility', tests: m.mobility_tests.map(labelOf), how: "The average of the mobility tests in your VALD report that VALD rated: each test scores the middle of its band (the average of its sides). A test with no VALD band or percentile is shown as \"measured · not rated\" and isn't counted. Trunk Rotation is never scored." },
       { key: 'speed', name: 'Speed', locked: true, how: `${m.locked.speed}. Not part of the OVR, and not counted for the rating.` }
     ],
     bands: m.vald_band_labels.map((label, i) => ({ label: VALD_BAND_WORDS[label], score: m.vald_band_midpoints[i] })),

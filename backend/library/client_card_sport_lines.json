@@ -1,0 +1,41 @@
+{
+  "_comment": "\"What it means for <sport>\" on the client card's \"What your stats mean\" page: one line per stat and sport, with examples from that sport. Fixed text, chosen in code by stat and sport; never reworded by the AI. No numbers, no exercises. Edit the wording here.",
+  "sports": {
+    "football": {
+      "label": "football",
+      "strength": "Strength helps you hold off defenders, win headers and strike the ball with power.",
+      "symmetry": "Even legs let you accelerate and cut equally off either foot, and land evenly after a header.",
+      "balance": "Single-leg control keeps you steady when you plant your standing foot to shoot or pass, and when you change direction.",
+      "movement": "A good deep squat helps you stay low and balanced when you shield the ball or jockey an attacker.",
+      "mobility": "Trunk, hip and ankle range help you turn with the ball, stretch for a tackle and strike across your body.",
+      "speed": "Speed decides who reaches the loose ball first and how quickly you break into space."
+    },
+    "padel": {
+      "label": "padel",
+      "strength": "Strength powers your smash and bandeja, drives the ball off the back glass and holds a low ready position at the net.",
+      "symmetry": "Even legs let you push off equally to your forehand and backhand side, and land evenly after an overhead.",
+      "balance": "Single-leg control helps you lunge for a low volley and recover quickly after stretching for a ball off the side wall.",
+      "movement": "A good deep squat lets you get low for volleys and for balls coming off the back wall while staying balanced.",
+      "mobility": "Trunk and shoulder range let you rotate fully into a drive or a vibora and reach balls coming off the glass.",
+      "speed": "Speed decides how fast you get back for a lob and how quickly you cover a drop shot at the net."
+    },
+    "cricket": {
+      "label": "cricket",
+      "strength": "Strength helps you drive through the line, bowl with pace and throw hard from the deep.",
+      "symmetry": "Even legs help you brace your front leg at delivery and push off equally when running between the wickets.",
+      "balance": "Single-leg control keeps you stable through your delivery stride and when you field off balance.",
+      "movement": "A good deep squat helps a wicketkeeper stay low and lets fielders get down to the ball quickly.",
+      "mobility": "Trunk and shoulder range let you rotate through a full bowling action and a full swing of the bat.",
+      "speed": "Speed turns ones into twos and gets you to the ball first in the field."
+    },
+    "general": {
+      "label": "everyday life and the gym",
+      "strength": "Strength makes lifting, carrying and climbing stairs easier, and lets you train harder in the gym.",
+      "symmetry": "Even legs share the load when you squat, run or climb stairs, instead of one side doing more of the work.",
+      "balance": "Single-leg control keeps you steady on stairs and uneven ground, and when you train one leg at a time.",
+      "movement": "A good deep squat helps you lift from the floor, sit down and stand up with control.",
+      "mobility": "Trunk, shoulder, hip and ankle range help you reach overhead, twist and bend without stiffness.",
+      "speed": "Speed and quickness help you react and move with confidence, in sport and in daily life."
+    }
+  }
+}

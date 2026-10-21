@@ -57,7 +57,11 @@ const validateClientInput = (profileIn = {}, resultsIn = {}) => {
   const name = String(profileIn.name || '').trim().slice(0, 80);
   if (!name) throw badRequest('Athlete name is required');
   const dob = parseDate(profileIn.dob, 'Date of birth');
-  const testDate = profileIn.testDate || new Date().toISOString().slice(0, 10);
+  // The session date: the PDF's test date when it prints one, otherwise the
+  // tester's. Never today by default (a VALD "Report Date" is when the PDF
+  // was made, not when the athlete was tested).
+  if (!profileIn.testDate) throw badRequest('Enter the test date: the VALD PDF doesn\'t print one (its Report Date is when the PDF was made)');
+  const testDate = profileIn.testDate;
   const age = ageOn(dob, parseDate(testDate, 'Test date'));
   if (age < 5 || age > 80) throw badRequest('Date of birth gives an age outside 5–80 — please check it');
   if (!['M', 'F'].includes(profileIn.sex)) throw badRequest('Sex is required (M or F)');
@@ -89,6 +93,7 @@ const validateClientInput = (profileIn = {}, resultsIn = {}) => {
     tests.push({
       key: typeof t.key === 'string' && /^[a-z_]{1,40}$/.test(t.key) ? t.key : null,
       label, device: t.device === 'Dynamo' ? 'Dynamo' : 'HumanTrak',
+      pdfName: String(t.pdfName || '').slice(0, 120), metric: String(t.metric || '').slice(0, 160),
       unit: String(t.unit || '').slice(0, 12), sides
     });
   }

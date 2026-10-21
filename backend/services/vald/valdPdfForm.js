@@ -63,7 +63,8 @@ const valdPdfForForm = async ({ files, sport, mappings = {} }) => {
     if (f.error) { problems.push({ level: 'error', file: f.name, test: null, text: `${f.name}: ${f.error}` }); continue; }
     const p = f.parsed;
     const a = p.athlete || {};
-    if (!athlete) athlete = { name: a.name || '', dob: toIsoDate(a.dob || ''), testDate: toIsoDate(a.reportDate || '') };
+    // Test date only when the PDF prints one; its Report Date is when the PDF was made.
+    if (!athlete) athlete = { name: a.name || '', dob: toIsoDate(a.dob || ''), testDate: toIsoDate(a.testDate || ''), reportDate: toIsoDate(a.reportDate || '') };
     else if (a.name && athlete.name && slug(a.name) !== slug(athlete.name)) {
       problems.push({ level: 'error', file: f.name, test: null, text: `${f.name} is for ${a.name}, not ${athlete.name}` });
       continue;
@@ -157,7 +158,7 @@ const valdPdfForClient = async ({ files, sport }) => {
     if (f.error) { problems.push({ level: 'error', file: f.name, test: null, text: `${f.name}: ${f.error}` }); continue; }
     const p = f.parsed;
     const a = p.athlete || {};
-    if (!athlete) athlete = { name: a.name || '', dob: toIsoDate(a.dob || ''), testDate: toIsoDate(a.reportDate || '') };
+    if (!athlete) athlete = { name: a.name || '', dob: toIsoDate(a.dob || ''), testDate: toIsoDate(a.testDate || ''), reportDate: toIsoDate(a.reportDate || ''), age: a.age ?? null };
     else if (a.name && athlete.name && slug(a.name) !== slug(athlete.name)) {
       problems.push({ level: 'error', file: f.name, test: null, text: `${f.name} is for ${a.name}, not ${athlete.name}` });
       continue;
@@ -180,9 +181,12 @@ const valdPdfForClient = async ({ files, sport }) => {
     });
   }
   if (!athlete) throw badRequest(problems.map(p => p.text).join('; ') || 'No VALD results found in the PDF');
+  if (!athlete.testDate) {
+    problems.push({ level: 'warn', file: null, test: null, text: `Session date: the PDF doesn't print the test date${athlete.reportDate ? ` (its Report Date, ${athlete.reportDate}, is when the PDF was made)` : ''}. Enter the date the athlete was tested.` });
+  }
   // Card stats this PDF can't score: shown as "Not tested" on the card.
-  const roles = tests.map(roleOf).filter(Boolean).join(' | ');
-  for (const [stat, needs] of [['Strength', 'the battery\'s Dynamo strength tests'], ['Symmetry', 'a hip or knee strength test with both sides'], ['Balance', 'Single Leg Stand'], ['Movement', 'Overhead Squat'], ['Mobility', 'Trunk Rotation or Shoulder Arc of Motion']]) {
+  const roles = tests.map(roleOf).filter(Boolean).filter(r => !/^Shown/.test(r)).join(' | ');
+  for (const [stat, needs] of [['Strength', 'the battery\'s Dynamo strength tests'], ['Balance', 'Single Leg Squat'], ['Movement', 'Overhead Squat'], ['Mobility', 'a VALD-rated trunk, shoulder, hip or ankle mobility test']]) {
     if (!roles.includes(stat)) problems.push({ level: 'info', file: null, test: stat, text: `${stat}: not in this PDF (needs ${needs}), so it shows as "Not tested"` });
   }
   return { athlete, files: read.map(f => ({ name: f.name, ok: !f.error, tests: f.parsed ? f.parsed.tests.length : 0 })), review, problems, tests };

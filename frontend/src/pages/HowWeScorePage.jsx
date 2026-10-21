@@ -185,7 +185,7 @@ function ClientCardPage({ m }) {
             <div className="flex flex-wrap items-center gap-2">
               <span className="font-medium text-gray-900">{s.name}</span>
               {s.locked && <Pill>Locked</Pill>}
-              {s.proposed && <Pill tone="amber">{s.label || 'Proposed – pending clinical review'}{s.countedInOvr ? '' : ' · not in the OVR yet'}</Pill>}
+              {s.proposed && <Pill tone="amber">{s.label || 'Proposed – pending clinical review'}{s.hidden ? ' · not shown on cards yet' : s.countedInOvr ? '' : ' · not in the OVR yet'}</Pill>}
             </div>
             {s.tests?.length > 0 && <p className="text-xs text-gray-500 mt-0.5">From: {s.tests.join(', ')}</p>}
             <p className="text-sm text-gray-700 mt-1">{s.how}</p>
