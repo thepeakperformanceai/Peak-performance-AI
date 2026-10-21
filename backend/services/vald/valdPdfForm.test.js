@@ -91,3 +91,16 @@ test('padel athlete report builds from PDF results (percentile sides, unrated tr
   const ar = R.buildAthleteReport({ profile, scored: scoreSession(session, padel.cfg), session, cfg: padel.cfg });
   assert.ok(ar);
 });
+
+test('client card: every PDF test with the stat it feeds, and the stats this PDF can\'t score', async () => {
+  const { valdPdfForClient } = require('./valdPdfForm');
+  const out = await valdPdfForClient({ files: [FILE], sport: 'padel' });
+  assert.equal(out.tests.length, 7);
+  const role = Object.fromEntries(out.review.map(r => [r.master, r.goesTo.label]));
+  assert.equal(role['Hip Abduction'], 'Strength and Symmetry');
+  assert.equal(role['Shoulder Internal Rotation'], 'Shown as playing arm vs other arm, not scored');
+  assert.equal(role['Countermovement Jump'], 'Additional result (shown, not scored)');
+  const info = out.problems.filter(p => p.level === 'info').map(p => p.test);
+  assert.deepEqual(info, ['Trunk Rotation - Standing', 'Balance', 'Movement']);
+  await assert.rejects(() => valdPdfForClient({ files: [FILE], sport: 'tennis' }), /Unknown sport/);
+});

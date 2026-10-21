@@ -12,7 +12,7 @@ const scoredReport = require('../services/scoredReport.service');
 const padelAthleteReport = require('../services/padelAthleteReport.service');
 const customAssessment = require('../services/customAssessment.service');
 const ValdTestMapping = require('../models/ValdTestMapping.model');
-const { valdPdfForForm } = require('../services/vald/valdPdfForm');
+const { valdPdfForForm, valdPdfForClient } = require('../services/vald/valdPdfForm');
 const clientReport = require('../services/clientReport.service');
 const fs = require('fs');
 
@@ -799,7 +799,10 @@ const readValdPdf = async (req, res, next) => {
       .filter(f => f.mimetype === 'application/pdf')
       .map(f => ({ name: f.originalname, buffer: fs.readFileSync(f.path) }));
     const sport = String(req.body.sport || '');
-    const out = await valdPdfForForm({ files, sport, mappings: sport === 'custom' ? await loadValdMappings() : {} });
+    // card=client: the client card (VALD machine tests only); otherwise the battery form.
+    const out = req.body.card === 'client'
+      ? await valdPdfForClient({ files, sport })
+      : await valdPdfForForm({ files, sport, mappings: sport === 'custom' ? await loadValdMappings() : {} });
     res.json(out);
   } catch (error) {
     next(error);

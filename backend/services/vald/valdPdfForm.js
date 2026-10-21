@@ -136,4 +136,56 @@ const valdPdfForForm = async ({ files, sport, mappings = {} }) => {
   return { ...result, tests, customTests, additionalVald: [] };
 };
 
-module.exports = { valdPdfForForm, masterList };
+/**
+ * VALD Hub PDFs -> a client card (VALD machine tests only), for the tester
+ * to check before saving: every test read, the stat it feeds, and every test
+ * that couldn't be read or matched. Nothing is filled by hand.
+ *   sport: football | padel | cricket | general
+ * Returns { athlete, files, review, problems, tests } (tests: machine card input).
+ */
+const valdPdfForClient = async ({ files, sport }) => {
+  const { machineTestsFromPdf, clientRoleOf, SPORTS: CLIENT_SPORTS } = require('../machineCard.service');
+  if (!CLIENT_SPORTS.includes(sport)) throw badRequest('Unknown sport for the client card');
+  if (!files.length) throw badRequest('Upload a VALD Hub PDF');
+  const roleOf = clientRoleOf(sport);
+  const read = await Promise.all(files.map(readFile));
+  const problems = [];
+  const review = [];
+  const tests = [];
+  let athlete = null;
+  for (const f of read) {
+    if (f.error) { problems.push({ level: 'error', file: f.name, test: null, text: `${f.name}: ${f.error}` }); continue; }
+    const p = f.parsed;
+    const a = p.athlete || {};
+    if (!athlete) athlete = { name: a.name || '', dob: toIsoDate(a.dob || ''), testDate: toIsoDate(a.reportDate || '') };
+    else if (a.name && athlete.name && slug(a.name) !== slug(athlete.name)) {
+      problems.push({ level: 'error', file: f.name, test: null, text: `${f.name} is for ${a.name}, not ${athlete.name}` });
+      continue;
+    }
+    const machine = machineTestsFromPdf(p);
+    p.tests.forEach((t, i) => {
+      const m = machine[i];
+      const dup = tests.some(x => x.label === m.label);
+      const role = dup ? null : roleOf(m);
+      const goesTo = dup ? { kind: 'shown', label: 'Already read from another PDF' }
+        : role && !/^Shown/.test(role) ? { kind: 'battery', key: m.key, label: role }
+          : { kind: 'shown', label: role || 'Additional result (shown, not scored)' };
+      for (const r of t.results) review.push({ file: f.name, test: t.test, master: m.label, device: t.device, side: r.side, value: r.value, unit: r.unit, percentile: r.percentile, band: r.band, goesTo });
+      for (const w of t.warnings) problems.push({ level: 'error', file: f.name, test: t.test, text: `${t.test}: ${w}` });
+      if (!dup && !role) problems.push({ level: 'warn', file: f.name, test: t.test, text: `${t.test}: not a card test, so it is shown as an additional result and not scored` });
+      if (!dup && role && goesTo.kind === 'battery' && !t.results.some(r => r.percentile !== null || r.band !== null)) {
+        problems.push({ level: 'info', file: f.name, test: t.test, text: `${m.label}: VALD gave no percentile or band, so it is measured, not rated` });
+      }
+      if (!dup) tests.push(m);
+    });
+  }
+  if (!athlete) throw badRequest(problems.map(p => p.text).join('; ') || 'No VALD results found in the PDF');
+  // Card stats this PDF can't score: shown as "Not tested" on the card.
+  const roles = tests.map(roleOf).filter(Boolean).join(' | ');
+  for (const [stat, needs] of [['Strength', 'the battery\'s Dynamo strength tests'], ['Symmetry', 'a hip or knee strength test with both sides'], ['Balance', 'Single Leg Stand'], ['Movement', 'Overhead Squat'], ['Mobility', 'Trunk Rotation or Shoulder Arc of Motion']]) {
+    if (!roles.includes(stat)) problems.push({ level: 'info', file: null, test: stat, text: `${stat}: not in this PDF (needs ${needs}), so it shows as "Not tested"` });
+  }
+  return { athlete, files: read.map(f => ({ name: f.name, ok: !f.error, tests: f.parsed ? f.parsed.tests.length : 0 })), review, problems, tests };
+};
+
+module.exports = { valdPdfForForm, valdPdfForClient, masterList };

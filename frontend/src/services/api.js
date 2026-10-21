@@ -325,12 +325,25 @@ export const downloadReportPDF = async reportId => {
   }
 }
 
-// Reads VALD Hub PDFs into the test form for one sport (nothing is saved).
-export const readValdPdf = async (files, sport) => {
+// Reads VALD Hub PDFs for one sport (nothing is saved). card 'client': the
+// client card's tests; otherwise the battery form's fill.
+export const readValdPdf = async (files, sport, card) => {
   const formData = new FormData()
   files.forEach(f => formData.append('files', f))
   formData.append('sport', sport)
+  if (card) formData.append('card', card)
   return api.post('/report/vald-pdf', formData, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+  })
+}
+
+// Client card (VALD machine tests only): football, padel, cricket or general.
+export const generateClientReport = async (files, profile, results) => {
+  const formData = new FormData()
+  files.forEach(f => formData.append('files', f))
+  formData.append('profile', JSON.stringify(profile))
+  formData.append('results', JSON.stringify(results))
+  return api.post('/report/client', formData, {
     headers: { 'Content-Type': 'multipart/form-data' },
   })
 }

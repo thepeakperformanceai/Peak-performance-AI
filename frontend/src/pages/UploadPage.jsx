@@ -1,7 +1,7 @@
 import { useState, useCallback, useEffect } from 'react'
 import { useDropzone } from 'react-dropzone'
 import toast from 'react-hot-toast'
-import { generateReport, generateFootballReport, generatePadelReport, generateCricketReport, generateCustomReport, extractProfile, readValdPdf } from '../services/api'
+import { generateReport, generateFootballReport, generatePadelReport, generateCricketReport, generateCustomReport, generateClientReport, extractProfile, readValdPdf } from '../services/api'
 import { useReportStore } from '../store/reportStore'
 import { useParamStore } from '../store/paramStore'
 import { sanitizeInput } from '../utils/sanitize'
@@ -9,7 +9,18 @@ import FootballResultsForm, { SCORED_SPORTS, emptyResults, emptyTest, footballPr
 import ValdPdfReview from '../components/ValdPdfReview'
 
 
-const SPORTS = ['Football', 'Cricket', 'Padel', 'Custom Assessment']
+const SPORTS = ['Football', 'Cricket', 'Padel', 'General / Gym', 'Custom Assessment']
+
+// Client cards (VALD machine tests only, from the VALD Hub PDF): the default
+// for these sports. Football, padel and cricket can still use the full
+// battery form (manual tests + VALD) through a link on the page.
+const CLIENT_SPORTS = { Football: 'football', Padel: 'padel', Cricket: 'cricket', 'General / Gym': 'general' }
+const CLIENT_PROFILE = {
+  football: { positions: SCORED_SPORTS.Football.positions, positionLabel: 'Position' },
+  padel: { positions: SCORED_SPORTS.Padel.positions, positionLabel: 'Court side' },
+  cricket: { positions: SCORED_SPORTS.Cricket.positions, positionLabel: 'Role' },
+  general: { positions: null, positionLabel: 'Position / role' },
+}
 
 const STEPS = [
   { num: 1, label: 'Upload files' },
@@ -108,25 +119,37 @@ export default function UploadPage({ onReportGenerated }) {
   // Sports scored by the engine (Football, Padel) use the results form;
   // the others keep the PDF upload flow unchanged.
   const scored = SCORED_SPORTS[form.sport]
-  const isScored = !!scored
+  const clientKey = CLIENT_SPORTS[form.sport]
+  const [fullBattery, setFullBattery] = useState(false)
+  const isClient = !!clientKey && !(fullBattery && scored)
+  // The full battery form (manual tests + VALD): custom assessment, or a sport
+  // whose tester chose it instead of the client card.
+  const isScored = !!scored && !isClient
+  const engineProfile = isScored || isClient
+  // Profile fields: the battery form's, or the client card's (position and arm optional).
+  const prof = isClient
+    ? { ...CLIENT_PROFILE[clientKey], positionOptional: true, handLabel: clientKey === 'general' ? 'Dominant arm' : 'Playing arm', handOptional: true, bodyweightOptional: true }
+    : scored
   const fbResults = resultsBySport[form.sport]
   const setFbResults = r => setResultsBySport(prev => ({ ...prev, [form.sport]: r }))
   const fbAge = ageFromDob(fbProfile.dob, fbProfile.testDate)
 
   // VALD Hub PDFs read into the form, per sport: { sig, read, checked }.
   const [pdfReads, setPdfReads] = useState({})
-  const pdfRead = pdfReads[form.sport]
+  const pdfKey = isClient ? `${form.sport}|client` : form.sport
+  const pdfRead = pdfReads[pdfKey]
   useEffect(() => {
     const pdfs = files.filter(f => f.type === 'application/pdf')
     const sig = pdfSignature(files)
-    if (!isScored || !pdfs.length || pdfReads[form.sport]?.sig === sig) return
+    if (!engineProfile || !pdfs.length || pdfReads[pdfKey]?.sig === sig) return
     let cancelled = false
     const sport = form.sport
+    const key = pdfKey
     const toastId = toast.loading('Reading results from the VALD PDF…')
-    readValdPdf(pdfs, scored.key)
+    readValdPdf(pdfs, isClient ? clientKey : scored.key, isClient ? 'client' : undefined)
       .then(read => {
         if (cancelled) return
-        setResultsBySport(prev => ({ ...prev, [sport]: applyPdfResults(prev[sport], read, scored.key) }))
+        if (!isClient) setResultsBySport(prev => ({ ...prev, [sport]: applyPdfResults(prev[sport], read, scored.key) }))
         const a = read.athlete || {}
         if (a.name) setForm(prev => (prev.name.trim() ? prev : { ...prev, name: a.name }))
         setFbProfile(prev => ({
@@ -134,18 +157,18 @@ export default function UploadPage({ onReportGenerated }) {
           dob: prev.dob || a.dob || '',
           testDate: a.testDate && prev.testDate === todayISO() ? a.testDate : prev.testDate,
         }))
-        setPdfReads(prev => ({ ...prev, [sport]: { sig, read, checked: false } }))
-        const filled = Object.keys(read.tests).length
+        setPdfReads(prev => ({ ...prev, [key]: { sig, read, checked: false } }))
+        const filled = isClient ? read.tests.length : Object.keys(read.tests).length
         const flagged = read.problems.filter(p => p.level !== 'info').length
-        toast.success(`Filled ${filled} test${filled === 1 ? '' : 's'} from the VALD PDF${flagged ? ` · ${flagged} to check` : ''}. Please check them below.`, { id: toastId, duration: 6000 })
+        toast.success(`${isClient ? 'Read' : 'Filled'} ${filled} test${filled === 1 ? '' : 's'} from the VALD PDF${flagged ? ` · ${flagged} to check` : ''}. Please check them below.`, { id: toastId, duration: 6000 })
       })
       .catch(err => {
         if (cancelled) return
-        setPdfReads(prev => ({ ...prev, [sport]: { sig, read: null, checked: false } }))
-        toast.error(`Couldn't read the VALD PDF: ${err.message}. Enter the results by hand.`, { id: toastId, duration: 8000 })
+        setPdfReads(prev => ({ ...prev, [key]: { sig, read: null, checked: false, error: err.message } }))
+        toast.error(`Couldn't read the VALD PDF: ${err.message}.${isClient ? '' : ' Enter the results by hand.'}`, { id: toastId, duration: 8000 })
       })
     return () => { cancelled = true; toast.dismiss(toastId) }
-  }, [files, form.sport, isScored])
+  }, [files, form.sport, isScored, isClient])
   const handleFbChange = e =>
     setFbProfile(prev => ({ ...prev, [e.target.name]: e.target.value }))
 
@@ -163,9 +186,9 @@ export default function UploadPage({ onReportGenerated }) {
     setFiles(prev => [...prev, ...valid].slice(0, 3))
     // Engine-scored sports read the whole VALD PDF (results and athlete) in an
     // effect; the other sports keep the profile autofill.
-    if (!isScored) autofillFromPdf(valid.filter(f => f.type === 'application/pdf'))
+    if (!isScored && !isClient) autofillFromPdf(valid.filter(f => f.type === 'application/pdf'))
     setStep(2)
-  }, [isScored])
+  }, [isScored, isClient])
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop,
@@ -201,7 +224,20 @@ export default function UploadPage({ onReportGenerated }) {
     return true
   }
 
+  // Client card: profile plus the checked VALD PDF; no manual tests.
+  const validateClient = () => {
+    if (!form.name.trim())         { toast.error('Athlete name is required.'); return false }
+    if (!fbProfile.dob)            { toast.error('Date of birth is required.'); return false }
+    if (fbAge === null || fbAge < 5 || fbAge > 80) { toast.error('Please check the date of birth.'); return false }
+    if (!fbProfile.sex)            { toast.error('Sex is required.'); return false }
+    if (fbProfile.bodyweight && (Number(fbProfile.bodyweight) < 30 || Number(fbProfile.bodyweight) > 160)) { toast.error('Bodyweight must be 30–160 kg. Please re-check it.'); return false }
+    if (!pdfRead?.read?.tests?.length) { toast.error('Upload the athlete\'s VALD Hub PDF: the client card is built from it.'); return false }
+    if (!pdfRead.checked) { toast.error('Check the results read from the VALD PDF, then tick “I\'ve checked these results”.'); return false }
+    return true
+  }
+
   const validate = () => {
+    if (isClient) return validateClient()
     if (isScored) return validateFootball()
     if (files.length === 0) { toast.error('Please upload at least one file.'); return false }
     if (!form.name.trim())  { toast.error('Athlete name is required.'); return false }
@@ -275,7 +311,7 @@ export default function UploadPage({ onReportGenerated }) {
     if (!validate()) return
     setLoading(true)
 
-    const messages = isScored
+    const messages = isScored || isClient
       ? ['Scoring test results…', 'Writing the report…', 'Checking every number…', 'Almost done…']
       : [
       'Extracting VALD data…',
@@ -298,7 +334,9 @@ export default function UploadPage({ onReportGenerated }) {
         position:      sanitizeInput(form.position),
       }
       const scoredProfile = { ...sanitizedForm, ...fbProfile, age: fbAge }
-      const data = form.sport === 'Football'
+      const data = isClient
+        ? await generateClientReport(files, scoredProfile, { sport: clientKey, tests: pdfRead.read.tests })
+        : form.sport === 'Football'
         ? await generateFootballReport(files, scoredProfile, fbResults)
         : form.sport === 'Padel'
           ? await generatePadelReport(files, scoredProfile, fbResults)
@@ -311,7 +349,7 @@ export default function UploadPage({ onReportGenerated }) {
       toast.success('Report generated!')
       onReportGenerated()
     } catch (err) {
-      if (isScored && /route not found/i.test(err.message || '')) {
+      if ((isScored || isClient) && /route not found/i.test(err.message || '')) {
         toast.error(`The backend this site uses has no ${form.sport.toLowerCase()} scoring yet. Redeploy it from the scoring branch.`, { duration: 8000 })
         return
       }
@@ -360,7 +398,7 @@ export default function UploadPage({ onReportGenerated }) {
         <h2 className="text-sm font-medium text-gray-900 mb-4 flex items-center gap-2">
           📁 Upload VALD files
           <span className="text-xs text-gray-400 font-normal">
-            {isScored ? '(VALD Hub PDF: results are filled in for you to check)' : '(up to 3 files)'}
+            {isClient ? '(the VALD Hub PDF: required, the client card is built from it)' : isScored ? '(VALD Hub PDF: results are filled in for you to check)' : '(up to 3 files)'}
           </span>
         </h2>
 
@@ -420,7 +458,7 @@ export default function UploadPage({ onReportGenerated }) {
             />
           </div>
 
-          {isScored ? (
+          {engineProfile ? (
             <div className="space-y-1">
               <label className="text-xs font-medium text-gray-500">
                 Date of birth * {fbAge !== null && <span className="text-gray-400">(age {fbAge} on test day)</span>}
@@ -444,17 +482,17 @@ export default function UploadPage({ onReportGenerated }) {
             </select>
           </div>
 
-          {isScored && !scored.positions ? (
+          {engineProfile && !prof.positions ? (
             <div className="space-y-1">
-              <label className="text-xs font-medium text-gray-500">{scored.positionLabel}</label>
+              <label className="text-xs font-medium text-gray-500">{prof.positionLabel}{isClient ? ' (optional)' : ''}</label>
               <input name="position" value={fbProfile.position} onChange={handleFbChange} maxLength={12} className="inp" placeholder="e.g. Wing, Sprinter" />
             </div>
-          ) : isScored ? (
+          ) : engineProfile ? (
             <div className="space-y-1">
-              <label className="text-xs font-medium text-gray-500">{scored.positionLabel} *</label>
-              <select name="position" value={scored.positions.some(p => p.value === fbProfile.position) ? fbProfile.position : ''} onChange={handleFbChange} className="inp">
+              <label className="text-xs font-medium text-gray-500">{prof.positionLabel}{prof.positionOptional ? ' (optional)' : ' *'}</label>
+              <select name="position" value={prof.positions.some(p => p.value === fbProfile.position) ? fbProfile.position : ''} onChange={handleFbChange} className="inp">
                 <option value="">Select…</option>
-                {scored.positions.map(p => <option key={p.value} value={p.value}>{p.label}</option>)}
+                {prof.positions.map(p => <option key={p.value} value={p.value}>{p.label}</option>)}
               </select>
             </div>
           ) : (
@@ -467,11 +505,11 @@ export default function UploadPage({ onReportGenerated }) {
           </div>
           )}
 
-          {isScored && (
+          {engineProfile && (
             <>
-              {scored.handLabel && (
+              {prof.handLabel && (
                 <div className="space-y-1">
-                  <label className="text-xs font-medium text-gray-500">{scored.handLabel}{scored.handOptional ? '' : ' *'}</label>
+                  <label className="text-xs font-medium text-gray-500">{prof.handLabel}{prof.handOptional ? ' (optional)' : ' *'}</label>
                   <select name="dominantHand" value={fbProfile.dominantHand} onChange={handleFbChange} className="inp">
                     <option value="">Select…</option>
                     <option value="R">Right</option>
@@ -488,7 +526,7 @@ export default function UploadPage({ onReportGenerated }) {
                 </select>
               </div>
               <div className="space-y-1">
-                <label className="text-xs font-medium text-gray-500">Bodyweight (kg) *</label>
+                <label className="text-xs font-medium text-gray-500">Bodyweight (kg){prof.bodyweightOptional ? ' (optional)' : ' *'}</label>
                 <input
                   name="bodyweight" value={fbProfile.bodyweight} onChange={handleFbChange}
                   type="number" step="0.1" min="30" max="160" className="inp" placeholder="e.g. 71.4"
@@ -531,12 +569,33 @@ export default function UploadPage({ onReportGenerated }) {
         </div>
       </div>
 
-      {isScored && pdfRead?.read && (
+      {isClient && (
+        <div className="card">
+          <h2 className="text-sm font-medium text-gray-900 mb-1">🪪 {form.sport} client card</h2>
+          <p className="text-xs text-gray-500">
+            Built from the VALD Hub PDF only: Strength, Symmetry, Balance, Movement and Mobility, scored from VALD's age- and sex-matched data
+            (Speed is locked: Performance add-on). No manual tests and no cut-offs.
+            {!pdfRead?.read && <b className="text-gray-700"> Upload the athlete's VALD Hub PDF above to start.</b>}
+          </p>
+          {scored && (
+            <button type="button" className="mt-2 text-xs text-blue-700 underline" onClick={() => setFullBattery(true)}>
+              Use the full battery form instead (manual tests + VALD, older card)
+            </button>
+          )}
+        </div>
+      )}
+      {isScored && fullBattery && CLIENT_SPORTS[form.sport] && (
+        <button type="button" className="text-xs text-blue-700 underline" onClick={() => setFullBattery(false)}>
+          ← Back to the {form.sport.toLowerCase()} client card (VALD PDF only)
+        </button>
+      )}
+
+      {engineProfile && pdfRead?.read && (
         <ValdPdfReview
           read={pdfRead.read}
           checked={pdfRead.checked}
-          onChecked={v => setPdfReads(prev => ({ ...prev, [form.sport]: { ...prev[form.sport], checked: v } }))}
-          onDismiss={() => setPdfReads(prev => ({ ...prev, [form.sport]: { ...prev[form.sport], read: null } }))}
+          onChecked={v => setPdfReads(prev => ({ ...prev, [pdfKey]: { ...prev[pdfKey], checked: v } }))}
+          onDismiss={() => setPdfReads(prev => ({ ...prev, [pdfKey]: { ...prev[pdfKey], read: null } }))}
         />
       )}
 
@@ -554,6 +613,7 @@ export default function UploadPage({ onReportGenerated }) {
             setFbProfile(emptyFootballProfile())
             setResultsBySport(emptyResultsBySport())
             setPdfReads({})
+            setFullBattery(false)
             setStep(1)
           }}
         >

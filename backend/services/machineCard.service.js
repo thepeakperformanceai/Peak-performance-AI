@@ -64,6 +64,26 @@ const bandWords = (from) => {
   return [...byTest.entries()].map(([t, xs]) => `${t}: ${xs.join(', ')}`).join('; ');
 };
 
+/** What a VALD test does on a sport's client card, for the tester's check list. */
+const clientRoleOf = (sport) => {
+  const mcfg = loadMachineConfig();
+  const battery = sport === 'general' ? generalBattery(mcfg) : loadConfig(sport).tests;
+  const dyn = Object.keys(battery).filter(k => battery[k].source === 'vald' && battery[k].dynamo);
+  const arm = sport === 'general' ? 'dominant arm vs other arm' : 'playing arm vs other arm';
+  return (t) => {
+    if (dyn.includes(t.key)) {
+      if (mcfg.symmetry_tests.includes(t.key)) return 'Strength and Symmetry';
+      if (mcfg.arm_tests.includes(t.key)) return `Strength (and ${arm}, not scored)`;
+      return 'Strength';
+    }
+    if (mcfg.balance_tests.includes(t.key)) return 'Balance';
+    if (mcfg.movement_tests.includes(t.key)) return 'Movement';
+    if (mcfg.mobility_tests.includes(t.key)) return 'Mobility';
+    if (mcfg.arm_tests.includes(t.key)) return `Shown as ${arm}, not scored`;
+    return null;
+  };
+};
+
 /**
  * Card content for one session.
  *   tests:   machine input tests;  sport: football | padel | cricket | general
@@ -263,4 +283,4 @@ const buildMachineReport = ({ tests, sport, profile, useProposed, prose = null, 
   return { card, reportContent, coachText };
 };
 
-module.exports = { buildMachineReport, machineTestsFromPdf, STAT_NAMES, CARD_ORDER, SPORTS, GENERAL };
+module.exports = { buildMachineReport, machineTestsFromPdf, clientRoleOf, STAT_NAMES, CARD_ORDER, SPORTS, GENERAL };

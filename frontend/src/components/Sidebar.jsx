@@ -21,7 +21,7 @@ function BuildStamp() {
         if (cancelled) return
         const sports = [h.footballScoring && 'football', h.padelScoring && 'padel', h.cricketScoring && 'cricket'].filter(Boolean)
         setApi(sports.length
-          ? { text: `API ${h.commit} · ${sports.join(' + ')} ✓`, warn: !h.padelScoring || !h.cricketScoring }
+          ? { text: `API ${h.commit} · ${sports.join(' + ')} ✓${h.clientCards ? ' · client cards ✓' : ' · no client cards'}`, warn: !h.padelScoring || !h.cricketScoring || !h.clientCards }
           : { text: 'API has no engine scoring', warn: true })
       })
       .catch(() => { if (!cancelled) setApi({ text: 'API unreachable', warn: true }) })
@@ -29,7 +29,7 @@ function BuildStamp() {
   }, [])
   return (
     <div className="px-5 pb-2 text-[10px] leading-4 text-white/30 font-mono">
-      <div>App {__APP_BUILD__} · player card</div>
+      <div>App {__APP_BUILD__} · client cards</div>
       <div className={api.warn ? 'text-amber-300/80' : ''}>{api.text}</div>
     </div>
   )

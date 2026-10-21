@@ -193,7 +193,7 @@ export default function ValdPullPanel({ sportKey, athleteName, results, onChange
           onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); search() } }}
         />
         <button type="button" className="btn text-xs" onClick={search} disabled={busy}>{busy ? 'Working…' : 'Find athlete'}</button>
-        <span className="text-[11px] text-gray-500">Fills HumanTrak and Dynamo results. You still enter the VALD cut-offs or band.</span>
+        <span className="text-[11px] text-gray-500">Fills HumanTrak and Dynamo results. Add VALD's percentile or band from the VALD report.</span>
       </div>
 
       {error && <p className="text-xs text-red-600 mt-2">{error}</p>}
@@ -233,7 +233,7 @@ export default function ValdPullPanel({ sportKey, athleteName, results, onChange
             {summary.scored + summary.shown === 0 && ' VALD has no Dynamo or HumanTrak tests for this athlete in the last year.'}</p>
           {summary.waiting.length > 0 && <p className="text-amber-700">Waiting for an admin to pick the metric (Admin › VALD test mapping): {summary.waiting.join(', ')}</p>}
           {summary.unmatched.length > 0 && <p className="text-gray-500">Couldn’t be used automatically: {summary.unmatched.map(u => `${u.device} ${u.test} (${u.reason})`).join('; ')}</p>}
-          <p className="text-gray-500">Enter the VALD cut-offs or band for each test to score. Remove any test you don’t want with ✕.</p>
+          <p className="text-gray-500">Add VALD's percentile or band for each test to score it. Remove any test you don’t want with ✕.</p>
         </div>
       )}
 
