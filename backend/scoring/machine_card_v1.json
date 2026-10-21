@@ -1,0 +1,29 @@
+{
+  "config_version": "machine-card-v1",
+  "notes": "Client cards from VALD machine tests only (no manual tests). Five scored stats and one locked slot. Change numbers here, not in machineCard.js.",
+  "score_floor": 25,
+  "score_cap": 99,
+  "vald_percentile_anchors": [[0, 25], [100, 99]],
+  "vald_band_labels": ["well_below", "below", "within_normal", "slightly_above", "well_above"],
+  "vald_band_midpoints": [33, 48, 63, 78, 92],
+  "stats": ["strength", "symmetry", "balance", "movement", "mobility"],
+  "locked": {
+    "speed": "Unlocks with Performance add-on"
+  },
+  "balance_tests": ["single_leg_stand"],
+  "movement_tests": ["overhead_squat"],
+  "mobility_tests": ["trunk_rotation", "arc_of_motion"],
+  "symmetry": {
+    "status": "proposed",
+    "label": "proposed – pending clinical review",
+    "basis": "Limb symmetry index (LSI) per Dynamo test = weaker side / stronger side x 100, scored on the card scale, then averaged across the battery's Dynamo tests with both sides. LSI 90 (10% asymmetry) is the common return-to-sport strength criterion; beyond 15% asymmetry is associated with injury and poorer performance.",
+    "lsi_anchors": [[75, 25], [85, 55], [90, 70], [100, 99]],
+    "references": [
+      "Grindem H, Snyder-Mackler L, Moksnes H, Engebretsen L, Risberg MA. Simple decision rules can reduce reinjury risk by 84% after ACL reconstruction: the Delaware-Oslo ACL cohort study. Br J Sports Med. 2016;50(13):804-808.",
+      "Kyritsis P, Bahr R, Landreau P, Miladi R, Witvrouw E. Likelihood of ACL graft rupture: not meeting six clinical discharge criteria before return to sport is associated with a four times greater risk of rupture. Br J Sports Med. 2016;50(15):946-951.",
+      "Croisier JL, Ganteaume S, Binet J, Genty M, Ferret JM. Strength imbalances and prevention of hamstring injury in professional soccer players: a prospective study. Am J Sports Med. 2008;36(8):1469-1475.",
+      "Bishop C, Turner A, Read P. Effects of inter-limb asymmetries on physical and sports performance: a systematic review. J Sports Sci. 2018;36(10):1135-1144."
+    ]
+  },
+  "ovr_min_stats": 3
+}

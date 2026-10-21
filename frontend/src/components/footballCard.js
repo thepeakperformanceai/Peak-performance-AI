@@ -75,6 +75,26 @@ const STATS = [
   { name: 'Reaction', short: 'REA' },
   { name: 'Agility', short: 'AGI' },
 ]
+const HEX_ORDER = ['Speed', 'Agility', 'Power', 'Endurance', 'Reaction', 'Balance']
+
+// Client cards from VALD machine tests (reportContent.statSet "machine_v1"):
+// five scored stats and a locked Speed slot. Same layout; older reports keep
+// the stats above.
+const MACHINE_STATS = [
+  { name: 'Strength', short: 'STR' },
+  { name: 'Symmetry', short: 'SYM' },
+  { name: 'Balance', short: 'BAL' },
+  { name: 'Movement', short: 'MOV' },
+  { name: 'Mobility', short: 'MOB' },
+  { name: 'Speed', short: 'SPD' },
+]
+const MACHINE_HEX_ORDER = ['Strength', 'Symmetry', 'Mobility', 'Movement', 'Speed', 'Balance']
+const MACHINE_CAPTIONS = {
+  Strength: 'Dynamo strength', Symmetry: 'Left vs right', Balance: 'Single leg stand',
+  Movement: 'Overhead squat', Mobility: 'Rotation range', Speed: 'Performance add-on',
+}
+const isMachine = (rc) => rc.statSet === 'machine_v1'
+const statsFor = (rc) => (isMachine(rc) ? MACHINE_STATS : STATS)
 
 const STATUS_TEXT = {
   not_done: 'NOT TESTED · NOT DONE',
@@ -101,11 +121,13 @@ const chip = (text, fg, bg, extra = '') =>
 // shape joins measured stats only; their spoke is dashed and labelled.
 function hexagon(rc, t) {
   const W = 250, H = 222, cx = 125, cy = 111, R = 78
-  const order = ['Speed', 'Agility', 'Power', 'Endurance', 'Reaction', 'Balance']
-  const short = Object.fromEntries(STATS.map(s => [s.name, s.short]))
+  const order = isMachine(rc) ? MACHINE_HEX_ORDER : HEX_ORDER
+  const short = Object.fromEntries(statsFor(rc).map(s => [s.name, s.short]))
   const scoreOf = (n) => (rc.ovrScores || []).find(s => s.name === n)?.score
   const missing = (n) => scoreOf(n) == null
-  const pendingStat = (n) => (rc.ovrScores || []).find(s => s.name === n)?.status === 'benchmark_pending'
+  const statusOf = (n) => (rc.ovrScores || []).find(s => s.name === n)?.status
+  const missingText = (n) => ({ benchmark_pending: 'PENDING', locked: 'LOCKED', not_in_report: '--' })[statusOf(n)] || 'NOT TESTED'
+  const mark = (n) => ((rc.ovrScores || []).find(s => s.name === n)?.proposed ? '*' : '')
   const measured = order.filter(n => !missing(n))
   const angles = [0, -60, -120, 180, 120, 60].map(d => (d * Math.PI) / 180)
   const pt = (i, r) => [cx + Math.cos(angles[i]) * R * r, cy + Math.sin(angles[i]) * R * r]
@@ -131,8 +153,8 @@ function hexagon(rc, t) {
     return `<div style="position:absolute;left:${(x - w / 2).toFixed(1)}px;top:${(y - 13).toFixed(1)}px;width:${w}px;text-align:center;line-height:1">
       <span style="font-family:${DISPLAY};font-size:19px;letter-spacing:0.5px;color:${miss ? FAINT : TXT}">${short[n]}</span>
       ${miss
-        ? `<div style="font-family:${TEXT};font-size:7.5px;font-weight:700;letter-spacing:0.6px;color:${FAINT};margin-top:2px">${pendingStat(n) ? 'PENDING' : 'NOT TESTED'}</div>`
-        : `<span style="font-family:${DISPLAY};font-size:19px;color:${t.deep};margin-left:3px">${esc(scoreOf(n))}</span>`}
+        ? `<div style="font-family:${TEXT};font-size:7.5px;font-weight:700;letter-spacing:0.6px;color:${FAINT};margin-top:2px">${missingText(n)}</div>`
+        : `<span style="font-family:${DISPLAY};font-size:19px;color:${t.deep};margin-left:3px">${esc(scoreOf(n))}${mark(n)}</span>`}
     </div>`
   }).join('')
 
@@ -141,10 +163,19 @@ function hexagon(rc, t) {
 
 // ---------- stat bars ----------
 function statBars(rc, t, captions = {}) {
-  return STATS.map(({ name, short }) => {
+  const machine = isMachine(rc)
+  if (machine) captions = MACHINE_CAPTIONS
+  return statsFor(rc).map(({ name, short }) => {
     const s = (rc.ovrScores || []).find(x => x.name === name) || {}
     const missing = s.score == null
-    const bar = missing
+    // Client cards: the locked slot, and stats with no VALD rating in this report.
+    const machineMissing = machine && missing && (s.status === 'locked' || s.status === 'not_in_report')
+    const bar = machineMissing
+      ? `<div style="flex:1;height:22px;border:1.5px dashed #c9c3b8;border-radius:6px;display:flex;align-items:center;padding-left:10px;box-sizing:border-box">
+           <span style="font-family:${TEXT};font-size:10px;font-weight:700;letter-spacing:0.8px;color:${MUTED}">${s.status === 'locked' ? '&#128274; LOCKED' : 'NOT RATED'}</span>
+           <span style="font-family:${TEXT};font-size:9.5px;color:${FAINT};margin-left:6px">${s.status === 'locked' ? esc(s.lockedText || 'Unlocks with Performance add-on') : 'not in this VALD report'}</span>
+         </div>`
+      : missing
       ? `<div style="flex:1;height:22px;border:1.5px dashed #c9c3b8;border-radius:6px;display:flex;align-items:center;padding-left:10px;box-sizing:border-box">
            <span style="font-family:${TEXT};font-size:10px;font-weight:700;letter-spacing:0.8px;color:${MUTED}">${s.status === 'benchmark_pending' ? 'NOT SCORED' : 'NOT TESTED'}</span>
            <span style="font-family:${TEXT};font-size:9.5px;color:${FAINT};margin-left:6px">${s.status === 'not_in_battery' ? 'not in this battery' : s.status === 'benchmark_pending' ? 'recorded, benchmarks pending' : 'this session'}</span>
@@ -155,10 +186,10 @@ function statBars(rc, t, captions = {}) {
     return `<div style="display:flex;align-items:center;gap:12px;height:34px">
       <div style="flex:0 0 92px;line-height:1;white-space:nowrap">
         <div style="font-family:${DISPLAY};font-size:27px;letter-spacing:0.5px;color:${missing ? FAINT : TXT}">${short}</div>
-        <div style="font-family:${TEXT};font-size:8.5px;font-weight:600;letter-spacing:0.4px;color:${FAINT};text-transform:uppercase">${captions[name] || name}${s.partial ? ' · partial' : ''}</div>
+        <div style="font-family:${TEXT};font-size:8.5px;font-weight:600;letter-spacing:0.4px;color:${FAINT};text-transform:uppercase">${s.proposed ? 'Proposed*' : (captions[name] || name)}${s.partial ? ' · partial' : ''}</div>
       </div>
       ${bar}
-      <div style="flex:0 0 44px;text-align:right;font-family:${DISPLAY};font-size:32px;line-height:1;color:${missing ? FAINT : TXT}">${missing ? '—' : esc(s.score)}</div>
+      <div style="flex:0 0 44px;text-align:right;font-family:${DISPLAY};font-size:32px;line-height:1;color:${missing ? FAINT : TXT}">${missing ? (machineMissing && s.status !== 'locked' ? '--' : '—') : esc(s.score)}</div>
     </div>`
   }).join('')
 }
@@ -441,8 +472,9 @@ export function footballCardHtml(report) {
   ].filter(([, v]) => v != null && v !== '')
 
   const custom = isCustom(rc)
+  const machine = isMachine(rc)
   const statusBadge = pending
-    ? chip(custom ? 'NO OVR · CUSTOM SESSION' : 'OVR PENDING · COMPLETE TESTING', '#ffffff', '#1c1f24', 'font-size:10px;padding:4px 8px 5px')
+    ? chip(machine ? 'UNRATED · NEEDS 3 OF 5 STATS' : custom ? 'NO OVR · CUSTOM SESSION' : 'OVR PENDING · COMPLETE TESTING', '#ffffff', '#1c1f24', 'font-size:10px;padding:4px 8px 5px')
     : provisional
       ? chip('PROVISIONAL', '#ffffff', '#1c1f24', 'font-size:11px;letter-spacing:1.2px;padding:4px 9px 5px')
       : ''
@@ -519,7 +551,9 @@ ${look ? look.motif : `    <div style="position:absolute;left:232px;top:-120px;w
 
   const footer = `
   <div style="position:absolute;left:0;right:0;bottom:0;min-height:${QR_SIZE + QR_BOTTOM + 8}px;box-sizing:border-box;padding:10px ${QR_RIGHT + QR_SIZE + QR_TEXT_W + 24}px 12px 26px;border-top:1.5px solid ${RULE};background:#faf6ef">
-    ${pending && custom
+    ${pending && machine
+      ? `<div style="font-family:${TEXT};font-size:10px;color:${TXT};margin-bottom:4px"><b>Unrated.</b> ${esc(String(rc.ovrMessage || '').replace(/^Unrated:\s*/, ''))}. The stats and tests shown stand on their own.</div>`
+      : pending && custom
       ? `<div style="font-family:${TEXT};font-size:10px;color:${TXT};margin-bottom:4px"><b>No OVR: custom session.</b> An overall rating needs at least 3 scored stats; the stats and tests shown stand on their own.${reasons ? ` · ${esc(reasons)}` : ''}</div>`
       : provisional || pending ? `<div style="font-family:${TEXT};font-size:10px;color:${TXT};margin-bottom:4px"><b>${pending ? 'OVR pending' : 'Provisional OVR'}:</b> ${esc(pending ? (rc.ovrMessage || 'complete testing') : reasons)}${pending && reasons ? ` · ${esc(reasons)}` : ''}${provisional ? ' · firms up once the remaining tests are completed.' : ''}</div>` : ''}
     <div style="font-family:${TEXT};font-size:8.5px;color:${FAINT};line-height:1.4">
