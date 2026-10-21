@@ -4,12 +4,16 @@
 // statSet "machine_v1" keep their old cards.
 
 const { matchName, VALD_BAND_LABEL, VALD_BAND_WORDS, ordinal, percentileWords } = require('./vald/valdHubPdf');
-const { scoreMachineCard, loadMachineConfig, throughAnchors } = require('../scoring/machineCard');
+const { scoreMachineCard, loadMachineConfig, generalBattery, throughAnchors } = require('../scoring/machineCard');
 const { loadConfig, pyRound } = require('../scoring/scoring');
 const { ALL_TEST_INFO, SPORT_PROFILES } = require('./scoredReport.service');
 
 const isSet = (v) => v !== undefined && v !== null;
 const mean = (xs) => xs.reduce((a, b) => a + b, 0) / xs.length;
+
+// Clients with no sport: General / Gym (its Dynamo tests are in machine_card_v1.json).
+const GENERAL = { key: 'general', displayName: 'General / Gym' };
+const SPORTS = ['football', 'padel', 'cricket', 'general'];
 
 // Card stat names, in card order. Speed is the locked slot.
 const STAT_NAMES = { strength: 'Strength', symmetry: 'Symmetry', balance: 'Balance', movement: 'Movement', mobility: 'Mobility', speed: 'Speed' };
@@ -37,9 +41,12 @@ const sideText = (t) => (t.sides.value ? String(t.sides.value.value ?? '—') : 
  * Returns { card, reportContent }.
  */
 const buildMachineReport = ({ tests, sport, profile, useProposed = false, narrative = {}, footNote = null }) => {
+  if (!SPORTS.includes(sport)) throw new Error(`no client card for sport "${sport}"`);
   const mcfg = loadMachineConfig();
-  const cfg = loadConfig(sport);
-  const sp = SPORT_PROFILES[sport];
+  const general = sport === 'general';
+  // General / Gym: its own Dynamo tests and LSI flag lines; no dominant-arm tests.
+  const cfg = general ? { tests: generalBattery(mcfg), lsi: mcfg.general_lsi, dominant_arm_tests: [] } : loadConfig(sport);
+  const sp = general ? GENERAL : SPORT_PROFILES[sport];
   const card = scoreMachineCard(tests, cfg.tests, { useProposed, mcfg });
   const dyn = Object.keys(cfg.tests).filter(k => cfg.tests[k].source === 'vald' && cfg.tests[k].dynamo);
   const statOf = (t) => (dyn.includes(t.key) ? 'Strength · Symmetry'
@@ -124,6 +131,7 @@ const buildMachineReport = ({ tests, sport, profile, useProposed = false, narrat
     ...(profile.dominantHand ? { dominantHand: profile.dominantHand } : {}),
     testDate: profile.testDate,
     batteryLabel: `${sp.displayName} Client Card`,
+    sportKey: sp.key,
     overallOVR: card.ovr.value,
     ovrProvisional: false,
     ovrStatus: card.ovr.value === null ? 'unrated' : 'final',
@@ -143,4 +151,4 @@ const buildMachineReport = ({ tests, sport, profile, useProposed = false, narrat
   return { card, reportContent };
 };
 
-module.exports = { buildMachineReport, machineTestsFromPdf, STAT_NAMES, CARD_ORDER };
+module.exports = { buildMachineReport, machineTestsFromPdf, STAT_NAMES, CARD_ORDER, SPORTS };

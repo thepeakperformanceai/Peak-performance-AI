@@ -126,7 +126,7 @@ function hexagon(rc, t) {
   const scoreOf = (n) => (rc.ovrScores || []).find(s => s.name === n)?.score
   const missing = (n) => scoreOf(n) == null
   const statusOf = (n) => (rc.ovrScores || []).find(s => s.name === n)?.status
-  const missingText = (n) => ({ benchmark_pending: 'PENDING', locked: 'LOCKED', not_in_report: '--' })[statusOf(n)] || 'NOT TESTED'
+  const missingText = (n) => ({ benchmark_pending: 'PENDING', locked: 'LOCKED' })[statusOf(n)] || 'NOT TESTED'
   const mark = (n) => ((rc.ovrScores || []).find(s => s.name === n)?.proposed ? '*' : '')
   const measured = order.filter(n => !missing(n))
   const angles = [0, -60, -120, 180, 120, 60].map(d => (d * Math.PI) / 180)
@@ -172,8 +172,8 @@ function statBars(rc, t, captions = {}) {
     const machineMissing = machine && missing && (s.status === 'locked' || s.status === 'not_in_report')
     const bar = machineMissing
       ? `<div style="flex:1;height:22px;border:1.5px dashed #c9c3b8;border-radius:6px;display:flex;align-items:center;padding-left:10px;box-sizing:border-box">
-           <span style="font-family:${TEXT};font-size:10px;font-weight:700;letter-spacing:0.8px;color:${MUTED}">${s.status === 'locked' ? '&#128274; LOCKED' : 'NOT RATED'}</span>
-           <span style="font-family:${TEXT};font-size:9.5px;color:${FAINT};margin-left:6px">${s.status === 'locked' ? esc(s.lockedText || 'Unlocks with Performance add-on') : 'not in this VALD report'}</span>
+           <span style="font-family:${TEXT};font-size:10px;font-weight:700;letter-spacing:0.8px;color:${MUTED}">${s.status === 'locked' ? '&#128274; LOCKED' : 'NOT TESTED'}</span>
+           ${s.status === 'locked' ? `<span style="font-family:${TEXT};font-size:9.5px;color:${FAINT};margin-left:6px">${esc(s.lockedText || 'Unlocks with Performance add-on')}</span>` : ''}
          </div>`
       : missing
       ? `<div style="flex:1;height:22px;border:1.5px dashed #c9c3b8;border-radius:6px;display:flex;align-items:center;padding-left:10px;box-sizing:border-box">
@@ -384,7 +384,8 @@ const PADEL_TURF = `<div style="height:9px;background:#1f5f8f;border-top:2px sol
 // The block sits at a fixed spot so the PDF can put a clickable link on it.
 
 export const sportKeyOf = (rc) =>
-  /^custom/.test(rc.configVersion || '') || rc.sport === 'Custom Assessment' ? 'custom'
+  rc.sportKey === 'general' ? 'general'
+  : /^custom/.test(rc.configVersion || '') || rc.sport === 'Custom Assessment' ? 'custom'
     : /padel/i.test(rc.sport || '') ? 'padel'
       : /cricket/i.test(rc.sport || '') ? 'cricket' : 'football'
 
@@ -474,7 +475,7 @@ export function footballCardHtml(report) {
   const custom = isCustom(rc)
   const machine = isMachine(rc)
   const statusBadge = pending
-    ? chip(machine ? 'UNRATED · NEEDS 3 OF 5 STATS' : custom ? 'NO OVR · CUSTOM SESSION' : 'OVR PENDING · COMPLETE TESTING', '#ffffff', '#1c1f24', 'font-size:10px;padding:4px 8px 5px')
+    ? chip(machine ? 'RATING PENDING' : custom ? 'NO OVR · CUSTOM SESSION' : 'OVR PENDING · COMPLETE TESTING', '#ffffff', '#1c1f24', 'font-size:10px;padding:4px 8px 5px')
     : provisional
       ? chip('PROVISIONAL', '#ffffff', '#1c1f24', 'font-size:11px;letter-spacing:1.2px;padding:4px 9px 5px')
       : ''
@@ -552,7 +553,7 @@ ${look ? look.motif : `    <div style="position:absolute;left:232px;top:-120px;w
   const footer = `
   <div style="position:absolute;left:0;right:0;bottom:0;min-height:${QR_SIZE + QR_BOTTOM + 8}px;box-sizing:border-box;padding:10px ${QR_RIGHT + QR_SIZE + QR_TEXT_W + 24}px 12px 26px;border-top:1.5px solid ${RULE};background:#faf6ef">
     ${pending && machine
-      ? `<div style="font-family:${TEXT};font-size:10px;color:${TXT};margin-bottom:4px"><b>Unrated.</b> ${esc(String(rc.ovrMessage || '').replace(/^Unrated:\s*/, ''))}. The stats and tests shown stand on their own.</div>`
+      ? `<div style="font-family:${TEXT};font-size:10px;color:${TXT};margin-bottom:4px"><b>Rating pending.</b> ${esc(String(rc.ovrMessage || '').replace(/^Rating pending:\s*/, ''))}. The stats and tests shown stand on their own.</div>`
       : pending && custom
       ? `<div style="font-family:${TEXT};font-size:10px;color:${TXT};margin-bottom:4px"><b>No OVR: custom session.</b> An overall rating needs at least 3 scored stats; the stats and tests shown stand on their own.${reasons ? ` · ${esc(reasons)}` : ''}</div>`
       : provisional || pending ? `<div style="font-family:${TEXT};font-size:10px;color:${TXT};margin-bottom:4px"><b>${pending ? 'OVR pending' : 'Provisional OVR'}:</b> ${esc(pending ? (rc.ovrMessage || 'complete testing') : reasons)}${pending && reasons ? ` · ${esc(reasons)}` : ''}${provisional ? ' · firms up once the remaining tests are completed.' : ''}</div>` : ''}

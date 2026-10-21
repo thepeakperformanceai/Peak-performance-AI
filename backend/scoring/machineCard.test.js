@@ -30,7 +30,7 @@ test('a proposed stat is never counted unless allowed: Unrated with fewer than 3
   const c = scoreMachineCard(TESTS, loadConfig('padel').tests);
   assert.equal(c.stats.symmetry.value, 63);
   assert.equal(c.ovr.value, null);
-  assert.equal(c.ovr.message, 'Unrated: 2 of 5 stats scored (needs 3)');
+  assert.equal(c.ovr.message, 'Rating pending: 2 of 5 stats scored (needs 3)');
   assert.ok(c.ovr.reasons.includes('symmetry: proposed, not counted'));
 });
 
@@ -53,4 +53,17 @@ test('the locked Speed slot is never a stat and never counts towards Unrated', (
   assert.equal(reportContent.ovrScores[5].status, 'locked');
   assert.equal(reportContent.statSet, 'machine_v1');
   assert.equal(reportContent.testTable.find(t => t.test === 'Trunk Rotation').notRated, true);
+});
+
+test('General / Gym: Shoulder ER, Hip Abduction and Knee Extension feed Strength and Symmetry', () => {
+  const { generalBattery } = require('./machineCard');
+  assert.deepEqual(Object.keys(generalBattery()), ['shoulder_er', 'hip_abduction', 'knee_extension']);
+  const c = scoreMachineCard(TESTS, generalBattery(), { useProposed: true });
+  assert.equal(c.stats.strength.value, 49);              // ER 22,46 + Hip Abd 31,31 (no knee extension in the PDF)
+  assert.equal(c.stats.symmetry.value, 63);
+  const { reportContent } = buildMachineReport({ tests: TESTS, sport: 'general', profile: { ...PROFILE, position: '' } });
+  assert.equal(reportContent.sport, 'General / Gym');
+  assert.equal(reportContent.sportKey, 'general');
+  assert.equal(reportContent.overallOVR, null);          // symmetry not counted yet -> rating pending
+  assert.equal(reportContent.ovrMessage, 'Rating pending: 2 of 5 stats scored (needs 3)');
 });

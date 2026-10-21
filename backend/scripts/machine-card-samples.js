@@ -1,6 +1,6 @@
 // scripts/machine-card-samples.js
-// Sample client cards (VALD machine tests only) for football, padel and
-// cricket at every tier, from one VALD Hub PDF. Writes [{ file, report }]
+// Sample client cards (VALD machine tests only) for football, padel,
+// cricket and General / Gym at every tier, from one VALD Hub PDF. Writes [{ file, report }]
 // for the card renderer.
 //
 //   node scripts/machine-card-samples.js report.pdf out.json
@@ -11,14 +11,15 @@
 
 const fs = require('fs');
 const { readPages, parsePages } = require('../services/vald/valdHubPdf');
-const { buildMachineReport, machineTestsFromPdf } = require('../services/machineCard.service');
+const { buildMachineReport, machineTestsFromPdf, SPORTS } = require('../services/machineCard.service');
 const { loadConfig } = require('../scoring/scoring');
+const { generalBattery } = require('../scoring/machineCard');
 
-const POSITION = { football: 'MID', padel: 'RIGHT', cricket: 'ALL' };
+const POSITION = { football: 'MID', padel: 'RIGHT', cricket: 'ALL', general: 'GYM' };
 const clone = (x) => JSON.parse(JSON.stringify(x));
 
 // The sport battery's Dynamo test keys.
-const dynamoOf = (sport) => { const t = loadConfig(sport).tests; return Object.keys(t).filter(k => t[k].dynamo); };
+const dynamoOf = (sport) => { const t = sport === 'general' ? generalBattery() : loadConfig(sport).tests; return Object.keys(t).filter(k => t[k].dynamo); };
 
 // Football's battery Dynamo tests (hip and knee extension) aren't in this
 // PDF: previews borrow the PDF's hip abduction and shoulder ER results
@@ -56,7 +57,7 @@ const main = async () => {
   const testDate = '2026-10-21';
 
   const cards = [];
-  for (const sport of ['football', 'padel', 'cricket']) {
+  for (const sport of SPORTS) {
     const base = sport === 'football' ? withFootballDynamo(real) : real;
     const madeUp = sport === 'football' ? ' Hip and Knee Extension are made up (not in this PDF).' : '';
     const variants = [

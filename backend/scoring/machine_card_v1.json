@@ -7,6 +7,8 @@
   "vald_band_labels": ["well_below", "below", "within_normal", "slightly_above", "well_above"],
   "vald_band_midpoints": [33, 48, 63, 78, 92],
   "stats": ["strength", "symmetry", "balance", "movement", "mobility"],
+  "general_dynamo_tests": ["shoulder_er", "hip_abduction", "knee_extension"],
+  "general_lsi": {"amber_below": 90, "red_below": 85},
   "locked": {
     "speed": "Unlocks with Performance add-on"
   },

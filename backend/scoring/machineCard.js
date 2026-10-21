@@ -13,8 +13,8 @@
 //   Speed     locked slot ("Unlocks with Performance add-on"): never scored,
 //             not in the OVR, not counted for Unrated
 //
-// OVR = plain average of the scored stats; Unrated with fewer than
-// ovr_min_stats of the five. Nothing missing is estimated. A stat on
+// OVR = plain average of the scored stats; no rating ("Rating pending" on
+// the card, the Unrated tier) with fewer than ovr_min_stats of the five. Nothing missing is estimated. A stat on
 // proposed numbers is counted only when `useProposed` is true.
 //
 // Input tests (one per VALD test read):
@@ -61,9 +61,13 @@ const bandStat = (tests, keys, mcfg) => {
   return scores.length ? { value: pyRound(mean(scores)), from } : { value: null, from: [], measuredNotRated: used.map(t => t.label) };
 };
 
+/** General / Gym clients (no sport): the Dynamo tests that count. */
+const generalBattery = (mcfg = loadMachineConfig()) =>
+  Object.fromEntries(mcfg.general_dynamo_tests.map(k => [k, { source: 'vald', dynamo: true }]));
+
 /**
  * tests:   input tests (above)
- * battery: the sport config's tests object (which Dynamo tests count)
+ * battery: the sport config's tests object, or generalBattery() (which Dynamo tests count)
  * Returns { config_version, stats, locked, ovr }.
  */
 const scoreMachineCard = (tests, battery, { useProposed = false, mcfg = loadMachineConfig() } = {}) => {
@@ -105,10 +109,10 @@ const scoreMachineCard = (tests, battery, { useProposed = false, mcfg = loadMach
   // OVR: plain average of the scored stats (a proposed stat only if allowed).
   const counted = mcfg.stats.filter(k => isSet(stats[k].value) && (useProposed || !stats[k].proposed));
   const reasons = mcfg.stats.filter(k => !counted.includes(k))
-    .map(k => (isSet(stats[k].value) ? `${k}: proposed, not counted` : `${k}: not in this VALD report`));
+    .map(k => (isSet(stats[k].value) ? `${k}: proposed, not counted` : `${k}: not tested`));
   const ovr = counted.length >= mcfg.ovr_min_stats
     ? { value: pyRound(mean(counted.map(k => stats[k].value))), counted, reasons }
-    : { value: null, status: 'unrated', counted, reasons, message: `Unrated: ${counted.length} of ${mcfg.stats.length} stats scored (needs ${mcfg.ovr_min_stats})` };
+    : { value: null, status: 'unrated', counted, reasons, message: `Rating pending: ${counted.length} of ${mcfg.stats.length} stats scored (needs ${mcfg.ovr_min_stats})` };
 
   return {
     config_version: mcfg.config_version,
@@ -118,4 +122,4 @@ const scoreMachineCard = (tests, battery, { useProposed = false, mcfg = loadMach
   };
 };
 
-module.exports = { scoreMachineCard, loadMachineConfig, throughAnchors };
+module.exports = { scoreMachineCard, loadMachineConfig, generalBattery, throughAnchors };
