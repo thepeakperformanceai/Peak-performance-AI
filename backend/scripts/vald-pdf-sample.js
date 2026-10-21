@@ -16,9 +16,8 @@
 // the same number check the AI's answer must pass.
 
 const fs = require('fs');
-const { forSport, ALL_TEST_INFO } = require('../services/scoredReport.service');
-const { valdBattery } = require('../services/customAssessment.service');
-const { parseValdHubPdf, pdfToResults, toIsoDate } = require('../services/vald/valdHubPdf');
+const { forSport } = require('../services/scoredReport.service');
+const { valdPdfForForm } = require('../services/vald/valdPdfForm');
 
 const arg = (name, dflt) => {
   const a = process.argv.find(x => x.startsWith(`--${name}=`));
@@ -53,16 +52,15 @@ const main = async () => {
     console.error('Usage: node scripts/vald-pdf-sample.js report.pdf out.json --sport=padel --sex=M|F [--bodyweight=70] [--position=RIGHT] [--hand=R]');
     process.exit(1);
   }
-  const parsed = await parseValdHubPdf(fs.readFileSync(file));
+  // Exactly what POST /api/report/vald-pdf returns to the upload page.
+  const fromPdf = await valdPdfForForm({ files: [{ name: file, buffer: fs.readFileSync(file) }], sport });
   const pipeline = forSport(sport);
-  const master = Object.fromEntries(Object.entries(valdBattery()).map(([k, t]) => [k, { ...ALL_TEST_INFO[k], bilateral: !!t.bilateral }]));
-  const fromPdf = pdfToResults(parsed, pipeline.cfg.tests, master);
 
-  const a = parsed.athlete || {};
+  const a = fromPdf.athlete;
   const profileIn = {
-    name: a.name, dob: toIsoDate(a.dob || ''), testDate: toIsoDate(a.reportDate || ''), sex,
+    name: a.name, dob: a.dob, testDate: a.testDate, sex,
     position: arg('position', pipeline.sport.positions[0]), dominantHand: arg('hand', 'R'),
-    bodyweight: arg('bodyweight', '70'), trainingLevel: 'Not specified', practitioner: a.reportBy || 'Not specified'
+    bodyweight: arg('bodyweight', '70'), trainingLevel: 'Not specified'
   };
   const { profile, session } = pipeline.validateInput(profileIn, {
     timingMethod: 'electronic', tests: fromPdf.tests, additionalVald: fromPdf.additionalVald
@@ -73,7 +71,7 @@ const main = async () => {
   console.log(`Sport battery: ${pipeline.sport.batteryLabel}`);
   console.log('Scored from the PDF:', Object.keys(fromPdf.tests).join(', '));
   console.log('Shown, not scored:', fromPdf.additionalVald.map(r => r.test).join(', '));
-  if (fromPdf.notes.length) console.log('Notes:', fromPdf.notes.join('; '));
+  console.log('Flagged for the tester:\n  ' + fromPdf.problems.map(p => `${p.level}: ${p.text}`).join('\n  '));
   console.log('\nEngine result per test:');
   for (const t of scored.tests.filter(x => x.status === 'completed')) {
     console.log(`  ${t.name}: score ${t.score ?? '—'} (${t.benchmark})${t.percentiles ? ` percentiles ${t.percentiles.join('/')}` : ''}`);

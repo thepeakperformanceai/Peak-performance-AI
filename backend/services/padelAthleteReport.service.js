@@ -24,7 +24,7 @@
 
 const LIBRARY = require('../library/padel.json');
 const { findUnsupportedNumbers } = require('./scoredReport.service');
-const { scoreFromVald, pyRound } = require('../scoring/scoring');
+const { scoreFromVald, scoreFromPercentile, pyRound } = require('../scoring/scoring');
 const aiEngine = require('./aiEngine.service');
 const { FAULTS } = require('../library/buildPadelLibrary');
 
@@ -138,8 +138,9 @@ const scoreLineOf = (entry, t, cfg, timing) => {
 
 // ---------- fix selection (the library's rules, evaluated in code) ----------
 
-// One side's score on the engine's own scale (VALD cut-offs, or the band
-// midpoint when only the band was entered). Null if that side wasn't entered.
+// One side's score on the engine's own scale, in the engine's order: VALD
+// cut-offs (older reports), VALD's percentile, or the band midpoint when only
+// the band was entered. Null if that side wasn't entered or isn't rated.
 const sideScore = (side, sessionTest, cfg) => {
   const v = sessionTest[side];
   if (!isSet(v)) return null;
@@ -147,6 +148,8 @@ const sideScore = (side, sessionTest, cfg) => {
     const hib = isSet(sessionTest.higher_is_better) ? sessionTest.higher_is_better : true;
     return scoreFromVald(v, sessionTest.cutoffs, cfg, hib);
   }
+  const pct = sessionTest[`percentile_${side}`];
+  if (isSet(pct)) return scoreFromPercentile(pct, cfg);
   const i = cfg.vald_band_labels.indexOf(sessionTest[`band_${side}`] || sessionTest.band);
   return i === -1 ? null : cfg.vald_band_midpoints[i];
 };

@@ -325,6 +325,16 @@ export const downloadReportPDF = async reportId => {
   }
 }
 
+// Reads VALD Hub PDFs into the test form for one sport (nothing is saved).
+export const readValdPdf = async (files, sport) => {
+  const formData = new FormData()
+  files.forEach(f => formData.append('files', f))
+  formData.append('sport', sport)
+  return api.post('/report/vald-pdf', formData, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+  })
+}
+
 export const extractProfile = async (files) => {
   const formData = new FormData()
   files.forEach(f => formData.append('files', f))

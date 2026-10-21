@@ -1,6 +1,6 @@
 // "Pull from VALD": finds the athlete in VALD and fills their latest
 // HumanTrak and Dynamo results into the test form. Only raw results are
-// filled; the tester still enters the VALD cut-offs or band for each test.
+// filled; the tester adds VALD's percentile or band from the VALD report.
 // Once picked, the athlete's VALD profile is remembered, so next time the
 // same name is found automatically.
 
@@ -117,7 +117,7 @@ export default function ValdPullPanel({ sportKey, athleteName, results, onChange
       tests[t.key] = {
         status: 'completed', value: t.value !== undefined ? String(t.value) : '',
         left: t.left !== undefined ? String(t.left) : '', right: t.right !== undefined ? String(t.right) : '',
-        level: '', shuttle: '', cutoffs: ['', '', '', ''], band: '', band_left: '', band_right: '',
+        level: '', shuttle: '', percentile: '', percentile_left: '', percentile_right: '', band: '', band_left: '', band_right: '',
         vald: { device: t.device, date: t.date },
       }
     }
@@ -147,6 +147,8 @@ export default function ValdPullPanel({ sportKey, athleteName, results, onChange
           left: fill.left !== undefined ? String(fill.left) : '',
           right: fill.right !== undefined ? String(fill.right) : '',
           value: fill.value !== undefined ? String(fill.value) : tests[key].value,
+          // New values: any rating read from a VALD PDF no longer applies.
+          source: undefined, percentile: '', percentile_left: '', percentile_right: '', band: '', band_left: '', band_right: '',
           vald: { device: src.device, date: src.date },
         }
       }

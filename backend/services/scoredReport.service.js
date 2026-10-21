@@ -122,6 +122,8 @@ const STATUS_LABELS = {
 };
 
 const SEXES = ['M', 'F'];
+// The form's choice when VALD gave no band: measured, not rated.
+const NOT_RATED = 'not_rated';
 const HANDS = ['L', 'R'];
 const TIMING = ['hand', 'electronic'];
 const BODYWEIGHT_RANGE = [30, 160];
@@ -154,6 +156,7 @@ const cleanAdditionalVald = (rows, bandLabels) => {
         ? Math.round(Math.min(left, right) / Math.max(left, right) * 1000) / 10 : null,
       date: str(r.date, 10),
       stat: ADDITIONAL_STATS.includes(r.stat) ? r.stat : null,
+      ...(r.source === 'vald_pdf' ? { source: 'vald_pdf' } : {}),
       ...(left !== undefined || right !== undefined
         ? { band_left: band(r.band_left), band_right: band(r.band_right) }
         : { band: band(r.band) }),
@@ -365,8 +368,8 @@ const makePipeline = (sp, cfg, testInfoAll) => {
       return { status, value };
     }
 
-    // VALD tests: read from the VALD Hub PDF (source "vald_pdf": VALD's own
-    // percentile or band, never cut-offs) or entered by hand.
+    // VALD tests: read from the VALD Hub PDF (source "vald_pdf") or entered
+    // by hand. Scored from VALD's own percentile or band, never cut-offs.
     const fromPdf = raw.source === 'vald_pdf';
     const out = { status, ...(fromPdf ? { source: 'vald_pdf' } : {}) };
     if (tdef.bilateral) {
@@ -381,40 +384,44 @@ const makePipeline = (sp, cfg, testInfoAll) => {
       out.value = value;
     }
 
+    // The form no longer asks for cut-offs. Older callers of the API may still
+    // send them for hand-entered tests; a test read from the PDF never uses them.
     const cutoffs = Array.isArray(raw.cutoffs) ? raw.cutoffs.filter(c => c !== '' && c !== null && c !== undefined) : [];
     if (fromPdf && cutoffs.length) throw badRequest(`${label}: read from the VALD PDF, so cut-offs are not used`);
-
-    // VALD's age/sex-matched percentile (0-100), per side entered.
-    const pctKeys = tdef.bilateral ? [['left', 'percentile_left'], ['right', 'percentile_right']] : [['value', 'percentile']];
-    for (const [side, key] of pctKeys) {
-      const p = toNum(raw[key], `${label} percentile`);
-      if (p === undefined || out[side] === undefined) continue;
-      if (p < 0 || p > 100) throw badRequest(`${label}: VALD percentile must be 0–100`);
-      out[key] = p;
-    }
-
     if (cutoffs.length) {
       const nums = cutoffs.map((c, i) => toNum(c, `${label} cut-off ${i + 1}`));
       if (nums.length !== 4 || nums.some((c, i) => i > 0 && c < nums[i - 1])) {
         throw badRequest(`${label}: enter all 4 VALD cut-offs, lowest first`);
       }
       out.cutoffs = nums;
-    } else {
-      const bandKeys = tdef.bilateral ? ['band_left', 'band_right'] : ['band'];
-      for (const key of bandKeys) {
-        if (raw[key]) {
-          if (!cfg.vald_band_labels.includes(raw[key])) throw badRequest(`${label}: unknown VALD band "${raw[key]}"`);
-          out[key] = raw[key];
-        }
+      return out;
+    }
+
+    // Per side entered: VALD's age/sex-matched percentile (0-100) or band.
+    const sides = tdef.bilateral
+      ? [['left', 'percentile_left', 'band_left'], ['right', 'percentile_right', 'band_right']]
+      : [['value', 'percentile', 'band']];
+    const rated = [];
+    for (const [side, pKey, bKey] of sides) {
+      if (out[side] === undefined) continue;
+      const p = toNum(raw[pKey], `${label} percentile`);
+      if (p !== undefined) {
+        if (p < 0 || p > 100) throw badRequest(`${label}: VALD percentile must be 0–100`);
+        out[pKey] = p;
+      } else if (raw[bKey] && raw[bKey] !== NOT_RATED) {
+        if (!cfg.vald_band_labels.includes(raw[bKey])) throw badRequest(`${label}: unknown VALD band "${raw[bKey]}"`);
+        out[bKey] = raw[bKey];
       }
-      const needed = tdef.bilateral
-        ? [['left', 'band_left', 'percentile_left'], ['right', 'band_right', 'percentile_right']].filter(([side]) => out[side] !== undefined)
-        : [['value', 'band', 'percentile']];
-      // From the PDF, a test VALD printed no percentile or band for is
-      // "measured, not rated": shown with its raw result, never scored.
-      if (!fromPdf && needed.some(([, b, p]) => !out[b] && out[p] === undefined)) {
-        throw badRequest(`${label}: enter the 4 VALD cut-offs, or the VALD band or percentile for each side entered`);
-      }
+      rated.push(out[pKey] !== undefined || out[bKey] !== undefined);
+    }
+    // No rating is "measured, not rated" (shown, never scored): from the PDF
+    // when VALD printed none, or when the tester says VALD gave no band.
+    // Otherwise every side entered needs one.
+    const notRated = fromPdf ? !rated.some(Boolean) : sides.some(([, , bKey]) => raw[bKey] === NOT_RATED);
+    if (notRated) {
+      for (const [, pKey, bKey] of sides) { delete out[pKey]; delete out[bKey]; }
+    } else if (rated.some(r => !r)) {
+      throw badRequest(`${label}: enter the 4 VALD cut-offs, or the VALD band or percentile for each side entered, or choose "No band from VALD"`);
     }
     return out;
   };
@@ -619,7 +626,7 @@ const makePipeline = (sp, cfg, testInfoAll) => {
    * testTable), so the report page and PDF export work unchanged. Every
    * number here comes from the engine. Scores are null ("Not tested") when missing.
    */
-  const buildReportContent = (profile, scored, narrative) => {
+  const buildReportContent = (profile, scored, narrative, session = {}) => {
     const byName = Object.fromEntries(scored.tests.map(t => [t.name, t]));
     const tags = statTags(scored.stats);
     const monitorTests = new Set(scored.flags.filter(f => f.level === 'monitor').map(f => f.test));
@@ -800,6 +807,9 @@ const makePipeline = (sp, cfg, testInfoAll) => {
       },
       // Shown only; not scored and not part of the Gemini payload or the OVR.
       additionalVald: profile.additionalVald || [],
+      // Results read from a VALD Hub PDF (the report words its extra results for that).
+      ...(Object.values(session.tests || {}).some(t => t.source === 'vald_pdf') || (profile.additionalVald || []).some(r => r.source === 'vald_pdf')
+        ? { valdFromPdf: true } : {}),
       benchmarkNote: 'Manual tests compared with published international norms; HumanTrak and Dynamo tests compared with others of the same age and sex.',
       configVersion: scored.config_version
     };
@@ -814,7 +824,7 @@ const makePipeline = (sp, cfg, testInfoAll) => {
     if (sp.noOvrMessage && scored.ovr.value === null) scored.ovr.message = sp.noOvrMessage;
     const payload = buildGeminiPayload(scored, session);
     const { narrative, rawResponse } = await generateNarrative(payload, opts);
-    const reportContent = buildReportContent(profile, scored, narrative);
+    const reportContent = buildReportContent(profile, scored, narrative, session);
     return { scored, payload, narrative, rawResponse, reportContent };
   };
 

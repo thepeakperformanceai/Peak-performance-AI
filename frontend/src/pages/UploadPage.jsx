@@ -1,11 +1,12 @@
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useEffect } from 'react'
 import { useDropzone } from 'react-dropzone'
 import toast from 'react-hot-toast'
-import { generateReport, generateFootballReport, generatePadelReport, generateCricketReport, generateCustomReport, extractProfile } from '../services/api'
+import { generateReport, generateFootballReport, generatePadelReport, generateCricketReport, generateCustomReport, extractProfile, readValdPdf } from '../services/api'
 import { useReportStore } from '../store/reportStore'
 import { useParamStore } from '../store/paramStore'
 import { sanitizeInput } from '../utils/sanitize'
-import FootballResultsForm, { SCORED_SPORTS, emptyResults, footballProblems } from '../components/FootballResultsForm'
+import FootballResultsForm, { SCORED_SPORTS, emptyResults, emptyTest, footballProblems } from '../components/FootballResultsForm'
+import ValdPdfReview from '../components/ValdPdfReview'
 
 
 const SPORTS = ['Football', 'Cricket', 'Padel', 'Custom Assessment']
@@ -33,6 +34,38 @@ function ageFromDob(dob, onDate) {
   if (m < 0 || (m === 0 && d.getUTCDate() < b.getUTCDate())) age--
   return age
 }
+
+// The PDF's results onto the form for one sport: battery tests get the
+// value and VALD's percentile or band (never cut-offs); custom sessions get
+// every PDF test (manual tests kept); the rest become additional results.
+const RATING_KEYS = ['percentile', 'percentile_left', 'percentile_right', 'band', 'band_left', 'band_right']
+const asFormTest = (t, date) => {
+  const out = {
+    ...emptyTest(),
+    ...Object.fromEntries(Object.entries(t).map(([k, v]) => [k, typeof v === 'number' ? String(v) : v])),
+    vald: { device: 'PDF', date },
+  }
+  // VALD printed no percentile or band: shown as "No band from VALD" (measured, not rated).
+  if (!RATING_KEYS.some(k => t[k] !== undefined)) {
+    for (const k of ['band', 'band_left', 'band_right']) out[k] = 'not_rated'
+  }
+  return out
+}
+function applyPdfResults(results, read, sportKey) {
+  const date = read.athlete?.testDate || ''
+  if (sportKey === 'custom') {
+    const keep = (results.customTests || []).filter(t => t.kind === 'manual')
+    const tests = Object.fromEntries(Object.entries(results.tests || {}).filter(([k]) => keep.some(t => t.key === k)))
+    for (const [k, t] of Object.entries(read.tests)) tests[k] = asFormTest(t, date)
+    return { ...results, customTests: [...keep, ...read.customTests], tests }
+  }
+  const tests = { ...results.tests }
+  for (const [k, t] of Object.entries(read.tests)) if (tests[k]) tests[k] = asFormTest(t, date)
+  const additionalVald = [...(results.additionalVald || []).filter(r => r.source !== 'vald_pdf'), ...read.additionalVald]
+  return { ...results, tests, additionalVald }
+}
+
+const pdfSignature = (files) => files.filter(f => f.type === 'application/pdf').map(f => `${f.name}:${f.size}:${f.lastModified}`).join('|')
 
 function mergeProfileIntoForm(prev, profile) {
   const applied = []
@@ -79,6 +112,40 @@ export default function UploadPage({ onReportGenerated }) {
   const fbResults = resultsBySport[form.sport]
   const setFbResults = r => setResultsBySport(prev => ({ ...prev, [form.sport]: r }))
   const fbAge = ageFromDob(fbProfile.dob, fbProfile.testDate)
+
+  // VALD Hub PDFs read into the form, per sport: { sig, read, checked }.
+  const [pdfReads, setPdfReads] = useState({})
+  const pdfRead = pdfReads[form.sport]
+  useEffect(() => {
+    const pdfs = files.filter(f => f.type === 'application/pdf')
+    const sig = pdfSignature(files)
+    if (!isScored || !pdfs.length || pdfReads[form.sport]?.sig === sig) return
+    let cancelled = false
+    const sport = form.sport
+    const toastId = toast.loading('Reading results from the VALD PDF…')
+    readValdPdf(pdfs, scored.key)
+      .then(read => {
+        if (cancelled) return
+        setResultsBySport(prev => ({ ...prev, [sport]: applyPdfResults(prev[sport], read, scored.key) }))
+        const a = read.athlete || {}
+        if (a.name) setForm(prev => (prev.name.trim() ? prev : { ...prev, name: a.name }))
+        setFbProfile(prev => ({
+          ...prev,
+          dob: prev.dob || a.dob || '',
+          testDate: a.testDate && prev.testDate === todayISO() ? a.testDate : prev.testDate,
+        }))
+        setPdfReads(prev => ({ ...prev, [sport]: { sig, read, checked: false } }))
+        const filled = Object.keys(read.tests).length
+        const flagged = read.problems.filter(p => p.level !== 'info').length
+        toast.success(`Filled ${filled} test${filled === 1 ? '' : 's'} from the VALD PDF${flagged ? ` · ${flagged} to check` : ''}. Please check them below.`, { id: toastId, duration: 6000 })
+      })
+      .catch(err => {
+        if (cancelled) return
+        setPdfReads(prev => ({ ...prev, [sport]: { sig, read: null, checked: false } }))
+        toast.error(`Couldn't read the VALD PDF: ${err.message}. Enter the results by hand.`, { id: toastId, duration: 8000 })
+      })
+    return () => { cancelled = true; toast.dismiss(toastId) }
+  }, [files, form.sport, isScored])
   const handleFbChange = e =>
     setFbProfile(prev => ({ ...prev, [e.target.name]: e.target.value }))
 
@@ -94,9 +161,11 @@ export default function UploadPage({ onReportGenerated }) {
       return
     }
     setFiles(prev => [...prev, ...valid].slice(0, 3))
-    autofillFromPdf(valid.filter(f => f.type === 'application/pdf'))
+    // Engine-scored sports read the whole VALD PDF (results and athlete) in an
+    // effect; the other sports keep the profile autofill.
+    if (!isScored) autofillFromPdf(valid.filter(f => f.type === 'application/pdf'))
     setStep(2)
-  }, [])
+  }, [isScored])
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop,
@@ -126,6 +195,7 @@ export default function UploadPage({ onReportGenerated }) {
         return false
       }
     }
+    if (pdfRead?.read && !pdfRead.checked) { toast.error('Check the results read from the VALD PDF, then tick “I\'ve checked these results”.'); return false }
     const problems = footballProblems(fbResults, scored.key)
     if (problems.length) { toast.error(problems[0]); return false }
     return true
@@ -290,7 +360,7 @@ export default function UploadPage({ onReportGenerated }) {
         <h2 className="text-sm font-medium text-gray-900 mb-4 flex items-center gap-2">
           📁 Upload VALD files
           <span className="text-xs text-gray-400 font-normal">
-            {isScored ? `(optional for ${form.sport.toLowerCase()}: kept with the report as reference)` : '(up to 3 files)'}
+            {isScored ? '(VALD Hub PDF: results are filled in for you to check)' : '(up to 3 files)'}
           </span>
         </h2>
 
@@ -461,6 +531,15 @@ export default function UploadPage({ onReportGenerated }) {
         </div>
       </div>
 
+      {isScored && pdfRead?.read && (
+        <ValdPdfReview
+          read={pdfRead.read}
+          checked={pdfRead.checked}
+          onChecked={v => setPdfReads(prev => ({ ...prev, [form.sport]: { ...prev[form.sport], checked: v } }))}
+          onDismiss={() => setPdfReads(prev => ({ ...prev, [form.sport]: { ...prev[form.sport], read: null } }))}
+        />
+      )}
+
       {isScored && <FootballResultsForm key={form.sport} sport={form.sport} results={fbResults} onChange={setFbResults} athleteName={form.name} />}
 
       {/* Actions */}
@@ -474,6 +553,7 @@ export default function UploadPage({ onReportGenerated }) {
             setForm({ name:'', age:'', sport:'Football', position:'', trainingLevel:'Semi-Professional', knownInjuries:'' })
             setFbProfile(emptyFootballProfile())
             setResultsBySport(emptyResultsBySport())
+            setPdfReads({})
             setStep(1)
           }}
         >

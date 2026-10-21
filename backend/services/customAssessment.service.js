@@ -213,4 +213,4 @@ const buildCustomConfig = ({ testsIn = [], benchmarkSport = 'football', mappings
   return { cfg, testInfo, shownOnly };
 };
 
-module.exports = { buildCustomConfig, manualLibrary, valdFormTests, valdBattery, customKeyFor, MANUAL_TESTS, STATS };
+module.exports = { buildCustomConfig, manualLibrary, valdFormTests, valdBattery, valdStat, customKeyFor, MANUAL_TESTS, STATS };

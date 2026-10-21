@@ -25,6 +25,9 @@ router.post('/cricket', upload.array('files', 10), reportController.generateCric
 // POST custom assessment (tests chosen per session; same engine and checks)
 router.post('/custom', upload.array('files', 10), reportController.generateCustomReport);
 
+// POST read VALD Hub PDFs into the test form (checked by the tester before saving)
+router.post('/vald-pdf', upload.array('files', 10), reportController.readValdPdf);
+
 // POST extract athlete profile from PDFs (autofill)
 router.post('/extract', upload.array('files', 10), reportController.extractProfile);
 

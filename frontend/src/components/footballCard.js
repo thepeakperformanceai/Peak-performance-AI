@@ -732,15 +732,18 @@ export function additionalValdPagesHtml(report) {
     else page.push(r)
   })
   const custom = isCustom(rc)
-  return pages.map((chunk, n) => framePage(report, custom ? 'VALD RESULTS · SHOWN, NOT SCORED' : 'ADDITIONAL VALD RESULTS', pages.length > 1 ? `page ${n + 1} of ${pages.length}` : '',
-    `<div style="font-family:${TEXT};font-size:10.5px;color:${MUTED};margin-bottom:8px;line-height:1.45">
-          ${custom
-            ? 'VALD tests in this session with no stat assigned (Admin › VALD test mapping), plus any other VALD results. Shown for information:'
-            : 'Every other test VALD holds for this athlete (most recent result per test and side). Shown for information:'}
-          <b style="color:${TXT}">not scored and not counted in the OVR</b>. Symmetry = weaker side as a % of the stronger side.
-        </div>
+  // Reports made from a VALD Hub PDF word the intro for the athlete.
+  const fromPdf = !!rc.valdFromPdf
+  const intro = fromPdf
+    ? 'Additional results from your VALD assessment. Measured, not included in your rating.'
+    : `${custom
+        ? 'VALD tests in this session with no stat assigned (Admin › VALD test mapping), plus any other VALD results. Shown for information:'
+        : 'Every other test VALD holds for this athlete (most recent result per test and side). Shown for information:'}
+          <b style="color:${TXT}">not scored and not counted in the OVR</b>. Symmetry = weaker side as a % of the stronger side.`
+  return pages.map((chunk, n) => framePage(report, custom && !fromPdf ? 'VALD RESULTS · SHOWN, NOT SCORED' : 'ADDITIONAL VALD RESULTS', pages.length > 1 ? `page ${n + 1} of ${pages.length}` : '',
+    `<div style="font-family:${TEXT};font-size:10.5px;color:${MUTED};margin-bottom:8px;line-height:1.45">${intro}</div>
         ${additionalTable(chunk, t)}`,
-    'Raw results from VALD Dynamo and HumanTrak. VALD bands and percentiles from VALD (pct. = percentile for your age and sex).'))
+    `Raw results from VALD Dynamo and HumanTrak. VALD bands and percentiles from VALD (pct. = percentile for your age and sex).${fromPdf ? ' Symmetry = weaker side as a % of the stronger side.' : ''}`))
 }
 
 // The PDF renderer draws with whatever fonts are loaded at that moment, so

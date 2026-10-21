@@ -41,13 +41,16 @@ const STATUSES = [
   { value: 'invalid', label: 'Invalid (protocol broken)' },
 ]
 
-const BANDS = [
-  { value: 'well_below', label: 'Well below' },
-  { value: 'below', label: 'Below' },
+// VALD's own band wording (as printed on the VALD report).
+export const BANDS = [
+  { value: 'well_below', label: 'Significantly below' },
+  { value: 'below', label: 'Slightly below' },
   { value: 'within_normal', label: 'Within normal' },
   { value: 'slightly_above', label: 'Slightly above' },
-  { value: 'well_above', label: 'Well above' },
+  { value: 'well_above', label: 'Significantly above' },
 ]
+// VALD gave no band for this test: measured, shown on the report, not rated.
+const NOT_RATED = 'not_rated'
 
 // 5-0-5 timed off each foot (football and padel): both times kept, the faster one scored.
 const COD_505_FEET = { key: 'cod_505', label: '5-0-5 Agility', kind: 'twofeet', unit: 's', range: [1.8, 4.0], step: '0.01', group: 'Manual tests', hint: 'Best time turning off each foot; the faster one is scored. Interim benchmark (cricket norms)' }
@@ -139,9 +142,9 @@ const customTestDefs = (results) => (results.customTests || []).map(c => {
 
 const testsFor = (sportKey = 'football', results = {}) => (sportKey === 'custom' ? customTestDefs(results) : TESTS_BY_SPORT[sportKey])
 
-const emptyTest = () => ({
+export const emptyTest = () => ({
   status: 'completed', value: '', left: '', right: '',
-  cutoffs: ['', '', '', ''], band: '', band_left: '', band_right: '', fault: '',
+  percentile: '', percentile_left: '', percentile_right: '', band: '', band_left: '', band_right: '', fault: '',
 })
 
 // Padel overhead squat: what the tester saw. Picks the library's fix and is
@@ -163,6 +166,10 @@ export const emptyResults = (sportKey = 'football') => (sportKey === 'custom'
 export const emptyFootballResults = () => emptyResults('football')
 
 const filled = (v) => v !== '' && v !== null && v !== undefined
+const ordinal = (n) => {
+  const v = Math.round(n)
+  return `${v}${(v % 100 >= 11 && v % 100 <= 13) ? 'th' : ({ 1: 'st', 2: 'nd', 3: 'rd' }[v % 10] || 'th')}`
+}
 const outOfRange = (v, range) => filled(v) && range && (Number(v) < range[0] || Number(v) > range[1])
 
 // Returns a list of problems that block submitting (missing values).
@@ -187,14 +194,14 @@ export function footballProblems(results, sportKey = 'football') {
     if (t.kind === 'single' && !filled(r.value)) problems.push(`${t.label}: enter a value or change the status.`)
     if (t.kind === 'bilateral' && !filled(r.left) && !filled(r.right)) problems.push(`${t.label}: enter at least one side or change the status.`)
     if (t.kind === 'bilateral' || t.kind === 'single') {
-      const nCut = r.cutoffs.filter(filled).length
-      if (nCut > 0 && nCut < 4) problems.push(`${t.label}: enter all 4 VALD cut-offs, or leave them empty and pick the band.`)
-      if (nCut === 0) {
-        const needBand = t.kind === 'single'
-          ? [r.band]
-          : [filled(r.left) ? r.band_left : 'x', filled(r.right) ? r.band_right : 'x']
-        if (needBand.some(b => !b)) problems.push(`${t.label}: enter the VALD cut-offs or pick the VALD band.`)
-      }
+      // Each side entered needs VALD's percentile or band. With none at all a
+      // test read from the PDF is measured, not rated (VALD printed no band);
+      // by hand, the tester says so with "No band from VALD".
+      const sides = ratingSides(t).filter(sd => t.kind === 'single' || filled(r[sd.side]))
+      const pct = sides.map(sd => r[sd.pct]).filter(filled)
+      if (pct.some(p => Number(p) < 0 || Number(p) > 100)) problems.push(`${t.label}: a VALD percentile is 0–100.`)
+      const notRated = sides.some(sd => r[sd.band] === NOT_RATED) || (r.source === 'vald_pdf' && !sides.some(sd => filled(r[sd.pct]) || r[sd.band]))
+      if (!notRated && sides.some(sd => !filled(r[sd.pct]) && !r[sd.band])) problems.push(`${t.label}: enter VALD's percentile or band for each side, or choose “No band from VALD”.`)
     }
   }
   if (completed === 0) problems.push('Enter at least one completed test.')
@@ -215,50 +222,52 @@ function NumberInput({ value, onChange, placeholder, step, width = 'w-24' }) {
   )
 }
 
-function ValdBenchmark({ test, r, set }) {
-  const nCut = r.cutoffs.filter(filled).length
-  const bandSelect = (key, label) => (
-    <select className="inp w-36" value={r[key]} onChange={e => set({ [key]: e.target.value })} disabled={nCut > 0}>
-      <option value="">{label}</option>
-      {BANDS.map(b => <option key={b.value} value={b.value}>{b.label}</option>)}
-    </select>
-  )
+// Fields for VALD's rating of each side.
+const ratingSides = (test) => (test.kind === 'single'
+  ? [{ side: 'value', label: 'Result', pct: 'percentile', band: 'band' }]
+  : [{ side: 'left', label: 'Left', pct: 'percentile_left', band: 'band_left' }, { side: 'right', label: 'Right', pct: 'percentile_right', band: 'band_right' }])
+
+// VALD's own rating, as printed on the VALD report: the age/sex-matched
+// percentile (Dynamo) or the band (HumanTrak). No cut-offs.
+function ValdRating({ test, r, set }) {
+  const dynamo = test.unit === 'N' || /Dynamo/.test(test.group || '') || /Dynamo/.test(test.hint || '')
+  const sides = ratingSides(test).filter(sd => test.kind === 'single' || filled(r[sd.side]))
+  if (!sides.length) return null
   return (
     <div className="mt-2 space-y-1.5">
-      <div className="flex flex-wrap items-center gap-2">
-        <span className="text-[11px] text-gray-500 w-28">VALD cut-offs</span>
-        {r.cutoffs.map((c, i) => (
+      {sides.map(sd => (
+        <div key={sd.side} className="flex flex-wrap items-center gap-2">
+          <span className="text-[11px] text-gray-500 w-28">{test.kind === 'single' ? 'VALD rating' : `${sd.label}: VALD rating`}</span>
           <NumberInput
-            key={i} value={c} step="any" width="w-20" placeholder={`#${i + 1}`}
-            onChange={v => set({ cutoffs: r.cutoffs.map((x, j) => (j === i ? v : x)) })}
+            value={r[sd.pct] ?? ''} step="1" width="w-24" placeholder="Percentile"
+            onChange={v => set({ [sd.pct]: v, ...(filled(v) ? { [sd.band]: '' } : {}) })}
           />
-        ))}
-      </div>
-      {nCut === 0 && (
-        <div className="flex flex-wrap items-center gap-2">
-          <span className="text-[11px] text-gray-500 w-28">or VALD band</span>
-          {test.kind === 'single'
-            ? bandSelect('band', 'Band…')
-            : <>
-                {filled(r.left) && bandSelect('band_left', 'Left band…')}
-                {filled(r.right) && bandSelect('band_right', 'Right band…')}
-              </>}
-          <span className="text-[11px] text-gray-400">Band only = scored at the band midpoint (partial)</span>
+          <span className="text-[11px] text-gray-400">percentile, or</span>
+          <select className="inp w-56" value={r[sd.band] || ''} onChange={e => set({ [sd.band]: e.target.value, ...(e.target.value ? { [sd.pct]: '' } : {}) })}>
+            <option value="">VALD band…</option>
+            {BANDS.map(b => <option key={b.value} value={b.value}>{b.label}</option>)}
+            <option value={NOT_RATED}>No band from VALD (not rated)</option>
+          </select>
         </div>
-      )}
+      ))}
+      <p className="text-[11px] text-gray-400">
+        From the VALD report: the percentile for your age and sex ({dynamo ? 'Dynamo' : 'when VALD gives one'}) or VALD's band. A band alone scores the middle of the band (partial).
+      </p>
     </div>
   )
 }
 
 function TestRow({ test, r, set, onRemove }) {
   const done = r.status === 'completed'
+  // Measured, not rated: never scored, so the believable range doesn't apply.
+  const notRated = ['band', 'band_left', 'band_right'].some(k => r[k] === NOT_RATED)
   return (
     <div className="py-3 border-t border-gray-100 first:border-t-0">
       <div className="flex flex-wrap items-start gap-3">
         <div className="w-48 pt-2">
           <div className="text-sm font-medium text-gray-800">{test.label}</div>
           {r.vald && r.status === 'completed' && (
-            <div className="text-[11px] text-blue-700">From VALD {r.vald.device} · {String(r.vald.date || '').slice(0, 10)}</div>
+            <div className="text-[11px] text-blue-700">{r.source === 'vald_pdf' ? 'From the VALD PDF' : `From VALD ${r.vald.device}`} · {String(r.vald.date || '').slice(0, 10)}</div>
           )}
           {test.hint && <div className="text-[11px] text-gray-400">{test.hint}</div>}
         </div>
@@ -275,7 +284,7 @@ function TestRow({ test, r, set, onRemove }) {
               <NumberInput value={r.value} onChange={v => set({ value: v })} step={test.step} placeholder="Value" />
               <span className="text-xs text-gray-500">{test.unit}</span>
             </div>
-            {outOfRange(r.value, test.range) && <Warn>Outside {test.range[0]}–{test.range[1]} {test.unit}: will be marked invalid. Re-check.</Warn>}
+            {!notRated && outOfRange(r.value, test.range) && <Warn>Outside {test.range[0]}–{test.range[1]} {test.unit}: will be marked invalid. Re-check.</Warn>}
           </div>
         )}
 
@@ -303,14 +312,15 @@ function TestRow({ test, r, set, onRemove }) {
               <NumberInput value={r.right} onChange={v => set({ right: v })} step={test.step} placeholder="Right" />
               <span className="text-xs text-gray-500">{test.unit}</span>
             </div>
-            {(outOfRange(r.left, test.range) || outOfRange(r.right, test.range)) && (
+            {!notRated && (outOfRange(r.left, test.range) || outOfRange(r.right, test.range)) && (
               <Warn>Outside {test.range[0]}–{test.range[1]} {test.unit}: will be marked invalid. Re-check.</Warn>
             )}
+            {notRated && <p className="text-[11px] text-gray-500 mt-1">Measured, not rated: shown on the report with its result, not scored.</p>}
             {filled(r.left) !== filled(r.right) && <Warn>One side only: scored from that side, flagged amber, no symmetry score.</Warn>}
           </div>
         )}
       </div>
-      {done && (test.kind === 'bilateral' || test.kind === 'single') && test.scored !== false && <ValdBenchmark test={test} r={r} set={set} />}
+      {done && (test.kind === 'bilateral' || test.kind === 'single') && test.scored !== false && <ValdRating test={test} r={r} set={set} />}
       {done && test.faults && (
         <div className="mt-2 flex flex-wrap items-center gap-2">
           <span className="text-[11px] text-gray-500 w-28">Fault seen</span>
@@ -373,7 +383,7 @@ export default function FootballResultsForm({ results, onChange, sport = 'Footba
             </select>
           </div>
           <p className="text-[11px] text-gray-500">
-            Each test is scored on its own: manual tests by their research norms, VALD tests by the VALD cut-offs or band.
+            Each test is scored on its own: manual tests by their research norms, VALD tests by VALD's percentile or band.
             Stats come from the tests that feed them (VALD tests via Admin › VALD test mapping). The OVR is the plain average of the
             scored stats and needs at least 3; otherwise the card says “No OVR: custom session”. Remove any test with ✕.
           </p>
@@ -420,18 +430,28 @@ function AdditionalVald({ rows, onChange }) {
   const set = (i, patch) => onChange(rows.map((r, j) => (j === i ? { ...r, ...patch } : r)))
   const remove = (i) => onChange(rows.filter((_, j) => j !== i))
   const n = (v) => (v === undefined || v === null ? '—' : v)
-  const bandSelect = (i, key, value, label) => (
-    <select className="inp text-xs w-32" value={value || ''} onChange={e => set(i, { [key]: e.target.value })}>
-      <option value="">{label}</option>
-      {BANDS.map(b => <option key={b.value} value={b.value}>{b.label}</option>)}
-    </select>
-  )
+  // VALD's percentile when the PDF had one, otherwise an optional band.
+  const rating = (i, side, r) => {
+    const sfx = side ? `_${side}` : ''
+    const pct = r[`percentile${sfx}`]
+    const who = side ? `${side[0].toUpperCase()}${side.slice(1)} ` : ''
+    if (pct != null) return <span key={side} className="text-xs text-gray-700 w-36">{who}{ordinal(pct)} percentile</span>
+    return (
+      <select key={side} className="inp text-xs w-36" value={r[`band${sfx}`] || ''} onChange={e => set(i, { [`band${sfx}`]: e.target.value })}>
+        <option value="">{who ? `${who}band…` : 'Band…'}</option>
+        {BANDS.map(b => <option key={b.value} value={b.value}>{b.label}</option>)}
+      </select>
+    )
+  }
+  const fromPdf = rows.some(r => r.source === 'vald_pdf')
   return (
     <div className="mt-6">
       <div className="text-[11px] font-semibold uppercase tracking-wide text-gray-400 mb-1">Additional VALD results</div>
       <p className="text-xs text-gray-500 mb-2">
-        Other tests VALD holds for this athlete (most recent per test and side). They appear on the report and PDF for
-        information only: <b>not scored and not counted in the OVR</b>. Adding the VALD band is optional.
+        {fromPdf
+          ? <>Other tests in the VALD PDF. They appear on the report as “Additional results from your VALD assessment”: <b>measured, not included in the rating</b>.</>
+          : <>Other tests VALD holds for this athlete (most recent per test and side). They appear on the report and PDF for
+            information only: <b>not scored and not counted in the OVR</b>. Adding the VALD band is optional.</>}
       </p>
       {rows.map((r, i) => {
         const sided = r.left !== undefined || r.right !== undefined
@@ -451,8 +471,8 @@ function AdditionalVald({ rows, onChange }) {
               </div>
             </div>
             {!r.needsMetric && (sided
-              ? <>{r.left !== undefined && bandSelect(i, 'band_left', r.band_left, 'Left band…')}{r.right !== undefined && bandSelect(i, 'band_right', r.band_right, 'Right band…')}</>
-              : bandSelect(i, 'band', r.band, 'Band…'))}
+              ? <>{r.left !== undefined && rating(i, 'left', r)}{r.right !== undefined && rating(i, 'right', r)}</>
+              : rating(i, '', r))}
             <button type="button" className="text-xs text-gray-400 hover:text-red-600" onClick={() => remove(i)} title="Leave this test off the report">✕</button>
           </div>
         )

@@ -12,6 +12,8 @@ const scoredReport = require('../services/scoredReport.service');
 const padelAthleteReport = require('../services/padelAthleteReport.service');
 const customAssessment = require('../services/customAssessment.service');
 const ValdTestMapping = require('../models/ValdTestMapping.model');
+const { valdPdfForForm } = require('../services/vald/valdPdfForm');
+const fs = require('fs');
 
 
 /**
@@ -375,7 +377,9 @@ const generateCustomReport = async (req, res, next) => {
         unit: t.unit ?? scoredReport.ALL_TEST_INFO[t.key]?.unit ?? '',
         left: testsIn[t.key]?.left, right: testsIn[t.key]?.right, value: testsIn[t.key]?.value,
         date: dates[t.key], stat: null,
-        band: testsIn[t.key]?.band, band_left: testsIn[t.key]?.band_left, band_right: testsIn[t.key]?.band_right
+        band: testsIn[t.key]?.band, band_left: testsIn[t.key]?.band_left, band_right: testsIn[t.key]?.band_right,
+        percentile: testsIn[t.key]?.percentile, percentile_left: testsIn[t.key]?.percentile_left, percentile_right: testsIn[t.key]?.percentile_right,
+        source: testsIn[t.key]?.source
       }));
     const anyScored = Object.keys(cfg.tests).length > 0;
     if (!anyScored) {
@@ -704,7 +708,31 @@ const extractProfile = async (req, res, next) => {
   }
 };
 
+/**
+ * POST /api/report/vald-pdf - Reads VALD Hub PDFs into the test form for one
+ * sport (form field "sport"): values with VALD's percentile or band, the
+ * other tests as additional results, plus a row-by-row list of what was read
+ * and every test that could not be read or matched, for the tester to check
+ * before saving. Nothing is saved here.
+ */
+const readValdPdf = async (req, res, next) => {
+  const uploadedFiles = req.files || [];
+  try {
+    const files = uploadedFiles
+      .filter(f => f.mimetype === 'application/pdf')
+      .map(f => ({ name: f.originalname, buffer: fs.readFileSync(f.path) }));
+    const sport = String(req.body.sport || '');
+    const out = await valdPdfForForm({ files, sport, mappings: sport === 'custom' ? await loadValdMappings() : {} });
+    res.json(out);
+  } catch (error) {
+    next(error);
+  } finally {
+    if (uploadedFiles.length) pdfExtractService.cleanupTempFiles(uploadedFiles);
+  }
+};
+
 module.exports = {
+  readValdPdf,
   generateReport,
   generateFootballReport,
   generatePadelReport,
