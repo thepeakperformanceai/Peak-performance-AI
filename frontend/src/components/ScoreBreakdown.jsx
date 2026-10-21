@@ -47,7 +47,36 @@ function TestLine({ t }) {
   )
 }
 
+// Client cards: each stat and the VALD results it came from.
+const CLIENT_NAMES = { strength: 'Strength', symmetry: 'Symmetry', balance: 'Balance', movement: 'Movement', mobility: 'Mobility' }
+const BAND_WORDS = { well_below: 'Significantly below', below: 'Slightly below', within_normal: 'Within normal', slightly_above: 'Slightly above', well_above: 'Significantly above' }
+function ClientBreakdown({ b, methodologyHref }) {
+  const fromText = (s, f) => (s.key === 'strength' ? `${f.test} ${f.side}: ${f.percentile}th percentile`
+    : s.key === 'symmetry' ? `${f.test}: weaker side ${f.lsi}% of stronger → ${f.score}`
+      : `${f.test}${f.side === 'value' ? '' : ` ${f.side}`}: ${BAND_WORDS[f.band] || f.band}`)
+  return (
+    <div className="rounded-xl bg-white border border-gray-100 p-4 space-y-3">
+      <h3 className="text-base font-semibold text-gray-900">How this card was calculated</h3>
+      <p className="text-sm text-gray-600">
+        Scores come from VALD's age- and sex-matched data. {b.ovr.value !== null
+          ? <>The OVR is <b>{b.ovr.value}</b>, the average of {b.ovr.counted.length} scored stats.</>
+          : <>Rating pending: {b.ovr.counted.length} of 5 stats scored, and a rating needs 3.</>}
+      </p>
+      {b.stats.map(s => (
+        <div key={s.key} className="text-sm border-t border-gray-100 pt-2">
+          <b>{CLIENT_NAMES[s.key]}</b>: {s.value == null ? 'not tested' : s.value}
+          {s.proposed && <span className="text-amber-700"> · proposed{s.counted ? '' : ', not in the OVR yet'}</span>}
+          {s.key === 'strength' && s.averagePercentile != null && <span className="text-gray-500"> · average percentile {s.averagePercentile}</span>}
+          {s.from.length > 0 && <div className="text-xs text-gray-500">{s.from.map(f => fromText(s, f)).join(' · ')}</div>}
+        </div>
+      ))}
+      {methodologyHref && <a className="text-sm text-blue-700 underline inline-block" href={methodologyHref} target="_blank" rel="noopener noreferrer">How we score {b.sportName} client cards</a>}
+    </div>
+  )
+}
+
 export default function ScoreBreakdown({ b, methodologyHref }) {
+  if (b.kind === 'client_card') return <ClientBreakdown b={b} methodologyHref={methodologyHref} />
   const ovr = b.ovr
   const scoredStats = b.stats.filter(s => s.value !== null)
   return (

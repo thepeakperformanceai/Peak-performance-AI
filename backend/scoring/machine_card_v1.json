@@ -9,6 +9,9 @@
   "stats": ["strength", "symmetry", "balance", "movement", "mobility"],
   "general_dynamo_tests": ["shoulder_er", "hip_abduction", "knee_extension"],
   "general_lsi": {"amber_below": 90, "red_below": 85},
+  "symmetry_tests": ["hip_extension", "knee_extension", "hip_abduction", "hip_adduction"],
+  "arm_tests": ["shoulder_er", "shoulder_ir", "elbow_extension"],
+  "draft_notice": "Draft – pending clinical review",
   "locked": {
     "speed": "Unlocks with Performance add-on"
   },
@@ -17,8 +20,9 @@
   "mobility_tests": ["trunk_rotation", "arc_of_motion"],
   "symmetry": {
     "status": "proposed",
+    "count_in_ovr": false,
     "label": "proposed – pending clinical review",
-    "basis": "Limb symmetry index (LSI) per Dynamo test = weaker side / stronger side x 100, scored on the card scale, then averaged across the battery's Dynamo tests with both sides. LSI 90 (10% asymmetry) is the common return-to-sport strength criterion; beyond 15% asymmetry is associated with injury and poorer performance.",
+    "basis": "Limb symmetry index (LSI) per lower-body Dynamo test (hips, knees) = weaker side / stronger side x 100, scored on the card scale, then averaged across the battery's lower-body Dynamo tests with both sides. Arm tests are shown as playing arm vs other arm, not scored. LSI 90 (10% asymmetry) is the common return-to-sport strength criterion; beyond 15% asymmetry is associated with injury and poorer performance.",
     "lsi_anchors": [[75, 25], [85, 55], [90, 70], [100, 99]],
     "references": [
       "Grindem H, Snyder-Mackler L, Moksnes H, Engebretsen L, Risberg MA. Simple decision rules can reduce reinjury risk by 84% after ACL reconstruction: the Delaware-Oslo ACL cohort study. Br J Sports Med. 2016;50(13):804-808.",

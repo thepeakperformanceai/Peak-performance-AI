@@ -412,6 +412,9 @@ const customMethodology = () => {
 
 const methodology = (sport) => {
   if (sport === 'custom') return customMethodology();
+  // Client cards (VALD machine tests only): football, padel, cricket, General / Gym.
+  const client = require('./clientMethodology.service').clientMethodology(sport);
+  if (client) return client;
   if (!SPORTS[sport]) {
     const err = new Error('Unknown sport');
     err.statusCode = 404;
@@ -426,6 +429,7 @@ const sportOfReport = (report) => (report.footballSession ? 'football' : report.
 
 /** The breakdown of one saved, engine-scored report (null for older AI reports). */
 const reportBreakdown = (report) => {
+  if (report.scoringSession?.client) return require('./clientMethodology.service').clientBreakdown(report);
   const sport = sportOfReport(report);
   const scored = report.scoring;
   const session = report.footballSession || report.scoringSession;

@@ -3,8 +3,10 @@
 //
 //   Strength  average of every VALD percentile on the battery's Dynamo tests,
 //             onto the card scale (vald_percentile_anchors)
-//   Symmetry  per battery Dynamo test with both sides: LSI (weaker / stronger
-//             x 100) onto the card scale (symmetry.lsi_anchors), averaged.
+//   Symmetry  per lower-body Dynamo test in the battery (symmetry_tests: hips,
+//             knees) with both sides: LSI (weaker / stronger x 100) onto the
+//             card scale (symmetry.lsi_anchors), averaged. Arm tests are not
+//             scored (shown as playing arm vs other arm on the report).
 //             VALD's PDF prints no asymmetry band, so these anchors are
 //             PROPOSED – pending clinical review (symmetry.status)
 //   Balance   VALD band on Single Leg Stand (band midpoint)
@@ -89,9 +91,9 @@ const scoreMachineCard = (tests, battery, { useProposed = false, mcfg = loadMach
     ? { value: pyRound(throughAnchors(mean(pcts), mcfg.vald_percentile_anchors, mcfg.score_floor, mcfg.score_cap)), averagePercentile: pyRound(mean(pcts), 1), from: strengthFrom }
     : { value: null, from: [] };
 
-  // Symmetry: LSI per Dynamo test with both sides.
+  // Symmetry: LSI per lower-body Dynamo test with both sides.
   const sym = [];
-  for (const t of dynamoTests) {
+  for (const t of dynamoTests.filter(x => mcfg.symmetry_tests.includes(x.key))) {
     const l = t.sides?.left?.value;
     const r = t.sides?.right?.value;
     if (!isSet(l) || !isSet(r) || Math.max(l, r) <= 0) continue;

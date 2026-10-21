@@ -17,7 +17,7 @@ import SharedBreakdownPage from './pages/SharedBreakdownPage'
 // Public pages (no login): /how-we-score/<sport> and /breakdown/<private token>.
 const publicPage = () => {
   const path = window.location.pathname
-  const how = /^\/how-we-score\/?([a-z]*)\/?$/.exec(path)
+  const how = /^\/how-we-score\/?([a-z-]*)\/?$/.exec(path)
   if (how) return { kind: 'how', sport: how[1] || 'football' }
   const share = /^\/breakdown\/([A-Za-z0-9_-]+)\/?$/.exec(path)
   if (share) return { kind: 'share', token: share[1] }

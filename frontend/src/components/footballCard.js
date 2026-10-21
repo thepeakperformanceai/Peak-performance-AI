@@ -384,7 +384,8 @@ const PADEL_TURF = `<div style="height:9px;background:#1f5f8f;border-top:2px sol
 // The block sits at a fixed spot so the PDF can put a clickable link on it.
 
 export const sportKeyOf = (rc) =>
-  rc.sportKey === 'general' ? 'general'
+  // Client cards link to their own "how we score" page.
+  rc.statSet === 'machine_v1' ? (rc.sportKey === 'general' ? 'general' : `client-${rc.sportKey}`)
   : /^custom/.test(rc.configVersion || '') || rc.sport === 'Custom Assessment' ? 'custom'
     : /padel/i.test(rc.sport || '') ? 'padel'
       : /cricket/i.test(rc.sport || '') ? 'cricket' : 'football'
@@ -511,7 +512,7 @@ ${look ? look.motif : `    <div style="position:absolute;left:232px;top:-120px;w
       <!-- min-height keeps the note and chips below the logo when a mid-length name is drawn smaller -->
       <div style="min-height:103px">
       <div style="display:flex;align-items:center;margin-left:150px">
-        <span style="font-family:${DISPLAY};font-size:18px;letter-spacing:2.5px;color:${t.ink};border:2px solid ${t.ink};border-radius:5px;padding:1px 8px 0">${t.label} ${look ? look.word : custom ? '· CUSTOM ASSESSMENT' : 'CARD'}</span>${look ? look.icon : ''}
+        <span style="font-family:${DISPLAY};font-size:18px;letter-spacing:2.5px;color:${t.ink};border:2px solid ${t.ink};border-radius:5px;padding:1px 8px 0">${machine && pending ? `RATING PENDING${look ? ` ${look.word}` : ''}` : `${t.label} ${look ? look.word : custom ? '· CUSTOM ASSESSMENT' : 'CARD'}`}</span>${look ? look.icon : ''}
       </div>
       <div style="font-family:${DISPLAY};font-size:${nameSize}px;line-height:0.95;color:${t.ink};letter-spacing:1px;margin-top:16px;margin-left:150px">${esc(name.toUpperCase())}</div>
       </div>
@@ -558,6 +559,7 @@ ${look ? look.motif : `    <div style="position:absolute;left:232px;top:-120px;w
       ? `<div style="font-family:${TEXT};font-size:10px;color:${TXT};margin-bottom:4px"><b>No OVR: custom session.</b> An overall rating needs at least 3 scored stats; the stats and tests shown stand on their own.${reasons ? ` · ${esc(reasons)}` : ''}</div>`
       : provisional || pending ? `<div style="font-family:${TEXT};font-size:10px;color:${TXT};margin-bottom:4px"><b>${pending ? 'OVR pending' : 'Provisional OVR'}:</b> ${esc(pending ? (rc.ovrMessage || 'complete testing') : reasons)}${pending && reasons ? ` · ${esc(reasons)}` : ''}${provisional ? ' · firms up once the remaining tests are completed.' : ''}</div>` : ''}
     <div style="font-family:${TEXT};font-size:8.5px;color:${FAINT};line-height:1.4">
+      ${rc.draftNotice ? `<div style="font-weight:700;color:${MUTED}">${esc(rc.draftNotice)}</div>` : ''}
       <div>${esc(rc.benchmarkNote || '')}</div>
       <div style="white-space:nowrap">peakperformance.pk · ${esc(rc.batteryLabel || '')}${rc.configVersion ? ` · ${esc(rc.configVersion)}` : ''}</div>
     </div>
@@ -657,7 +659,7 @@ function framePage(report, title, sub, inner, footLeft) {
       </div>
       <div style="padding:14px 26px 0">${inner}</div>
       <div style="position:absolute;left:0;right:0;bottom:0;padding:10px 26px 12px;border-top:1.5px solid ${RULE};background:#faf6ef;display:flex;justify-content:space-between;font-family:${TEXT};font-size:8.5px;color:${FAINT}">
-        <span>${footLeft}</span>
+        <span>${rc.draftNotice ? `<b style="color:${MUTED}">${esc(rc.draftNotice)}</b> · ` : ''}${footLeft}</span>
         <span style="white-space:nowrap;margin-left:16px">peakperformance.pk · ${esc(rc.batteryLabel || '')}</span>
       </div>
     </div>
@@ -682,7 +684,55 @@ export function continuedTestsPagesHtml(report) {
 
 /** Every page after the card: continued tests (custom), how you compare (VALD), then additional VALD results. */
 export function extraPagesHtml(report) {
-  return [...continuedTestsPagesHtml(report), ...valdNormsPagesHtml(report), ...additionalValdPagesHtml(report)]
+  return [...continuedTestsPagesHtml(report), ...machineStatsPagesHtml(report), ...valdNormsPagesHtml(report), ...additionalValdPagesHtml(report)]
+}
+
+// ---------- what your stats mean (client cards) ----------
+// Each card stat with what it measures and the report's sentence about it
+// (chosen in code; reworded by the AI only after its checks), then the
+// playing arm vs other arm comparison, which is shown and never scored.
+
+export function machineStatsPagesHtml(report) {
+  const rc = report.reportContent || {}
+  if (!isMachine(rc)) return []
+  const t = TIERS[tierFor(rc.overallOVR)]
+  const fm = rc.fieldMeaning || {}
+  const short = Object.fromEntries(MACHINE_STATS.map(x => [x.name, x.short]))
+  const statusChip = (s) => (s.status === 'locked' ? chip('LOCKED', MUTED, '#eef0f2')
+    : s.status === 'not_tested' ? chip('NOT TESTED', MUTED, '#eef0f2')
+      : s.status === 'proposed' ? chip('PROPOSED · NOT IN OVR YET', MON_TXT, MON_BG) : '')
+  const rows = (fm.stats || []).map((s, i) => `
+    <div style="display:flex;gap:16px;padding:10px 0;${i ? `border-top:1px solid ${RULE}` : ''}">
+      <div style="flex:0 0 120px">
+        <div style="font-family:${DISPLAY};font-size:30px;line-height:1;color:${s.score == null ? FAINT : t.deep}">${esc(short[s.name] || s.name)} <span style="color:${s.score == null ? FAINT : TXT}">${s.score == null ? (s.status === 'locked' ? '' : '--') : esc(s.score)}</span></div>
+        <div style="font-family:${TEXT};font-size:10px;font-weight:700;letter-spacing:0.6px;color:${MUTED};margin-top:2px">${esc(String(s.name).toUpperCase())}</div>
+      </div>
+      <div style="flex:1;font-family:${TEXT};font-size:11px;line-height:1.5;color:${TXT}">
+        <div style="color:${MUTED};margin-bottom:2px">${esc(s.what || '')} ${statusChip(s)}</div>
+        <div>${esc(s.body || '')}</div>
+      </div>
+    </div>`).join('')
+  const arms = Array.isArray(rc.armComparison) ? rc.armComparison : []
+  const armTable = arms.length ? `
+    <div style="margin-top:16px">
+      ${sectionTitle(esc(String(rc.armLabel || 'Playing arm vs other arm').toUpperCase()), t, `<span style="font-family:${TEXT};font-size:9.5px;font-weight:500;letter-spacing:0;color:${FAINT};margin-left:10px">shown, not scored</span>`)}
+      <table style="width:100%;border-collapse:collapse;font-family:${TEXT};font-size:11px;color:${TXT}">
+        ${arms.map((a, i) => `<tr style="background:${i % 2 ? '#faf6ef' : BODY}">
+          <td style="padding:5px 8px;font-weight:600">${esc(a.test)}</td>
+          <td style="padding:5px 8px">${esc(a.labels[0])} <b>${esc(a.values[0])} ${esc(a.unit)}</b></td>
+          <td style="padding:5px 8px">${esc(a.labels[1])} <b>${esc(a.values[1])} ${esc(a.unit)}</b></td>
+          <td style="padding:5px 8px;color:${MUTED}">${a.otherPct == null ? '' : `Other arm = ${esc(a.otherPct)}% of ${esc(a.labels[0].toLowerCase())}`}</td>
+        </tr>`).join('')}
+      </table>
+      <div style="font-family:${TEXT};font-size:10px;color:${MUTED};margin-top:4px">A difference between arms is common${rc.sportKey === 'general' ? '' : ' in your sport'}. It isn't part of your Symmetry score, which uses your hips and knees.</div>
+    </div>` : ''
+  return [framePage(report, 'WHAT YOUR STATS MEAN', '',
+    `${rc.overallOVR == null
+      ? `<div style="font-family:${TEXT};font-size:11px;color:${TXT};margin-bottom:6px"><b>Rating pending.</b> ${esc(String(rc.ovrMessage || '').replace(/^Rating pending:\s*/, ''))}.</div>` : ''}
+     ${rows}
+     ${fm.focus ? `<div style="margin-top:12px;font-family:${TEXT};font-size:11.5px;line-height:1.5;color:${TXT}"><b>What to focus on.</b> ${esc(fm.focus)}</div>` : ''}
+     ${armTable}`,
+    esc(rc.benchmarkNote || ''))]
 }
 
 // ---------- how you compare (VALD) ----------

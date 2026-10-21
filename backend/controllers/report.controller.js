@@ -13,6 +13,7 @@ const padelAthleteReport = require('../services/padelAthleteReport.service');
 const customAssessment = require('../services/customAssessment.service');
 const ValdTestMapping = require('../models/ValdTestMapping.model');
 const { valdPdfForForm } = require('../services/vald/valdPdfForm');
+const clientReport = require('../services/clientReport.service');
 const fs = require('fs');
 
 
@@ -561,6 +562,9 @@ const regenerateReport = async (req, res, next) => {
     if (existingReport.footballSession) {
       return await regenerateFootballReport(existingReport, res);
     }
+    if (existingReport.reportContent?.statSet === 'machine_v1' && existingReport.scoringSession?.client) {
+      return await regenerateClientReport(existingReport, res);
+    }
     if (existingReport.scoringSession && existingReport.scoringSport) {
       return await regenerateScoredReport(existingReport, res);
     }
@@ -709,6 +713,79 @@ const extractProfile = async (req, res, next) => {
 };
 
 /**
+ * POST /api/report/client - Client card from VALD machine tests only
+ * (football, padel, cricket or General / Gym). Stats, OVR and every sentence
+ * come from the engine (machineCard.service.js); Gemini only rewords them
+ * under checks (clientReport.service.js). The VALD PDF's tests arrive
+ * already read and checked by the tester.
+ *
+ * profile = { name, dob, testDate, sex, bodyweight?, position?, dominantHand? }
+ * results = { sport, tests: [...] }
+ */
+const generateClientReport = async (req, res, next) => {
+  const uploadedFiles = req.files || [];
+  try {
+    let profileIn, resultsIn;
+    try {
+      profileIn = JSON.parse(req.body.profile || '{}');
+      resultsIn = JSON.parse(req.body.results || '{}');
+    } catch (e) {
+      const err = new Error('Invalid client card JSON');
+      err.statusCode = 400;
+      throw err;
+    }
+    const input = clientReport.validateClientInput(profileIn, resultsIn);
+    const { card, reportContent, polish } = await clientReport.runClientPipeline(input);
+    const { profile, sport } = input;
+    const pdfData = uploadedFiles.length ? await pdfExtractService.processPdfs(uploadedFiles) : [];
+
+    const report = new Report({
+      user: req.user._id,
+      athleteName: profile.name,
+      age: profile.age,
+      sport: reportContent.sport,
+      dob: profile.dob,
+      ...(profile.bodyweight ? { weight: `${profile.bodyweight} kg`, bodyweightKg: profile.bodyweight } : {}),
+      sex: profile.sex,
+      position: profile.position,
+      dominantHand: profile.dominantHand,
+      trainingLevel: profile.trainingLevel,
+      knownInjuries: profile.knownInjuries,
+      testDate: profile.testDate,
+      practitioner: profile.practitioner,
+      reportContent,
+      rawAiResponse: polish.raw || '',
+      sourcePdfData: pdfData.map(p => ({ type: p.type, text: p.text })),
+      scoringSport: `client-${sport}`,
+      scoringSession: { client: true, sport, profile, tests: input.tests },
+      scoring: card,
+      configVersion: card.config_version
+    });
+    await report.save();
+    console.log(`Client card saved with ID: ${report._id} (${sport}, OVR ${card.ovr.value ?? 'pending'}, text: ${polish.source})`);
+    if (uploadedFiles.length) pdfExtractService.cleanupTempFiles(uploadedFiles);
+    res.status(201).json(reportResponse(report, 'Report generated successfully'));
+  } catch (error) {
+    if (uploadedFiles.length) {
+      try { pdfExtractService.cleanupTempFiles(uploadedFiles); } catch (_) {}
+    }
+    next(error);
+  }
+};
+
+/** Regenerate a client card: re-scores the stored VALD tests with the current config. */
+const regenerateClientReport = async (existingReport, res) => {
+  const { sport, profile, tests } = existingReport.scoringSession;
+  const { card, reportContent, polish } = await clientReport.runClientPipeline({ sport, profile, tests });
+  existingReport.reportContent = reportContent;
+  existingReport.rawAiResponse = polish.raw || '';
+  existingReport.scoring = card;
+  existingReport.configVersion = card.config_version;
+  await existingReport.save();
+  res.json(reportResponse(existingReport, 'Report regenerated successfully'));
+};
+
+/**
  * POST /api/report/vald-pdf - Reads VALD Hub PDFs into the test form for one
  * sport (form field "sport"): values with VALD's percentile or band, the
  * other tests as additional results, plus a row-by-row list of what was read
@@ -733,6 +810,7 @@ const readValdPdf = async (req, res, next) => {
 
 module.exports = {
   readValdPdf,
+  generateClientReport,
   generateReport,
   generateFootballReport,
   generatePadelReport,

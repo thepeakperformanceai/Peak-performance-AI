@@ -13,6 +13,13 @@ const SPORT_TABS = [
   { key: 'cricket', name: 'Cricket' },
   { key: 'custom', name: 'Custom Assessment' },
 ]
+// Client cards (VALD machine tests only).
+const CLIENT_TABS = [
+  { key: 'client-football', name: 'Football' },
+  { key: 'client-padel', name: 'Padel' },
+  { key: 'client-cricket', name: 'Cricket' },
+  { key: 'general', name: 'General / Gym' },
+]
 
 const Section = ({ title, children }) => (
   <section className="bg-white rounded-2xl border border-gray-100 p-5 sm:p-6 space-y-3">
@@ -156,6 +163,75 @@ function WorkedExample({ w }) {
   )
 }
 
+// "How we score" for a client card: every number comes from the backend,
+// which reads the same config the card is scored with.
+function ClientCardPage({ m }) {
+  const sym = m.stats.find(s => s.key === 'symmetry')
+  return (
+    <>
+      {m.draftNotice && <p className="text-sm font-semibold text-amber-800 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">{m.draftNotice}</p>}
+      <Section title={`${m.name}: the short version`}>
+        <p className="text-sm text-gray-800"><b>{m.source}</b></p>
+        <ol className="list-decimal pl-5 text-sm text-gray-700 space-y-1">
+          <li><b>Five stats</b> are scored from your VALD machine tests: Strength, Symmetry, Balance, Movement and Mobility. Speed is locked and unlocks with the Performance add-on.</li>
+          <li><b>Each stat is out of 99.</b> A stat that isn't in your VALD report shows “--” (not tested). It is never guessed.</li>
+          <li><b>{m.ovr.text}</b></li>
+        </ol>
+      </Section>
+
+      <Section title="The stats">
+        {m.stats.map(s => (
+          <div key={s.key} className="border-t border-gray-100 pt-3 first:border-t-0 first:pt-0">
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="font-medium text-gray-900">{s.name}</span>
+              {s.locked && <Pill>Locked</Pill>}
+              {s.proposed && <Pill tone="amber">{s.label || 'Proposed – pending clinical review'}{s.countedInOvr ? '' : ' · not in the OVR yet'}</Pill>}
+            </div>
+            {s.tests?.length > 0 && <p className="text-xs text-gray-500 mt-0.5">From: {s.tests.join(', ')}</p>}
+            <p className="text-sm text-gray-700 mt-1">{s.how}</p>
+            {s.anchors && (
+              <div className="mt-1 flex flex-wrap gap-1.5 text-[11px] text-gray-600">
+                {s.anchors.map(a => <span key={a.lsi} className="rounded bg-gray-50 border border-gray-100 px-1.5 py-0.5">{a.gapPct}% difference → <b>{a.score}</b></span>)}
+                <span className="text-gray-500">(in between is scored on a straight line)</span>
+              </div>
+            )}
+            {s.references && (
+              <div className="text-[11px] text-gray-500 mt-1 space-y-0.5">
+                <p>{s.basis}</p>
+                {s.references.map(r => <p key={r}>{r}</p>)}
+              </div>
+            )}
+          </div>
+        ))}
+      </Section>
+
+      <Section title="VALD bands">
+        <p className="text-sm text-gray-700">For HumanTrak movement tests, VALD gives a band for your age and sex. Each band scores the middle of its range:</p>
+        <div className="flex flex-wrap gap-1.5 text-sm">
+          {m.bands.map(b => <span key={b.label} className="rounded bg-gray-50 border border-gray-100 px-2 py-0.5">{b.label} → <b>{b.score}</b></span>)}
+        </div>
+      </Section>
+
+      {m.arm && (
+        <Section title={m.sport === 'general' ? 'Dominant arm vs other arm' : 'Playing arm vs other arm'}>
+          <p className="text-sm text-gray-700">{m.arm.text}</p>
+        </Section>
+      )}
+
+      <Section title="Card colours">
+        <p className="text-sm text-gray-700">
+          {m.tiers.map(t => `${t.label}: ${t.minOvr}+`).join(' · ')}. Until 3 stats are scored, the card shows “Rating pending”.
+        </p>
+      </Section>
+
+      <Section title="The words on your report">
+        <p className="text-sm text-gray-700">{m.text}</p>
+        {sym?.proposed && <p className="text-xs text-gray-500">Symmetry's scale is {sym.label}.</p>}
+      </Section>
+    </>
+  )
+}
+
 export default function HowWeScorePage({ sport }) {
   const [m, setM] = useState(null)
   const [error, setError] = useState('')
@@ -182,12 +258,20 @@ export default function HowWeScorePage({ sport }) {
               className={`text-sm px-3 py-1.5 rounded-lg ${s.key === sport ? 'bg-gray-900 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}>{s.name}</a>
           ))}
         </nav>
+        <nav className="max-w-4xl mx-auto px-4 pb-3 flex flex-wrap items-center gap-1.5">
+          <span className="text-xs text-gray-500 mr-1">Client cards:</span>
+          {CLIENT_TABS.map(s => (
+            <a key={s.key} href={`/how-we-score/${s.key}`}
+              className={`text-sm px-3 py-1.5 rounded-lg ${s.key === sport ? 'bg-gray-900 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}>{s.name}</a>
+          ))}
+        </nav>
       </header>
 
       <main className="max-w-4xl mx-auto px-4 py-6 space-y-4">
         {error && <p className="text-sm text-red-600">{error === 'Unknown sport' ? 'We don’t have a page for that sport.' : `Couldn’t load this page: ${error}`}</p>}
         {!m && !error && <p className="text-sm text-gray-500">Loading…</p>}
-        {m && (
+        {m && m.kind === 'client_card' && <ClientCardPage m={m} />}
+        {m && m.kind !== 'client_card' && (
           <>
             <Section title={`${m.name}: the short version`}>
               <ol className="list-decimal pl-5 text-sm text-gray-700 space-y-1">

@@ -25,6 +25,9 @@ router.post('/cricket', upload.array('files', 10), reportController.generateCric
 // POST custom assessment (tests chosen per session; same engine and checks)
 router.post('/custom', upload.array('files', 10), reportController.generateCustomReport);
 
+// POST client card from VALD machine tests (football, padel, cricket, General / Gym)
+router.post('/client', upload.array('files', 10), reportController.generateClientReport);
+
 // POST read VALD Hub PDFs into the test form (checked by the tester before saving)
 router.post('/vald-pdf', upload.array('files', 10), reportController.readValdPdf);
 

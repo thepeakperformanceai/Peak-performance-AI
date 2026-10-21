@@ -15,7 +15,11 @@ const notFound = (msg) => {
 
 /** GET /api/methodology — the sports that have a methodology page (public). */
 const listSports = (req, res) => {
-  res.json({ sports: Object.entries(SPORTS).map(([key, name]) => ({ key, name, path: `/how-we-score/${key}` })) });
+  const { CLIENT_PAGES } = require('../services/clientMethodology.service');
+  res.json({
+    sports: [...Object.entries(SPORTS), ...Object.entries(CLIENT_PAGES).map(([k, p]) => [k, p.name])]
+      .map(([key, name]) => ({ key, name, path: `/how-we-score/${key}` }))
+  });
 };
 
 /** GET /api/methodology/:sport — public, generated from the scoring configs. */
