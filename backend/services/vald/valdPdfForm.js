@@ -186,7 +186,8 @@ const valdPdfForClient = async ({ files, sport }) => {
   }
   // Card stats this PDF can't score: shown as "Not tested" on the card.
   const roles = tests.map(roleOf).filter(Boolean).filter(r => !/^Shown/.test(r)).join(' | ');
-  for (const [stat, needs] of [['Strength', 'the battery\'s Dynamo strength tests'], ['Balance', 'Single Leg Squat'], ['Movement', 'Overhead Squat'], ['Mobility', 'a VALD-rated trunk, shoulder, hip or ankle mobility test']]) {
+  const symmetryShown = require('../../scoring/machineCard').loadMachineConfig().symmetry.show_on_card !== false;
+  for (const [stat, needs] of [['Strength', 'the battery\'s Dynamo strength tests'], ...(symmetryShown ? [['Symmetry', 'a hip or knee strength test with both sides']] : []), ['Balance', 'Single Leg Squat'], ['Movement', 'Overhead Squat'], ['Mobility', 'a VALD-rated trunk, shoulder, hip or ankle mobility test']]) {
     if (!roles.includes(stat)) problems.push({ level: 'info', file: null, test: stat, text: `${stat}: not in this PDF (needs ${needs}), so it shows as "Not tested"` });
   }
   return { athlete, files: read.map(f => ({ name: f.name, ok: !f.error, tests: f.parsed ? f.parsed.tests.length : 0 })), review, problems, tests };

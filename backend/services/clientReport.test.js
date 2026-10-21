@@ -38,9 +38,9 @@ test('no AI: the report uses the code\'s own sentences, and keeps the draft foot
   assert.equal(rc.proseSource, 'coach');
   assert.equal(rc.draftNotice, 'Draft – pending clinical review');
   assert.match(rc.benchmarkNote, /^Scores come from VALD's age- and sex-matched data/);
-  assert.equal(rc.summary, 'Your overall rating is 51 (Bronze), the average of 3 scored stats. Your development priority is Mobility.');
+  assert.equal(rc.summary, 'Your overall rating is 62 (Bronze), the average of 4 scored stats. Your strongest stat is Symmetry. Your development priority is Mobility.');
   assert.deepEqual(rc.fieldMeaning.stats.map(s => [s.name, s.status]), [
-    ['Strength', 'scored'], ['Symmetry', 'hidden'], ['Balance', 'scored'], ['Movement', 'not_tested'], ['Mobility', 'scored'], ['Speed', 'locked']
+    ['Strength', 'scored'], ['Symmetry', 'scored'], ['Balance', 'scored'], ['Movement', 'not_tested'], ['Mobility', 'scored'], ['Speed', 'locked']
   ]);
   assert.match(rc.fieldMeaning.focus, /Add Overhead Squat to your next session to complete your card\./);
 });
@@ -99,5 +99,5 @@ test('breakdown of a saved client card', async () => {
   const b = reportBreakdown({ scoring: card, scoringSession: { client: true, ...i }, athleteName: 'Test Athlete', testDate: '2026-10-21', reportContent: { sport: 'General / Gym' } });
   assert.equal(b.kind, 'client_card');
   assert.equal(b.methodologyPath, '/how-we-score/general');
-  assert.deepEqual(b.stats.map(s => [s.key, s.value]), [['strength', 49], ['symmetry', null], ['balance', 56], ['movement', null], ['mobility', 48]]);
+  assert.deepEqual(b.stats.map(s => [s.key, s.value]), [['strength', 49], ['symmetry', 95], ['balance', 56], ['movement', null], ['mobility', 48]]);
 });

@@ -23,10 +23,11 @@
     "trunk_rotation": "not rated"
   },
   "symmetry": {
-    "status": "proposed",
-    "show_on_card": false,
-    "count_in_ovr": false,
-    "label": "proposed – pending clinical review",
+    "status": "approved",
+    "approved_note": "Approved by Peak Performance for client cards (2026-10). VALD prints no asymmetry band, so this scale is ours.",
+    "show_on_card": true,
+    "count_in_ovr": true,
+    "label": "Peak Performance scale (VALD gives no band for left/right differences)",
     "basis": "Limb symmetry index (LSI) per lower-body Dynamo test (hips, knees) = weaker side / stronger side x 100, scored on the card scale, then averaged across the battery's lower-body Dynamo tests with both sides. Arm tests are shown as playing arm vs other arm, not scored. LSI 90 (10% asymmetry) is the common return-to-sport strength criterion; beyond 15% asymmetry is associated with injury and poorer performance.",
     "lsi_anchors": [[75, 25], [85, 55], [90, 70], [100, 99]],
     "references": [

@@ -98,7 +98,7 @@ test('client card: every PDF test with the stat it feeds, and the stats this PDF
   const out = await valdPdfForClient({ files: [FILE], sport: 'padel' });
   assert.equal(out.tests.length, 7);
   const role = Object.fromEntries(out.review.map(r => [r.master, r.goesTo.label]));
-  assert.equal(role['Hip Abduction'], 'Strength');
+  assert.equal(role['Hip Abduction'], 'Strength and Symmetry');
   assert.equal(role['Single Leg Squat'], 'Balance');
   assert.match(role['Trunk Rotation'], /^Shown, measured · not rated/);
   assert.equal(role['Shoulder Internal Rotation'], 'Shown as playing arm vs other arm, not scored');

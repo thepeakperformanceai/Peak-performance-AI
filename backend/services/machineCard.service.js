@@ -115,6 +115,7 @@ const clientRoleOf = (sport) => {
     if (mcfg.never_scored[key]) return `Shown, measured · not rated (${mcfg.never_scored[key]})`;
     if (dyn.includes(key)) {
       if (mcfg.arm_tests.includes(key)) return `Strength (and ${arm}, not scored)`;
+      if (mcfg.symmetry.show_on_card !== false && mcfg.symmetry_tests.includes(key)) return 'Strength and Symmetry';
       return 'Strength';
     }
     if (mcfg.balance_tests.includes(key)) return 'Balance';
@@ -168,6 +169,12 @@ const buildMachineReport = ({ tests: testsIn, sport, profile, useProposed, prose
   };
   const ratedSides = (t) => Object.entries(t.sides).filter(([, x]) => isSet(x.value) && (isSet(x.percentile) || x.band)).map(([side, x]) => ({ side, ...x }));
 
+  const lsiOf = (t) => {
+    const l = t.sides.left?.value;
+    const r = t.sides.right?.value;
+    return isSet(l) && isSet(r) && Math.max(l, r) > 0 ? pyRound(Math.min(l, r) / Math.max(l, r) * 100, 1) : null;
+  };
+
   // All tests: every test read from the PDF, in the PDF's order.
   const testTable = tests.map(t => {
     const stat = statOf(t);
@@ -178,17 +185,13 @@ const buildMachineReport = ({ tests: testsIn, sport, profile, useProposed, prose
       partial: false, oneSideOnly: !t.sides.value && (!isSet(t.sides.left?.value) || !isSet(t.sides.right?.value)),
       feedsOvr: true
     };
-    if (stat && score !== null) return { ...row, stat };
+    // Lower-body Dynamo tests also feed Symmetry when it's shown.
+    const feeds = stat === 'Strength' && !st.symmetry.hidden && mcfg.symmetry_tests.includes(t.key) && lsiOf(t) !== null ? 'Strength · Symmetry' : stat;
+    if (stat && score !== null) return { ...row, stat: feeds };
     if (!rated.length) return { ...row, notRated: true };
     // Rated by VALD, but not part of a card stat: VALD's own words, no score.
     return { ...row, chip: `VALD ${ratingWords(rated.map(x => ({ ...x, side: x.side === 'value' ? 'value' : x.side[0].toUpperCase() })))}`.toUpperCase() };
   });
-
-  const lsiOf = (t) => {
-    const l = t.sides.left?.value;
-    const r = t.sides.right?.value;
-    return isSet(l) && isSet(r) && Math.max(l, r) > 0 ? pyRound(Math.min(l, r) / Math.max(l, r) * 100, 1) : null;
-  };
 
   // Flags: left/right gaps on the lower-body tests Symmetry is scored from,
   // only while Symmetry is shown. Arm tests are never flagged.
