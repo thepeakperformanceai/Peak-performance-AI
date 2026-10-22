@@ -5,7 +5,7 @@
 // number here is the one the card is scored with.
 
 const { loadConfig } = require('../scoring/scoring');
-const { loadMachineConfig, generalBattery, throughAnchors } = require('../scoring/machineCard');
+const { loadMachineConfig, generalBattery, mobilityTestsFor, throughAnchors } = require('../scoring/machineCard');
 const { pyRound } = require('../scoring/scoring');
 const { ALL_TEST_INFO } = require('./scoredReport.service');
 const { VALD_BAND_WORDS } = require('./vald/valdHubPdf');
@@ -57,7 +57,7 @@ const clientMethodology = (pageKey) => {
         basis: m.symmetry.basis, references: m.symmetry.references, label: m.symmetry.label },
       { key: 'balance', name: 'Balance', tests: m.balance_tests.map(labelOf), how: "VALD's band (or percentile) for each side, scored at the middle of the band, then averaged. Single Leg Stand is never scored: VALD has no age- and sex-matched norms for it, so the report shows its left and right result and which leg was steadier." },
       { key: 'movement', name: 'Movement', tests: m.movement_tests.map(labelOf), how: "VALD's band, scored at the middle of the band." },
-      { key: 'mobility', name: 'Mobility', tests: m.mobility_tests.map(labelOf), how: "The average of the mobility tests in your VALD report that VALD rated: each test scores the middle of its band (the average of its sides). A test with no VALD band or percentile is shown as \"measured · not rated\" and isn't counted. Trunk Rotation is never scored." },
+      { key: 'mobility', name: 'Mobility', tests: mobilityTestsFor(page.sport, m).map(labelOf), how: "The average of these mobility tests in your VALD report that VALD rated (other mobility tests are shown with VALD's rating, not scored): each test scores the middle of its band (the average of its sides). A test with no VALD band or percentile is shown as \"measured · not rated\" and isn't counted. Trunk Rotation is never scored." },
       { key: 'speed', name: 'Speed', locked: true, how: `${m.locked.speed}. Not part of the OVR, and not counted for the rating.` }
     ],
     bands: m.vald_band_labels.map((label, i) => ({ label: VALD_BAND_WORDS[label], score: m.vald_band_midpoints[i] })),

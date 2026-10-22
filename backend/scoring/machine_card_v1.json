@@ -18,6 +18,12 @@
   "balance_tests": ["single_leg_squat"],
   "movement_tests": ["overhead_squat"],
   "mobility_tests": ["trunk_flexion", "trunk_extension", "trunk_lateral_flexion", "arc_of_motion", "dorsiflexion", "hip_rotation"],
+  "mobility_tests_by_sport": {
+    "football": ["dorsiflexion"],
+    "cricket": ["arc_of_motion", "trunk_lateral_flexion"],
+    "padel": ["trunk_flexion", "trunk_extension", "trunk_lateral_flexion", "arc_of_motion", "dorsiflexion", "hip_rotation"],
+    "general": ["trunk_flexion", "trunk_extension", "trunk_lateral_flexion", "arc_of_motion", "dorsiflexion", "hip_rotation"]
+  },
   "never_scored": {
     "single_leg_stand": "VALD has no HumanTrak norms for Single Leg Stand",
     "trunk_rotation": "not rated"

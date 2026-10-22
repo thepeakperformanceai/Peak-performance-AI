@@ -110,3 +110,45 @@ test('second VALD PDF: mm² read, mobility from rated trunk tests, never-scored 
   assert.match(coachText.stats.balance, /Single Leg Stand \(eyes closed\) was measured: left 24194 mm², right 7745 mm²\. Your right leg was steadier \(lower sway\)\./);
   assert.equal(rc.additionalVald.length, 0);                            // every test is in All Tests
 });
+
+// Logic checks with hand-made VALD results (bands only, as VALD prints them).
+const banded = (key, label, bands) => ({ key, label, pdfName: label, device: 'HumanTrak', unit: '°',
+  sides: Object.fromEntries(Object.entries(bands).map(([side, band]) => [side, { value: 40, percentile: null, band }])) });
+const MOBILITY_SET = [
+  banded('dorsiflexion', 'Weight Bearing Dorsiflexion', { left: 'within_normal', right: 'slightly_above' }),
+  banded('arc_of_motion', 'Shoulder Arc of Motion', { left: 'below', right: 'within_normal' }),
+  banded('trunk_lateral_flexion', 'Trunk Lateral Flexion', { left: 'within_normal', right: 'within_normal' }),
+  banded('trunk_flexion', 'Trunk Flexion', { value: 'well_above' }),
+  banded('single_leg_squat', 'Single Leg Squat', { left: 'slightly_above', right: 'within_normal' })
+];
+
+test('Mobility uses the sport\'s own mobility tests; Single Leg Squat feeds Balance', () => {
+  const mob = (sport) => buildMachineReport({ tests: MOBILITY_SET, sport, profile: PROFILE }).card.stats;
+  assert.deepEqual(mob('football').mobility.from.map(f => f.test), ['Weight Bearing Dorsiflexion']);
+  assert.equal(mob('football').mobility.value, 70);                      // (63 + 78) / 2 = 70.5, halves round to even
+  assert.deepEqual(mob('cricket').mobility.from.map(f => f.test), ['Shoulder Arc of Motion', 'Trunk Lateral Flexion']);
+  assert.equal(mob('cricket').mobility.value, 59);                       // (55.5 + 63) / 2 = 59.25
+  assert.equal(mob('general').mobility.from.length, 4);                  // all mobility tests
+  for (const sport of ['football', 'padel', 'cricket', 'general']) assert.equal(mob(sport).balance.value, 70);   // (78 + 63) / 2 = 70.5
+  // A mobility test outside the sport's list is shown with VALD's rating, not scored.
+  const row = buildMachineReport({ tests: MOBILITY_SET, sport: 'football', profile: PROFILE }).reportContent.testTable.find(r => r.test === 'Trunk Flexion');
+  assert.deepEqual([row.score, row.chip], [null, 'VALD SIGNIFICANTLY ABOVE']);
+});
+
+test('"What it means": each sport\'s own lines; cricket by role', () => {
+  const lines = require('../library/client_card_sport_lines.json');
+  const sportLine = (sport, position, stat) => buildMachineReport({ tests: MOBILITY_SET, sport, profile: { ...PROFILE, position } })
+    .reportContent.fieldMeaning.stats.find(s => s.key === stat).sportLine;
+  assert.deepEqual(sportLine('football', 'MID', 'mobility'), { sport: 'football', text: lines.sports.football.mobility });
+  assert.deepEqual(sportLine('general', '', 'strength'), { sport: 'everyday life and the gym', text: lines.sports.general.strength });
+  for (const [role, label] of [['BAT', 'a batter'], ['PACE', 'a pace bowler'], ['SPIN', 'a spin bowler'], ['ALL', 'an all-rounder'], ['WK', 'a wicketkeeper']]) {
+    assert.deepEqual(sportLine('cricket', role, 'strength'), { sport: label, text: lines.cricket_roles[role].strength });
+  }
+  assert.deepEqual(sportLine('cricket', '', 'balance'), { sport: 'cricket', text: lines.sports.cricket.balance });
+  const rc = buildMachineReport({ tests: MOBILITY_SET, sport: 'cricket', profile: { ...PROFILE, position: 'PACE' } }).reportContent;
+  assert.deepEqual(rc.positionChip, { label: 'ROLE', value: 'Pace bowler' });
+  for (const sport of ['football', 'padel', 'general']) {
+    const all = JSON.stringify(buildMachineReport({ tests: MOBILITY_SET, sport, profile: PROFILE }).reportContent.fieldMeaning.stats.map(s => s.sportLine));
+    if (sport !== 'padel') assert.doesNotMatch(all, /padel|bandeja|vibora|the glass/i, sport);
+  }
+});

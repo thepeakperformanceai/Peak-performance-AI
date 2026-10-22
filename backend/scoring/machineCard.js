@@ -13,9 +13,10 @@
 //             not calculated, not shown, never in the OVR.
 //   Balance   Single Leg Squat (VALD band or percentile)
 //   Movement  Overhead Squat
-//   Mobility  average of the VALD-rated mobility tests in the PDF (trunk
-//             flexion / extension / lateral flexion, shoulder arc of motion,
-//             weight-bearing dorsiflexion, seated hip IR/ER)
+//   Mobility  average of the VALD-rated mobility tests in the PDF from the
+//             sport's mobility battery (mobility_tests_by_sport: football
+//             dorsiflexion; cricket shoulder arc of motion and trunk lateral
+//             flexion; padel and General / Gym all of mobility_tests)
 //   Band stats: each test scores the average of its rated sides (band
 //   midpoint, or VALD percentile on the card scale); the stat is the average
 //   of its rated tests. Tests with no VALD band or percentile never count.
@@ -81,6 +82,9 @@ const bandStat = (tests, keys, mcfg) => {
   return rated.length ? { value: pyRound(mean(rated.map(x => x.score))), from, measuredNotRated } : { value: null, from: [], measuredNotRated };
 };
 
+/** The sport's mobility battery (all mobility tests when the sport has none set). */
+const mobilityTestsFor = (sport, mcfg = loadMachineConfig()) => (mcfg.mobility_tests_by_sport || {})[sport] || mcfg.mobility_tests;
+
 /** General / Gym clients (no sport): the Dynamo tests that count. */
 const generalBattery = (mcfg = loadMachineConfig()) =>
   Object.fromEntries(mcfg.general_dynamo_tests.map(k => [k, { source: 'vald', dynamo: true }]));
@@ -88,9 +92,10 @@ const generalBattery = (mcfg = loadMachineConfig()) =>
 /**
  * tests:   input tests (above)
  * battery: the sport config's tests object, or generalBattery() (which Dynamo tests count)
+ * sport:   which mobility battery counts (mobility_tests_by_sport)
  * Returns { config_version, stats, locked, ovr }.
  */
-const scoreMachineCard = (tests, battery, { useProposed = false, mcfg = loadMachineConfig() } = {}) => {
+const scoreMachineCard = (tests, battery, { useProposed = false, mcfg = loadMachineConfig(), sport = null } = {}) => {
   const dyn = dynamoKeys(battery);
   const dynamoTests = tests.filter(t => dyn.includes(t.key));
   const stats = {};
@@ -127,7 +132,7 @@ const scoreMachineCard = (tests, battery, { useProposed = false, mcfg = loadMach
 
   stats.balance = bandStat(tests, mcfg.balance_tests, mcfg);
   stats.movement = bandStat(tests, mcfg.movement_tests, mcfg);
-  stats.mobility = bandStat(tests, mcfg.mobility_tests, mcfg);
+  stats.mobility = bandStat(tests, mobilityTestsFor(sport, mcfg), mcfg);
 
   // OVR: plain average of the scored stats (a proposed stat only if allowed).
   const counted = mcfg.stats.filter(k => isSet(stats[k].value) && (useProposed || !stats[k].proposed));
@@ -145,4 +150,4 @@ const scoreMachineCard = (tests, battery, { useProposed = false, mcfg = loadMach
   };
 };
 
-module.exports = { scoreMachineCard, loadMachineConfig, generalBattery, throughAnchors, ratedScore };
+module.exports = { scoreMachineCard, loadMachineConfig, generalBattery, mobilityTestsFor, throughAnchors, ratedScore };

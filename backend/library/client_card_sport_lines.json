@@ -1,5 +1,5 @@
 {
-  "_comment": "\"What it means for <sport>\" on the client card's \"What your stats mean\" page: one line per stat and sport, with examples from that sport. Fixed text, chosen in code by stat and sport; never reworded by the AI. No numbers, no exercises. Edit the wording here.",
+  "_comment": "\"What it means for <sport>\" on the client card's \"What your stats mean\" page: one line per stat and sport, with examples from that sport. Cricket also has lines per role (cricket_roles, by the card's role code); a cricketer with no role gets the general cricket lines. Fixed text, chosen in code; never reworded by the AI. No numbers, no exercises. Edit the wording here.",
   "sports": {
     "football": {
       "label": "football",
@@ -7,7 +7,7 @@
       "symmetry": "Even legs let you accelerate and cut equally off either foot, and land evenly after a header.",
       "balance": "Single-leg control keeps you steady when you plant your standing foot to shoot or pass, and when you change direction.",
       "movement": "A good deep squat helps you stay low and balanced when you shield the ball or jockey an attacker.",
-      "mobility": "Trunk, hip and ankle range help you turn with the ball, stretch for a tackle and strike across your body.",
+      "mobility": "Ankle range lets you stay low when you turn, decelerate and land, and push off powerfully when you sprint.",
       "speed": "Speed decides who reaches the loose ball first and how quickly you break into space."
     },
     "padel": {
@@ -36,6 +36,53 @@
       "movement": "A good deep squat helps you lift from the floor, sit down and stand up with control.",
       "mobility": "Trunk, shoulder, hip and ankle range help you reach overhead, twist and bend without stiffness.",
       "speed": "Speed and quickness help you react and move with confidence, in sport and in daily life."
+    }
+  },
+  "cricket_roles": {
+    "BAT": {
+      "label": "a batter",
+      "strength": "Strength lets you drive through the line, hit over the top and keep your shape against the short ball.",
+      "symmetry": "Even legs help you push forward or back equally, and run hard between the wickets off either foot.",
+      "balance": "Single-leg control keeps your head still over a big front-foot stride and when you play on the back foot.",
+      "movement": "A good deep squat helps you get low for the sweep and stay balanced through a long innings.",
+      "mobility": "Shoulder and trunk range let you play a full, free swing of the bat and turn into the pull and cut.",
+      "speed": "Speed turns ones into twos and gets you home safely when you're backing up."
+    },
+    "PACE": {
+      "label": "a pace bowler",
+      "strength": "Strength helps you bowl with pace and absorb the force of every front-foot landing.",
+      "symmetry": "Even legs share the load of a long spell and help you brace your front leg the same way every delivery.",
+      "balance": "Single-leg control keeps you stable through your delivery stride and front-foot contact.",
+      "movement": "A good deep squat supports a strong, stable front-leg brace and your follow-through.",
+      "mobility": "Shoulder and trunk range let you get side-on, load your action and rotate through to full pace.",
+      "speed": "Speed helps you build momentum in your run-up and get to the ball quickly in the field."
+    },
+    "SPIN": {
+      "label": "a spin bowler",
+      "strength": "Strength lets you put revolutions on the ball and repeat your action over long spells.",
+      "symmetry": "Even legs help you pivot on your front foot the same way every ball.",
+      "balance": "Single-leg control keeps you steady as you pivot over your front leg at release.",
+      "movement": "A good deep squat helps you stay balanced through your follow-through and get down quickly for return catches.",
+      "mobility": "Shoulder and trunk range let you rotate fully through your action to spin the ball hard.",
+      "speed": "Speed helps you get across for return catches and cover ground in the field."
+    },
+    "ALL": {
+      "label": "an all-rounder",
+      "strength": "Strength powers your batting and your bowling, and keeps you going across a long day.",
+      "symmetry": "Even legs help you push off equally between the wickets and brace the same way when you bowl.",
+      "balance": "Single-leg control keeps you stable in your front-foot stride with the bat and in your delivery stride with the ball.",
+      "movement": "A good deep squat helps you get low with the bat and through your bowling follow-through.",
+      "mobility": "Shoulder and trunk range give you a full swing of the bat and a full bowling action.",
+      "speed": "Speed turns ones into twos and gets you to the ball first in the field."
+    },
+    "WK": {
+      "label": "a wicketkeeper",
+      "strength": "Strength helps you hold a low stance through every ball and dive to take the edge.",
+      "symmetry": "Even legs let you move and dive equally to your left and right.",
+      "balance": "Single-leg control helps you stay steady as you shift and take the ball wide of you.",
+      "movement": "A good deep squat lets you stay low and comfortable in your stance all innings.",
+      "mobility": "Hip, ankle and shoulder range let you stay down longer and reach the ball wide of your body.",
+      "speed": "Speed helps you get up to the stumps and move quickly for a run-out or a catch."
     }
   }
 }

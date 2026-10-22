@@ -4,11 +4,15 @@
 // statSet "machine_v1" keep their old cards.
 
 const { matchName, VALD_BAND_LABEL, VALD_BAND_WORDS, ordinal, percentileWords } = require('./vald/valdHubPdf');
-const { scoreMachineCard, loadMachineConfig, generalBattery, throughAnchors, ratedScore } = require('../scoring/machineCard');
+const { scoreMachineCard, loadMachineConfig, generalBattery, mobilityTestsFor, throughAnchors, ratedScore } = require('../scoring/machineCard');
 const { loadConfig, pyRound } = require('../scoring/scoring');
 const { ALL_TEST_INFO, SPORT_PROFILES } = require('./scoredReport.service');
 
-const SPORT_LINES = require('../library/client_card_sport_lines.json').sports;
+const SPORT_LIBRARY = require('../library/client_card_sport_lines.json');
+const SPORT_LINES = SPORT_LIBRARY.sports;
+// Cricket: the role's own lines ("a pace bowler"), else general cricket lines.
+const sportLinesFor = (sportKey, position) =>
+  (sportKey === 'cricket' && SPORT_LIBRARY.cricket_roles?.[String(position || '').toUpperCase()]) || SPORT_LINES[sportKey];
 
 const isSet = (v) => v !== undefined && v !== null;
 const mean = (xs) => xs.reduce((a, b) => a + b, 0) / xs.length;
@@ -85,6 +89,16 @@ const STAT_FOCUS = {
 const STAT_TESTS = { balance: 'Single Leg Squat', movement: 'Overhead Squat', mobility: 'a trunk, shoulder, hip or ankle mobility test' };
 // The chip for a position (never shown in the OVERALL area of a client card).
 const POSITION_CHIP = { football: 'POSITION', padel: 'SIDE', cricket: 'ROLE', general: 'ROLE' };
+// Role and position codes as they read on the card.
+const POSITION_WORDS = {
+  cricket: { BAT: 'Batter', PACE: 'Pace bowler', SPIN: 'Spin bowler', ALL: 'All-rounder', WK: 'Wicketkeeper' },
+  football: { GK: 'Goalkeeper', DEF: 'Defender', MID: 'Midfielder', FWD: 'Forward' }
+};
+// What Mobility measures, from the sport's mobility battery.
+const MOBILITY_WHAT = {
+  football: 'How far your ankle bends forward with your weight on it.',
+  cricket: 'How far you move through your shoulders and bend sideways through your trunk.'
+};
 
 const tierName = (ovr) => (ovr >= 75 ? 'Gold' : ovr >= 65 ? 'Silver' : 'Bronze');
 const level = (v) => (v >= 75 ? 'a strength' : v >= 65 ? 'solid' : 'an area to build');
@@ -120,7 +134,7 @@ const clientRoleOf = (sport) => {
     }
     if (mcfg.balance_tests.includes(key)) return 'Balance';
     if (mcfg.movement_tests.includes(key)) return 'Movement';
-    if (mcfg.mobility_tests.includes(key)) return 'Mobility';
+    if (mobilityTestsFor(sport, mcfg).includes(key)) return 'Mobility';
     if (mcfg.arm_tests.includes(key)) return `Shown as ${arm}, not scored`;
     return null;
   };
@@ -147,14 +161,14 @@ const buildMachineReport = ({ tests: testsIn, sport, profile, useProposed, prose
   // General / Gym: its own Dynamo tests and LSI flag lines; no dominant-arm tests.
   const cfg = general ? { tests: generalBattery(mcfg), lsi: mcfg.general_lsi } : loadConfig(sport);
   const sp = general ? GENERAL : SPORT_PROFILES[sport];
-  const card = scoreMachineCard(tests, cfg.tests, { useProposed, mcfg });
+  const card = scoreMachineCard(tests, cfg.tests, { useProposed, mcfg, sport });
   const st = card.stats;
   const dyn = Object.keys(cfg.tests).filter(k => cfg.tests[k].source === 'vald' && cfg.tests[k].dynamo);
   const statOf = (t) => (mcfg.never_scored[t.key] ? null
     : dyn.includes(t.key) ? 'Strength'
       : mcfg.balance_tests.includes(t.key) ? 'Balance'
         : mcfg.movement_tests.includes(t.key) ? 'Movement'
-          : mcfg.mobility_tests.includes(t.key) ? 'Mobility' : null);
+          : mobilityTestsFor(sport, mcfg).includes(t.key) ? 'Mobility' : null);
 
   // Each test's own score on the card scale (what it puts into its stat):
   // Dynamo battery tests from their percentiles, other tests from VALD's
@@ -292,13 +306,14 @@ const buildMachineReport = ({ tests: testsIn, sport, profile, useProposed, prose
   }));
 
   const position = String(profile.position || '').trim();
+  const lines = sportLinesFor(sp.key, position);
   const reportContent = {
     statSet: 'machine_v1',
     sportKey: sp.key,
     athleteName: profile.name, age: profile.age, sport: sp.displayName,
     // Never in the OVERALL area: a chip (e.g. "SIDE Left") in the chips row.
     position: '',
-    ...(position ? { positionChip: { label: POSITION_CHIP[sp.key], value: titleCase(position) } } : {}),
+    ...(position ? { positionChip: { label: POSITION_CHIP[sp.key], value: POSITION_WORDS[sp.key]?.[position.toUpperCase()] || titleCase(position) } } : {}),
     ...(profile.dominantHand ? { dominantHand: profile.dominantHand } : {}),
     testDate: profile.testDate || null,
     batteryLabel: `${sp.displayName} Client Card`,
@@ -318,9 +333,9 @@ const buildMachineReport = ({ tests: testsIn, sport, profile, useProposed, prose
       stats: CARD_ORDER.map(k => ({
         key: k, name: STAT_NAMES[k], score: card.locked[k] || st[k].hidden ? null : st[k].value,
         status: card.locked[k] ? 'locked' : st[k].hidden ? 'hidden' : isSet(st[k].value) ? (st[k].proposed && !card.ovr.counted.includes(k) ? 'proposed' : 'scored') : 'not_tested',
-        what: STAT_WHAT[k],
+        what: (k === 'mobility' && MOBILITY_WHAT[sp.key]) || STAT_WHAT[k],
         // "What it means for <sport>": fixed text from the library (not sent to the AI).
-        ...(SPORT_LINES[sp.key]?.[k] && !st[k]?.hidden ? { sportLine: { sport: SPORT_LINES[sp.key].label, text: SPORT_LINES[sp.key][k] } } : {}),
+        ...(lines?.[k] && !st[k]?.hidden ? { sportLine: { sport: lines.label, text: lines[k] } } : {}),
         body: card.locked[k] ? `Locked: ${card.locked[k].text.replace(/^./, c => c.toLowerCase())}.` : text.stats[k]
       })),
       focus: text.focus
