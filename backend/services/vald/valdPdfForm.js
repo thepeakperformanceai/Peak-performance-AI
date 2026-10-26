@@ -184,6 +184,10 @@ const valdPdfForClient = async ({ files, sport }) => {
   if (!athlete.testDate) {
     problems.push({ level: 'warn', file: null, test: null, text: `Session date: the PDF doesn't print the test date${athlete.reportDate ? ` (its Report Date, ${athlete.reportDate}, is when the PDF was made)` : ''}. Enter the date the athlete was tested.` });
   }
+  // Padel: Balance comes only from Single Leg Squat. Warn, never block.
+  if (sport === 'padel' && !tests.some(t => t.key === 'single_leg_squat')) {
+    problems.push({ level: 'warn', file: null, test: 'Single Leg Squat', text: 'Single Leg Squat is missing: Balance will show as NOT TESTED on the client\'s card.' });
+  }
   // Card stats this PDF can't score: shown as "Not tested" on the card.
   const roles = tests.map(roleOf).filter(Boolean).filter(r => !/^Shown/.test(r)).join(' | ');
   const symmetryShown = require('../../scoring/machineCard').loadMachineConfig().symmetry.show_on_card !== false;

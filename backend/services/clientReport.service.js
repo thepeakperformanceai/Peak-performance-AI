@@ -115,6 +115,8 @@ const validateClientInput = (profileIn = {}, resultsIn = {}) => {
 
 const MAX_ATTEMPTS = 3;
 const STAT_KEYS = ['strength', 'symmetry', 'balance', 'movement', 'mobility'];
+const NOTE_KEYS = ['weapon', 'holding', 'next'];
+const numbersIn = (s) => String(s || '').match(/\d+(?:\.\d+)?/g) || [];
 
 const SYSTEM_PROMPT = `You are a sports scientist at PeakPerformance.pk rewording the text of a client's fitness card.
 
@@ -123,7 +125,7 @@ Every sentence in the payload is already complete and correct. It was chosen and
 RULES (all mandatory):
 1. Use only numbers present in the payload, copied exactly. Never compute, round, estimate or invent a number.
 2. Never add, name or suggest an exercise, drill, stretch, set, rep, hold or training load. Never add advice that isn't in the text.
-3. Keep every fact. Don't drop anything, don't add claims, and don't change which stat is the strongest or the development priority.
+3. Keep every fact and every number. Don't drop anything, don't add claims, and don't change which stat is the weapon, the development priority, the weakest test or the next tier.
 4. A stat marked "Not tested" stays not tested: never rate or describe it.
 5. If a sentence says a score is proposed and pending clinical review, keep that meaning.
 6. Never mention testing devices or brands (no "HumanTrak" or "Dynamo") and never use newtons.
@@ -132,7 +134,7 @@ RULES (all mandatory):
 
 Return ONLY one JSON object, no markdown, in exactly this shape:
 {
-  "summary": "reworded summary",
+  "note": { "weapon": "reworded weapon (empty string if the payload's is empty)", "holding": "reworded holding", "next": "reworded next" },
   "stats": { "strength": "...", "symmetry": "...", "balance": "...", "movement": "...", "mobility": "..." },
   "focus": "reworded focus",
   "flags": ["reworded flag text, same order"]
@@ -140,7 +142,7 @@ Return ONLY one JSON object, no markdown, in exactly this shape:
 
 const buildPolishPayload = (coachText, profile) => ({
   first_name: profile.name.split(/\s+/)[0],
-  summary: coachText.summary,
+  note: coachText.note,
   stats: coachText.stats,
   focus: coachText.focus,
   flags: coachText.flags
@@ -166,12 +168,22 @@ const stripFences = (text) => {
 
 const problemsWith = (prose, payload) => {
   const out = [];
-  if (typeof prose.summary !== 'string' || !prose.summary.trim()) out.push('summary is missing');
+  for (const k of NOTE_KEYS) {
+    if (typeof prose.note?.[k] !== 'string' || !!prose.note[k].trim() !== !!payload.note[k]) out.push(`note.${k} must be ${payload.note[k] ? 'reworded' : 'an empty string'}`);
+  }
   if (typeof prose.focus !== 'string') out.push('focus is missing');
   if (!prose.stats || STAT_KEYS.some(k => typeof prose.stats[k] !== 'string' || !prose.stats[k].trim())) out.push(`stats must have text for ${STAT_KEYS.join(', ')}`);
   if (!Array.isArray(prose.flags) || prose.flags.length !== payload.flags.length) out.push(`flags must have ${payload.flags.length} strings`);
   if (out.length) return out;
-  const strings = [prose.summary, prose.focus, ...STAT_KEYS.map(k => prose.stats[k]), ...prose.flags];
+  // The coach's note keeps every number the code chose (stat scores, the real
+  // percentile, the LSI, "6-week") and the next tier's name.
+  for (const k of NOTE_KEYS) {
+    const lost = numbersIn(payload.note[k]).filter(n => !numbersIn(prose.note[k]).includes(n));
+    if (lost.length) out.push(`note.${k} dropped ${lost.join(', ')}; keep every number`);
+    const tier = (String(payload.note[k]).match(/\b(Bronze|Silver|Gold)\b/) || [])[0];
+    if (tier && !new RegExp(`\\b${tier}\\b`).test(prose.note[k])) out.push(`note.${k} must still name ${tier}`);
+  }
+  const strings = [...NOTE_KEYS.map(k => prose.note[k]), prose.focus, ...STAT_KEYS.map(k => prose.stats[k]), ...prose.flags];
   const bad = findUnsupportedNumbers({ strings }, payload);
   if (bad.length) out.push(`it used numbers that are not in the payload: ${bad.join(', ')}`);
   if (strings.some(s => PRESCRIPTION.test(s))) out.push('it wrote a training prescription (sets, reps, holds, rounds or times); that is not yours to write');
@@ -213,7 +225,7 @@ const polishClientText = async (coachText, profile, { callModel = aiEngine.callG
       continue;
     }
     const prose = {
-      summary: typeof parsed.summary === 'string' ? parsed.summary.trim() : '',
+      note: Object.fromEntries(NOTE_KEYS.map(k => [k, typeof parsed.note?.[k] === 'string' ? parsed.note[k].trim() : ''])),
       stats: Object.fromEntries(STAT_KEYS.map(k => [k, typeof parsed.stats?.[k] === 'string' ? parsed.stats[k].trim() : ''])),
       focus: typeof parsed.focus === 'string' ? parsed.focus.trim() : '',
       flags: Array.isArray(parsed.flags) ? parsed.flags.map(s => String(s ?? '').trim()) : null

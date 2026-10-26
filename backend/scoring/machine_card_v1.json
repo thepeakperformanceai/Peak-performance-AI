@@ -12,6 +12,15 @@
   "symmetry_tests": ["hip_extension", "knee_extension", "hip_abduction", "hip_adduction"],
   "arm_tests": ["shoulder_er", "shoulder_ir", "elbow_extension"],
   "draft_notice": "Draft – pending clinical review",
+  "reviewed_notice": "Reviewed by {name}, DPT",
+  "booking_line": "Book your Rebuild or retest: WhatsApp +92 303 901 9991",
+  "next_step": "A 6-week Rebuild targets exactly this.",
+  "areas": {
+    "max": 3,
+    "percentile_below": 30,
+    "bands": ["well_below", "below"],
+    "padel_other_arm_below_pct": 60
+  },
   "locked": {
     "speed": "Unlocks with Performance add-on"
   },

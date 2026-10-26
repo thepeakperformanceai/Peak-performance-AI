@@ -117,8 +117,9 @@ const chip = (text, fg, bg, extra = '') =>
   `<span style="display:inline-block;font-family:${TEXT};font-size:9.5px;font-weight:700;letter-spacing:0.6px;color:${fg};background:${bg};border-radius:4px;padding:3px 7px 4px;white-space:nowrap;${extra}">${esc(text)}</span>`
 
 // ---------- hexagon ----------
-// Same axis order as the rest of the app. Untested stats get no point: the
-// shape joins measured stats only; their spoke is dashed and labelled.
+// Same axis order as the rest of the app. One polygon through every axis:
+// scored stats at their score, not-tested / locked stats at the centre (no
+// dot, dashed spoke, greyed label), so every scored stat sits on the shape.
 function hexagon(rc, t) {
   const W = 250, H = 222, cx = 125, cy = 111, R = 78
   const order = isMachine(rc) ? MACHINE_HEX_ORDER : HEX_ORDER
@@ -133,15 +134,14 @@ function hexagon(rc, t) {
   const pt = (i, r) => [cx + Math.cos(angles[i]) * R * r, cy + Math.sin(angles[i]) * R * r]
   const ring = (r) => order.map((_, i) => pt(i, r).map(v => v.toFixed(1)).join(',')).join(' ')
   const val = (n) => (scoreOf(n) ?? 0) / 100
-  const poly = measured.map(n => pt(order.indexOf(n), val(n)).map(v => v.toFixed(1)).join(',')).join(' ')
+  const poly = order.map((n, i) => (missing(n) ? [cx, cy] : pt(i, val(n))).map(v => v.toFixed(1)).join(',')).join(' ')
 
   const svg = `<svg width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg" style="position:absolute;left:0;top:0">
     ${[0.25, 0.5, 0.75, 1].map(r => `<polygon points="${ring(r)}" fill="${r === 1 ? t.track : 'none'}" fill-opacity="${r === 1 ? 0.55 : 0}" stroke="#d9d3c8" stroke-width="1"/>`).join('')}
     ${order.map((n, i) => { const [x, y] = pt(i, 1); return missing(n)
       ? `<line x1="${cx}" y1="${cy}" x2="${x.toFixed(1)}" y2="${y.toFixed(1)}" stroke="${FAINT}" stroke-width="1.2" stroke-dasharray="4 4"/>`
       : `<line x1="${cx}" y1="${cy}" x2="${x.toFixed(1)}" y2="${y.toFixed(1)}" stroke="#d9d3c8" stroke-width="1"/>` }).join('')}
-    ${measured.length >= 3 ? `<polygon points="${poly}" fill="${t.bar}" fill-opacity="0.30" stroke="${t.deep}" stroke-width="2.5" stroke-linejoin="round"/>` : ''}
-    ${measured.length === 2 ? `<polyline points="${poly}" fill="none" stroke="${t.deep}" stroke-width="2.5"/>` : ''}
+    ${measured.length ? `<polygon points="${poly}" fill="${t.bar}" fill-opacity="0.30" stroke="${t.deep}" stroke-width="2.5" stroke-linejoin="round"/>` : ''}
     ${measured.map(n => { const [x, y] = pt(order.indexOf(n), val(n)); return `<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="4.5" fill="${t.deep}" stroke="${BODY}" stroke-width="2"/>` }).join('')}
   </svg>`
 
@@ -208,9 +208,10 @@ function testRows(rc) {
 
 function testsTable(rc, t, rowsIn = null) {
   const rows = rowsIn || testRows(rc)
-  // Longer batteries (cricket has 11 tests) get tighter rows so the card
-  // still fits one A4 page. 9-test batteries (football, padel) are unchanged.
-  const cp = rows.length > 9
+  // Longer batteries (cricket has 11 tests) and client cards (which also carry
+  // areas, the coach's note and the booking line) get tighter rows so the card
+  // still fits one A4 page. Other 9-test batteries (football, padel) are unchanged.
+  const cp = rows.length > 9 || isMachine(rc)
   const pad = cp ? '2px 8px' : '4px 8px'
   const chipExtra = cp ? 'font-size:8.5px;padding:2px 6px 3px' : ''
   const th = (txt, align = 'left', w = '') =>
@@ -226,7 +227,8 @@ function testsTable(rc, t, rowsIn = null) {
     } else if (done && r.notRated) {
       status = chip('MEASURED · NOT RATED', MON_TXT, MON_BG, chipExtra)
     } else if (done && r.chip) {
-      status = chip(r.chip, MON_TXT, MON_BG, chipExtra)
+      // VALD's rating for a test that isn't scored ("L 8th · R 45th pct"): may wrap, never clipped.
+      status = chip(r.chip, MON_TXT, MON_BG, `${chipExtra};white-space:normal`)
     } else if (done) {
       const notes = [r.stat || '', r.partial ? 'band only' : '', r.oneSideOnly ? 'one side' : ''].filter(Boolean).join(' · ')
       status = `<span style="font-family:${TEXT};font-size:10px;font-weight:600;color:${TXT}">✓ Scored</span>${notes ? `<span style="font-family:${TEXT};font-size:9.5px;color:${MUTED}"> · ${esc(notes)}</span>` : ''}`
@@ -249,6 +251,43 @@ function testsTable(rc, t, rowsIn = null) {
     <thead><tr>${th('TEST')}${th('RESULT')}${th('UNIT')}${th('SCORE', 'right')}${th('STATUS')}</tr></thead>
     <tbody>${body}</tbody>
   </table>`
+}
+
+// ---------- areas to work on (client cards) ----------
+// Chosen by the engine (reportContent.areas), never empty: the development
+// priority, low-rated tests, and (padel) a much weaker other arm.
+const AREA_STYLE = {
+  priority: (t) => [t.deep, '#ffffff'],
+  test: () => [AMBER_TXT, AMBER_BG],
+  other_arm: () => [MON_TXT, MON_BG],
+  next_gain: (t) => [t.deep, t.track],
+}
+function areasList(rc, t) {
+  const areas = rc.areas || []
+  return areas.map(a => {
+    const [fg, bg] = (AREA_STYLE[a.kind] || AREA_STYLE.test)(t)
+    return `<div style="font-family:${TEXT};font-size:10px;line-height:1.38;color:${TXT};margin-bottom:6px">
+      <div>${chip(String(a.tag || '').toUpperCase(), bg === '#ffffff' ? '#ffffff' : fg, bg === '#ffffff' ? fg : bg, 'font-size:8px;padding:1px 5px 2px;margin-right:6px')}<b>${esc(a.title)}</b></div>
+      <div style="color:${MUTED};margin-top:1px">${esc(a.text)}</div>
+    </div>`
+  }).join('')
+}
+
+// Page 1 call to action, under the OVR: "Book your Rebuild or retest: WhatsApp ...".
+function bookingCta(line, t) {
+  const [lead, how] = String(line).split(/:\s*/, 2)
+  return `<div style="margin:2px 6px 0;border-radius:8px;background:${t.ink};padding:6px 6px 7px;font-family:${TEXT};color:#ffffff;line-height:1.25">
+      <div style="font-size:10px;font-weight:600">${esc(lead)}${how ? ':' : ''}</div>
+      ${how ? `<div style="font-size:11.5px;font-weight:800;white-space:nowrap">${esc(how)}</div>` : ''}
+    </div>`
+}
+
+// ---------- coach's note (client cards): weapon, holding back, next step ----------
+function coachNote(rc, t) {
+  return (rc.coachNote || []).map(p => `<div style="font-family:${TEXT};font-size:10px;line-height:1.38;color:${TXT};margin-bottom:5px">
+      <span style="font-family:${DISPLAY};font-size:15px;letter-spacing:0.6px;color:${t.deep}">${esc(String(p.label).toUpperCase())}</span>
+      <div>${esc(p.text)}</div>
+    </div>`).join('')
 }
 
 // ---------- flags + notes ----------
@@ -392,10 +431,23 @@ export const sportKeyOf = (rc) =>
     : /padel/i.test(rc.sport || '') ? 'padel'
       : /cricket/i.test(rc.sport || '') ? 'cricket' : 'football'
 
-const siteOrigin = () =>
-  (import.meta.env?.VITE_PUBLIC_SITE_URL || (typeof window !== 'undefined' ? window.location.origin : 'https://peakperformance.pk')).replace(/\/$/, '')
+// Every client-facing link (QR code, footer, story card, share links) uses
+// PUBLIC_SITE_URL, never the address the card was made on, so a staging or
+// preview address never reaches a client.
+const DEFAULT_SITE_URL = 'https://peakperformance.pk'
+export const publicSiteUrl = () => {
+  const env = import.meta.env || {}
+  const url = String(env.PUBLIC_SITE_URL || env.VITE_PUBLIC_SITE_URL || '').trim().replace(/\/+$/, '')
+  return /^https:\/\/[^/]+$/.test(url) && !/staging|localhost|127\.0\.0\.1|vercel\.app/i.test(url) ? url : DEFAULT_SITE_URL
+}
+const siteHost = () => publicSiteUrl().replace(/^https:\/\//, '').replace(/^www\./, '')
+// Instagram handle for the story card (PUBLIC_INSTAGRAM_HANDLE); the site's address until it is set.
+export const instagramHandle = () => {
+  const h = String(import.meta.env?.PUBLIC_INSTAGRAM_HANDLE || '').trim().replace(/^@?/, '')
+  return h ? `@${h}` : siteHost()
+}
 
-export const methodologyUrl = (rc) => `${siteOrigin()}/how-we-score/${sportKeyOf(rc)}`
+export const methodologyUrl = (rc) => `${publicSiteUrl()}/how-we-score/${sportKeyOf(rc)}`
 
 // QR code as an inline SVG (drawn synchronously, so the card stays a string).
 function qrSvg(text, size, color) {
@@ -504,7 +556,7 @@ ${look ? look.motif : `    <div style="position:absolute;left:232px;top:-120px;w
       <div style="font-family:${DISPLAY};font-size:${pending ? 104 : 118}px;line-height:0.86;color:${t.ink};letter-spacing:1px">${pending ? '—' : esc(rc.overallOVR)}</div>
       <div style="font-family:${TEXT};font-size:10px;font-weight:700;letter-spacing:2px;color:${t.soft};margin-top:4px">OVERALL</div>
       <div style="height:2px;background:${t.ink};opacity:0.35;margin:8px 22px"></div>
-      ${isMachine(rc) ? '' : `<div style="font-family:${DISPLAY};font-size:46px;line-height:0.9;color:${t.ink};letter-spacing:2px">${esc(rc.position || '—')}</div>`}
+      ${isMachine(rc) ? (rc.bookingLine ? bookingCta(rc.bookingLine, t) : '') : `<div style="font-family:${DISPLAY};font-size:46px;line-height:0.9;color:${t.ink};letter-spacing:2px">${esc(rc.position || '—')}</div>`}
       <div style="margin-top:10px">${statusBadge}</div>
     </div>
 
@@ -518,7 +570,8 @@ ${look ? look.motif : `    <div style="position:absolute;left:232px;top:-120px;w
       <div style="display:flex;align-items:center;margin-left:150px">
         <span style="font-family:${DISPLAY};font-size:18px;letter-spacing:2.5px;color:${t.ink};border:2px solid ${t.ink};border-radius:5px;padding:1px 8px 0">${machine && pending ? `RATING PENDING${look ? ` ${look.word}` : ''}` : `${t.label} ${look ? look.word : custom ? '· CUSTOM ASSESSMENT' : 'CARD'}`}</span>${look ? look.icon : ''}
       </div>
-      <div style="font-family:${DISPLAY};font-size:${nameSize}px;line-height:0.95;color:${t.ink};letter-spacing:1px;margin-top:16px;margin-left:150px">${esc(name.toUpperCase())}</div>
+      ${machine && rc.tierProgress ? `<div style="font-family:${TEXT};font-size:11px;font-weight:700;color:${t.ink};margin:-4px 0 0 150px">${esc(rc.tierProgress)}</div>` : ''}
+      <div style="font-family:${DISPLAY};font-size:${nameSize}px;line-height:0.95;color:${t.ink};letter-spacing:1px;margin-top:${machine && rc.tierProgress ? 6 : 16}px;margin-left:150px">${esc(name.toUpperCase())}</div>
       </div>
       ${rc.fieldMeaning?.playerProfile ? `<div style="font-family:${TEXT};font-size:12.5px;font-style:italic;color:${t.soft};margin-top:6px;line-height:1.35">${esc(rc.fieldMeaning.playerProfile)}</div>` : ''}
       <div style="display:flex;gap:8px;margin-top:14px;flex-wrap:wrap">
@@ -538,20 +591,20 @@ ${look ? look.motif : `    <div style="position:absolute;left:232px;top:-120px;w
     : ''
 
   const body = `
-  <div style="padding:16px 26px 0">
+  <div style="padding:${machine ? 10 : 16}px 26px 0">
     <div style="display:flex;align-items:center;gap:26px">
       ${hexagon(rc, t)}
       <div style="flex:1">${statBars(rc, t, look ? look.captions : {})}</div>
     </div>
 
-    <div style="margin-top:10px">
+    <div style="margin-top:${machine ? 4 : 10}px">
       ${sectionTitle('ALL TESTS', t, `<span style="font-family:${TEXT};font-size:9.5px;font-weight:500;letter-spacing:0;color:${FAINT};margin-left:10px">raw results exactly as entered · scores out of 99</span>`)}
       ${testsTable(rc, t, cardRows(rc))}
     </div>
 
-    <div style="display:flex;gap:24px;margin-top:14px">
-      <div style="flex:1">${sectionTitle('AREAS TO WORK ON', t)}${flagsList(rc)}</div>
-      <div style="flex:1.15;border-left:1.5px solid ${RULE};padding-left:22px">${sectionTitle("COACH'S NOTE", t)}${priority}${summary}</div>
+    <div style="display:flex;gap:24px;margin-top:${machine ? 8 : 14}px">
+      <div style="flex:1">${sectionTitle('AREAS TO WORK ON', t)}${machine && rc.areas?.length ? areasList(rc, t) : flagsList(rc)}</div>
+      <div style="flex:1.15;border-left:1.5px solid ${RULE};padding-left:22px">${sectionTitle("COACH'S NOTE", t)}${machine && rc.coachNote?.length ? coachNote(rc, t) : `${priority}${summary}`}</div>
     </div>
   </div>`
 
@@ -563,9 +616,9 @@ ${look ? look.motif : `    <div style="position:absolute;left:232px;top:-120px;w
       ? `<div style="font-family:${TEXT};font-size:10px;color:${TXT};margin-bottom:4px"><b>No OVR: custom session.</b> An overall rating needs at least 3 scored stats; the stats and tests shown stand on their own.${reasons ? ` · ${esc(reasons)}` : ''}</div>`
       : provisional || pending ? `<div style="font-family:${TEXT};font-size:10px;color:${TXT};margin-bottom:4px"><b>${pending ? 'OVR pending' : 'Provisional OVR'}:</b> ${esc(pending ? (rc.ovrMessage || 'complete testing') : reasons)}${pending && reasons ? ` · ${esc(reasons)}` : ''}${provisional ? ' · firms up once the remaining tests are completed.' : ''}</div>` : ''}
     <div style="font-family:${TEXT};font-size:8.5px;color:${FAINT};line-height:1.4">
-      ${rc.draftNotice ? `<div style="font-weight:700;color:${MUTED}">${esc(rc.draftNotice)}</div>` : ''}
+      ${rc.reviewedNotice ? `<div style="font-weight:700;color:${TXT}">${esc(rc.reviewedNotice)}</div>` : rc.draftNotice ? `<div style="font-weight:700;color:${MUTED}">${esc(rc.draftNotice)}</div>` : ''}
       <div>${esc(rc.benchmarkNote || '')}</div>
-      <div style="white-space:nowrap">peakperformance.pk · ${esc(rc.batteryLabel || '')}${rc.configVersion ? ` · ${esc(rc.configVersion)}` : ''}</div>
+      <div style="white-space:nowrap">${esc(siteHost())} · ${esc(rc.batteryLabel || '')}${rc.configVersion ? ` · ${esc(rc.configVersion)}` : ''}</div>
     </div>
   </div>
   ${ovrLink(rc, t)}`
@@ -663,8 +716,8 @@ function framePage(report, title, sub, inner, footLeft) {
       </div>
       <div style="padding:14px 26px 0">${inner}</div>
       <div style="position:absolute;left:0;right:0;bottom:0;padding:10px 26px 12px;border-top:1.5px solid ${RULE};background:#faf6ef;display:flex;justify-content:space-between;font-family:${TEXT};font-size:8.5px;color:${FAINT}">
-        <span>${rc.draftNotice ? `<b style="color:${MUTED}">${esc(rc.draftNotice)}</b> · ` : ''}${footLeft}</span>
-        <span style="white-space:nowrap;margin-left:16px">peakperformance.pk · ${esc(rc.batteryLabel || '')}</span>
+        <span>${rc.reviewedNotice ? `<b style="color:${TXT}">${esc(rc.reviewedNotice)}</b> · ` : rc.draftNotice ? `<b style="color:${MUTED}">${esc(rc.draftNotice)}</b> · ` : ''}${footLeft}</span>
+        <span style="white-space:nowrap;margin-left:16px">${esc(siteHost())} · ${esc(rc.batteryLabel || '')}</span>
       </div>
     </div>
   </div>
@@ -850,4 +903,56 @@ export async function ensureCardFonts(doc = document) {
     fonts.load('700 12px Inter'),
   ])
   await fonts.ready
+}
+
+// ---------- story card (client cards): 1080 x 1920 PNG for Instagram stories ----------
+// Logo, name, sport, tier badge, OVR, the six stats ("--" when not tested,
+// locked or pending), the tagline and the Instagram handle. No raw results,
+// no tables, no age. Tier colours as on the card.
+export const STORY_WIDTH = 1080
+export const STORY_HEIGHT = 1920
+
+export function storyCardHtml(report) {
+  const rc = report.reportContent || {}
+  const tierKey = tierFor(rc.overallOVR)
+  const t = TIERS[tierKey]
+  const pending = rc.overallOVR == null
+  const name = String(report.athleteName || rc.athleteName || 'Athlete').toUpperCase()
+  const nameSize = Math.max(96, Math.min(200, Math.floor(920 / (Math.max(name.length, 1) * 0.42))))
+  const stats = statsFor(rc).map(({ name: n, short }) => {
+    const s = (rc.ovrScores || []).find(x => x.name === n) || {}
+    return { n, short, score: s.score == null ? '--' : String(s.score) }
+  })
+  const tile = (s) => `<div style="background:rgba(255,255,255,0.5);border-radius:28px;padding:26px 0 22px;text-align:center">
+      <div style="font-family:${DISPLAY};font-size:120px;line-height:0.9;color:${s.score === '--' ? FAINT : t.ink}">${esc(s.score)}</div>
+      <div style="font-family:${DISPLAY};font-size:58px;line-height:1;letter-spacing:3px;color:${s.score === '--' ? FAINT : t.deep};margin-top:8px">${esc(s.short)}</div>
+      <div style="font-family:${TEXT};font-size:22px;font-weight:700;letter-spacing:2px;color:${t.soft};text-transform:uppercase;margin-top:2px">${esc(s.n)}</div>
+    </div>`
+  return `
+<div style="width:${STORY_WIDTH}px;height:${STORY_HEIGHT}px;box-sizing:border-box;padding:44px;background:${t.page};font-family:${TEXT}">
+  <div style="height:100%;box-sizing:border-box;padding:14px;border-radius:64px;background:${t.foil}">
+    <div style="position:relative;height:100%;box-sizing:border-box;border-radius:52px;background:${t.band};overflow:hidden;padding:64px 70px 0">
+      <div style="position:absolute;left:520px;top:-300px;width:180px;height:2600px;background:${t.stripe};transform:rotate(-28deg)"></div>
+      <div style="position:absolute;left:430px;top:-300px;width:50px;height:2600px;background:${t.stripe};transform:rotate(-28deg)"></div>
+      <div style="position:relative;display:flex;align-items:center;justify-content:space-between">
+        <img src="${LOGO_URL}" alt="Peak Performance" width="250" height="190" style="width:250px;height:190px;opacity:0.95">
+        <span style="font-family:${DISPLAY};font-size:52px;letter-spacing:6px;color:${t.ink};border:4px solid ${t.ink};border-radius:12px;padding:4px 22px 0">${pending ? 'RATING PENDING' : `${t.label} TIER`}</span>
+      </div>
+      <div style="position:relative;margin-top:56px;font-family:${DISPLAY};font-size:${nameSize}px;line-height:0.92;letter-spacing:2px;color:${t.ink}">${esc(name)}</div>
+      <div style="position:relative;margin-top:14px;font-family:${TEXT};font-size:34px;font-weight:700;letter-spacing:6px;color:${t.soft}">${esc(String(rc.sport || '').toUpperCase())}</div>
+      <div style="position:relative;display:flex;align-items:flex-end;gap:28px;margin-top:44px">
+        <div style="font-family:${DISPLAY};font-size:330px;line-height:0.8;color:${t.ink}">${pending ? '—' : esc(rc.overallOVR)}</div>
+        <div style="padding-bottom:22px">
+          <div style="font-family:${DISPLAY};font-size:84px;line-height:0.9;letter-spacing:4px;color:${t.deep}">OVR</div>
+          <div style="font-family:${TEXT};font-size:24px;font-weight:700;letter-spacing:4px;color:${t.soft};margin-top:6px">OVERALL</div>
+        </div>
+      </div>
+      <div style="position:relative;display:grid;grid-template-columns:1fr 1fr 1fr;gap:24px;margin-top:64px">${stats.map(tile).join('')}</div>
+      <div style="position:absolute;left:0;right:0;bottom:0;padding:44px 70px 56px;background:${t.ink};text-align:center">
+        <div style="font-family:${DISPLAY};font-size:96px;line-height:1;letter-spacing:4px;color:#ffffff;white-space:nowrap">TESTED. NOT GUESSED.</div>
+        <div style="font-family:${TEXT};font-size:38px;font-weight:700;letter-spacing:2px;color:${t.track};margin-top:14px">${esc(instagramHandle())}</div>
+      </div>
+    </div>
+  </div>
+</div>`
 }

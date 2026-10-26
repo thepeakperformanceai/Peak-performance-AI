@@ -84,5 +84,54 @@
       "mobility": "Hip, ankle and shoulder range let you stay down longer and reach the ball wide of your body.",
       "speed": "Speed helps you get up to the stumps and move quickly for a run-out or a catch."
     }
+  },
+  "_comment_effects": "effects: what each stat (and, for padel, each test) affects in the sport, ending the card's \"Areas to work on\" lines and the coach's note \"Your weapon\". Short phrases that complete \"<where>, this affects ...\" and \"It helps with ...\". No numbers, no exercises. Chosen in code; the coach's note phrases may be reworded by the AI.",
+  "effects": {
+    "football": {
+      "where": "On the pitch",
+      "strength": "holding off defenders, winning headers and striking the ball with power",
+      "symmetry": "accelerating and cutting equally off either foot",
+      "balance": "staying steady on your standing foot when you shoot, pass or change direction",
+      "movement": "staying low and balanced when you shield the ball or jockey an attacker",
+      "mobility": "staying low as you turn and decelerate, and pushing off hard when you sprint"
+    },
+    "padel": {
+      "where": "On court",
+      "strength": "the power in your smash and bandeja, and holding a low ready position at the net",
+      "symmetry": "pushing off equally to your forehand and backhand side",
+      "balance": "lunging for low volleys and recovering after balls off the side wall",
+      "movement": "getting low for volleys and for balls off the back wall",
+      "mobility": "rotating fully into drives and viboras, and reaching balls off the glass",
+      "tests": {
+        "hip_adduction": "stopping hard and pushing back the other way after a wide ball",
+        "hip_abduction": "your first sideways step to the ball and staying stable in a low split step",
+        "shoulder_er": "slowing your arm down after every smash and vibora, so you can keep hitting hard all match",
+        "single_leg_squat": "lunging for low volleys and recovering after balls off the side wall",
+        "overhead_squat": "getting low for volleys and for balls off the back wall",
+        "trunk_flexion": "bending low to dig out balls at your feet",
+        "trunk_extension": "arching back under lobs and for overheads",
+        "trunk_lateral_flexion": "reaching wide balls and balls off the side glass",
+        "arc_of_motion": "a full, free swing on your smash and serve",
+        "dorsiflexion": "staying low in your split step and lunging forward to the net",
+        "hip_rotation": "turning your hips into drives and recovering quickly between shots"
+      },
+      "other_arm": "keeping your body balanced and square through overheads and hard stops"
+    },
+    "cricket": {
+      "where": "On the field",
+      "strength": "driving through the line, bowling with pace and throwing hard from the deep",
+      "symmetry": "bracing your front leg at delivery and pushing off equally between the wickets",
+      "balance": "staying stable through your delivery stride and when you field off balance",
+      "movement": "getting low quickly to field the ball and holding a low stance",
+      "mobility": "rotating through a full bowling action and a full swing of the bat"
+    },
+    "general": {
+      "where": "Day to day",
+      "strength": "lifting, carrying and climbing stairs, and how hard you can train",
+      "symmetry": "sharing the load evenly between your legs when you squat, run or climb stairs",
+      "balance": "staying steady on stairs and uneven ground, and in single-leg training",
+      "movement": "lifting from the floor, sitting down and standing up with control",
+      "mobility": "reaching overhead, twisting and bending without stiffness"
+    }
   }
 }

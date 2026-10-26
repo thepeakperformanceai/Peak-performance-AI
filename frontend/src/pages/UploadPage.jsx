@@ -312,8 +312,15 @@ export default function UploadPage({ onReportGenerated }) {
     }
   }
 
+  // Padel client card: Balance comes only from Single Leg Squat. Warn the
+  // tester before generating; never block.
+  const slsMissing = isClient && clientKey === 'padel' && !!pdfRead?.read?.tests?.length
+    && !pdfRead.read.tests.some(t => t.key === 'single_leg_squat')
+  const SLS_WARNING = 'Balance will show as NOT TESTED on the client\'s card.'
+
   const handleGenerate = async () => {
     if (!validate()) return
+    if (slsMissing && !window.confirm(`Single Leg Squat is missing from this VALD PDF.\n\n${SLS_WARNING}\n\nGenerate the card anyway?`)) return
     setLoading(true)
 
     const messages = isScored || isClient
@@ -582,6 +589,11 @@ export default function UploadPage({ onReportGenerated }) {
             (Speed is locked: Performance add-on). No manual tests and no cut-offs.
             {!pdfRead?.read && <b className="text-gray-700"> Upload the athlete's VALD Hub PDF above to start.</b>}
           </p>
+          {slsMissing && (
+            <div className="mt-2 rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-xs text-amber-800">
+              ⚠ <b>Single Leg Squat is missing.</b> {SLS_WARNING} You can still generate the card.
+            </div>
+          )}
           {scored && (
             <button type="button" className="mt-2 text-xs text-blue-700 underline" onClick={() => setFullBattery(true)}>
               Use the full battery form instead (manual tests + VALD, older card)

@@ -10,6 +10,7 @@
     "@fontsource/bebas-neue": "5.2.5",
     "@fontsource/inter": "5.2.5",
     "axios": "^1.6.0",
+    "html2canvas": "^1.4.1",
     "html2pdf.js": "^0.14.0",
     "jspdf": "^4.2.1",
     "qrcode": "^1.5.4",

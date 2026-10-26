@@ -2,7 +2,8 @@ import axios from 'axios'
 import html2pdf from 'html2pdf.js'
 import { jsPDF } from 'jspdf'
 import { clearAuthToken, getAuthToken } from '../utils/auth'
-import { footballCardHtml, extraPagesHtml, ensureCardFonts, methodologyUrl, OVR_LINK_BOX, CARD_WIDTH, CARD_HEIGHT } from '../components/footballCard'
+import html2canvas from 'html2canvas'
+import { footballCardHtml, extraPagesHtml, storyCardHtml, ensureCardFonts, methodologyUrl, OVR_LINK_BOX, CARD_WIDTH, CARD_HEIGHT, STORY_WIDTH, STORY_HEIGHT } from '../components/footballCard'
 
 const api = axios.create({
   baseURL: import.meta.env.VITE_API_URL,
@@ -108,6 +109,31 @@ export const valdDeleteMapping = (key) => api.delete(`/vald/mappings/${encodeURI
 export const valdRaw = (profileId) => api.get('/vald/raw', { params: { profileId }, timeout: 180000 })
 export const valdLatest = (profileId, sport) => api.get('/vald/latest', { params: { profileId, sport } })
 
+// Client cards: the 1080 x 1920 story card as a PNG (Instagram stories).
+export const downloadStoryCardPNG = async (report) => {
+  await ensureCardFonts()
+  const host = document.createElement('div')
+  host.style.cssText = 'position:fixed;left:-20000px;top:0;pointer-events:none'
+  host.innerHTML = storyCardHtml(report)
+  document.body.appendChild(host)
+  try {
+    const canvas = await html2canvas(host.firstElementChild, {
+      scale: 1, width: STORY_WIDTH, height: STORY_HEIGHT, useCORS: true, logging: false, backgroundColor: null,
+      onclone: (doc) => ensureCardFonts(doc),
+    })
+    const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/png'))
+    const a = document.createElement('a')
+    a.href = URL.createObjectURL(blob)
+    a.download = `PeakPerformance_${(report.athleteName || 'Athlete').replace(/[^a-zA-Z0-9]/g, '_')}_story.png`
+    document.body.appendChild(a)
+    a.click()
+    a.remove()
+    setTimeout(() => URL.revokeObjectURL(a.href), 10000)
+  } finally {
+    host.remove()
+  }
+}
+
 export const downloadReportPDF = async reportId => {
   try {
     const response = await api.get(`/report/${reportId}/export`)
@@ -164,6 +190,8 @@ export const downloadReportPDF = async reportId => {
           }
         }
         pdf.save(cardFile)
+        // Client cards: the story card PNG alongside the PDF.
+        if (rc.statSet === 'machine_v1') await downloadStoryCardPNG(report)
       } finally {
         fix.remove()
       }

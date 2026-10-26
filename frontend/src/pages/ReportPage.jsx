@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react'
 import { useReportStore } from '../store/reportStore'
 import toast from 'react-hot-toast'
-import { downloadReportPDF } from '../services/api'
-import { footballCardHtml, extraPagesHtml, CARD_WIDTH, sportKeyOf } from '../components/footballCard'
+import { downloadReportPDF, downloadStoryCardPNG } from '../services/api'
+import { footballCardHtml, extraPagesHtml, CARD_WIDTH, sportKeyOf, publicSiteUrl } from '../components/footballCard'
 import ScoreBreakdown from '../components/ScoreBreakdown'
 import { downloadPadelReportPdf, padelReportPdfUrl } from '../services/padelExport'
 import { getBreakdown, createBreakdownLink, deleteBreakdownLink } from '../services/api'
@@ -119,13 +119,13 @@ function BreakdownSection({ report }) {
       setToken(r.shareToken)
     } catch (e) { setError(e.message) }
   }
-  const shareUrl = token ? `${window.location.origin}/breakdown/${token}` : ''
+  const shareUrl = token ? `${publicSiteUrl()}/breakdown/${token}` : ''
   const makeLink = async () => {
     setBusy(true)
     try {
       const r = await createBreakdownLink(report._id)
       setToken(r.token)
-      const url = `${window.location.origin}/breakdown/${r.token}`
+      const url = `${publicSiteUrl()}/breakdown/${r.token}`
       try { await navigator.clipboard.writeText(url); toast.success('Private link copied') } catch { toast.success('Private link created') }
     } catch (e) { toast.error(e.message) } finally { setBusy(false) }
   }
@@ -194,6 +194,7 @@ export default function ReportPage() {
   const report = useReportStore(s => s.report)
   const [downloading, setDownloading] = useState(false)
   const [downloadingAthlete, setDownloadingAthlete] = useState(false)
+  const [downloadingStory, setDownloadingStory] = useState(false)
   if (!report) return <EmptyState />
 
   const rc = report.reportContent || {}
@@ -209,6 +210,13 @@ export default function ReportPage() {
     try { await downloadReportPDF(report._id); toast.success('PDF downloaded!') }
     catch (err) { toast.error(err.message || 'Download failed. Please try again.') }
     finally { setDownloading(false) }
+  }
+
+  const handleStory = async () => {
+    setDownloadingStory(true)
+    try { await downloadStoryCardPNG(report); toast.success('Story card downloaded!') }
+    catch (err) { toast.error(err.message || 'Download failed. Please try again.') }
+    finally { setDownloadingStory(false) }
   }
 
   // Football (engine-scored) reports: the one-page player card, identical to the PDF.
@@ -231,9 +239,15 @@ export default function ReportPage() {
               {downloadingAthlete ? '⏳ Generating…' : '⬇ What it means PDF'}
             </button>
           )}
+          {rc.statSet === 'machine_v1' && (
+            <button onClick={handleStory} disabled={downloadingStory}
+              style={{ background: '#1c1f24', color: '#fff', border: 'none', borderRadius: 10, padding: '10px 16px', fontSize: 13, fontWeight: 700, cursor: downloadingStory ? 'default' : 'pointer', opacity: downloadingStory ? 0.6 : 1, fontFamily: "'IBM Plex Mono', monospace" }}>
+              {downloadingStory ? '⏳ Generating…' : '⬇ Story PNG'}
+            </button>
+          )}
           <button onClick={handleDownload} disabled={downloading}
             style={{ background: ORANGE, color: '#0A0E13', border: 'none', borderRadius: 10, padding: '10px 16px', fontSize: 13, fontWeight: 700, cursor: downloading ? 'default' : 'pointer', opacity: downloading ? 0.6 : 1, fontFamily: "'IBM Plex Mono', monospace" }}>
-            {downloading ? '⏳ Generating…' : '⬇ Download PDF'}
+            {downloading ? '⏳ Generating…' : rc.statSet === 'machine_v1' ? '⬇ Download PDF + story' : '⬇ Download PDF'}
           </button>
         </div>
         <div style={{ overflowX: 'auto' }}>

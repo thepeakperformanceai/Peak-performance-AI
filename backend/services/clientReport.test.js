@@ -38,7 +38,15 @@ test('no AI: the report uses the code\'s own sentences, and keeps the draft foot
   assert.equal(rc.proseSource, 'coach');
   assert.equal(rc.draftNotice, 'Draft – pending clinical review');
   assert.match(rc.benchmarkNote, /^Scores come from VALD's age- and sex-matched data/);
-  assert.equal(rc.summary, 'Your overall rating is 62 (Bronze), the average of 4 scored stats. Your strongest stat is Symmetry. Your development priority is Mobility.');
+  assert.deepEqual(rc.coachNote.map(p => [p.label, p.text]), [
+    ['Your weapon', 'Symmetry is your highest stat at 95. It helps with pushing off equally to your forehand and backhand side.'],
+    ['What\'s holding you back', 'Mobility is your lowest stat at 48. On Shoulder Arc of Motion, your right side is significantly below the normal range for people your age and sex.'],
+    ['Next step', 'A 6-week Rebuild targets exactly this. Retest to move toward Silver.']
+  ]);
+  assert.equal(rc.ovrLine, 'OVR = average of your scored stats (4 of 5 scored).');
+  assert.match(rc.benchmarkNote, /OVR = average of your scored stats \(4 of 5 scored\)\./);
+  assert.equal(rc.tierProgress, 'Silver at 65. You\'re 3 points away.');
+  assert.equal(rc.bookingLine, 'Book your Rebuild or retest: WhatsApp +92 303 901 9991');
   assert.deepEqual(rc.fieldMeaning.stats.map(s => [s.name, s.status]), [
     ['Strength', 'scored'], ['Symmetry', 'scored'], ['Balance', 'scored'], ['Movement', 'not_tested'], ['Mobility', 'scored'], ['Speed', 'locked']
   ]);
@@ -61,14 +69,17 @@ test('arm tests: playing arm vs other arm, shown and never scored or flagged', a
 test('AI rewording is used only when it passes every check', async () => {
   const first = await runClientPipeline(input(), noAi);
   const ct = first.coachText;
-  const good = { summary: `Hi! ${ct.summary}`, stats: { ...ct.stats, strength: 'Your Strength is 49, an area to build: on average you are stronger than 32.5% of people your age and sex.' }, focus: ct.focus, flags: ct.flags };
+  const good = { note: { ...ct.note, weapon: `Hi! ${ct.note.weapon}` }, stats: { ...ct.stats, strength: 'Your Strength is 49, an area to build: on average you are stronger than 32.5% of people your age and sex.' }, focus: ct.focus, flags: ct.flags };
   const { reportContent, polish } = await runClientPipeline(input(), { callModel: async () => JSON.stringify(good) });
   assert.equal(polish.source, 'gemini');
   assert.equal(reportContent.fieldMeaning.stats[0].body, good.stats.strength);
 
-  const payload = { summary: ct.summary, stats: ct.stats, focus: ct.focus, flags: ct.flags };
+  assert.equal(reportContent.coachNote[0].text, good.note.weapon);
+  const payload = { note: ct.note, stats: ct.stats, focus: ct.focus, flags: ct.flags };
   const check = (patch) => problemsWith({ ...good, ...patch, stats: { ...good.stats, ...(patch.stats || {}) } }, payload).join(' | ');
-  assert.match(check({ summary: 'Your rating is 71.' }), /numbers that are not in the payload: 71/);
+  assert.match(check({ note: { ...good.note, weapon: 'Your rating is 71.' } }), /numbers that are not in the payload: 71/);
+  assert.match(check({ note: { ...good.note, holding: 'Mobility is your lowest stat. Your shoulder range is below normal.' } }), /note.holding dropped 48/);
+  assert.match(check({ note: { ...good.note, next: 'A 6-week Rebuild targets exactly this. Retest soon.' } }), /note.next must still name Silver/);
   assert.match(check({ focus: 'Do 3 sets of 10 to fix this.' }), /prescription/);
   assert.match(check({ focus: 'Add some lunges and planks.' }), /exercises or training.*lunges.*planks/);
   assert.match(check({ stats: { strength: 'Dynamo shows Strength 49.' } }), /testing device/);
@@ -100,4 +111,60 @@ test('breakdown of a saved client card', async () => {
   assert.equal(b.kind, 'client_card');
   assert.equal(b.methodologyPath, '/how-we-score/general');
   assert.deepEqual(b.stats.map(s => [s.key, s.value]), [['strength', 49], ['symmetry', 95], ['balance', 56], ['movement', null], ['mobility', 48]]);
+});
+
+test('areas to work on: chosen in code, 2–3, never empty', async () => {
+  const { reportContent: rc } = await runClientPipeline(input(), noAi);
+  // (a) the priority, (b) scored tests under the 30th percentile or "Slightly below" or worse
+  assert.deepEqual(rc.areas.map(a => [a.kind, a.title, a.tag]), [
+    ['priority', 'Mobility · 48', 'Development priority'],
+    ['test', 'Shoulder External Rotation', 'Strength'],
+    ['test', 'Single Leg Squat', 'Balance']
+  ]);
+  assert.match(rc.areas[1].text, /^Your left side is stronger than 22% of people your age and sex\. On court, this affects /);
+  for (const a of rc.areas) assert.match(a.text, /(On court|On the pitch|On the field|Day to day), this affects [^.]+\.$/);
+  // Shoulder IR has VALD percentiles but isn't in the padel battery: a short chip, not scored.
+  assert.equal(rc.testTable.find(r => r.test === 'Shoulder Internal Rotation').chip, 'L 45th · R 42nd pct');
+});
+
+test('areas: padel other arm under 60% of the playing arm is shown, not scored', async () => {
+  const tests = JSON.parse(JSON.stringify(TESTS));
+  const ir = tests.find(t => t.key === 'shoulder_ir');
+  ir.sides.left.value = Math.round(ir.sides.right.value * 0.55);
+  const { reportContent: rc } = await runClientPipeline(validateClientInput(PROFILE, { sport: 'padel', tests }), noAi);
+  const arm = rc.areas.find(a => a.kind === 'other_arm');
+  assert.equal(arm.tag, 'Shown, not scored');
+  assert.match(arm.text, /^Your other arm produces 55(\.\d)?% of your playing arm's force\. On court, this affects /);
+  assert.equal(rc.areas.length, 3);
+  assert.equal(rc.areas[0].kind, 'priority');
+});
+
+test('areas: nothing beyond the priority qualifies -> "your next gain"', async () => {
+  const tests = JSON.parse(JSON.stringify(TESTS)).map(t => ({
+    ...t, sides: Object.fromEntries(Object.entries(t.sides).map(([k, x]) => [k, { ...x, ...(x.percentile != null ? { percentile: 70 } : {}), ...(x.band ? { band: 'slightly_above' } : {}) }]))
+  }));
+  const { reportContent: rc } = await runClientPipeline(validateClientInput(PROFILE, { sport: 'padel', tests }), noAi);
+  assert.equal(rc.areas.length, 1);
+  assert.equal(rc.areas[0].tag, 'Your next gain');
+});
+
+test('REVIEWER_NAME replaces the draft footer; empty keeps it', async () => {
+  process.env.REVIEWER_NAME = 'Sara Khan';
+  try {
+    const { reportContent: rc } = await runClientPipeline(input(), noAi);
+    assert.equal(rc.draftNotice, null);
+    assert.equal(rc.reviewedNotice, 'Reviewed by Sara Khan, DPT');
+  } finally { delete process.env.REVIEWER_NAME; }
+  const { reportContent: rc } = await runClientPipeline(input(), noAi);
+  assert.equal(rc.draftNotice, 'Draft – pending clinical review');
+  assert.equal(rc.reviewedNotice, null);
+});
+
+test('tier progress line from the OVR', () => {
+  const { tierProgressLine } = require('./machineCard.service');
+  assert.equal(tierProgressLine(64), 'Silver at 65. You\'re 1 point away.');
+  assert.equal(tierProgressLine(62), 'Silver at 65. You\'re 3 points away.');
+  assert.equal(tierProgressLine(65), 'Gold at 75. You\'re 10 points away.');
+  assert.equal(tierProgressLine(75), 'Gold tier. Retest to defend it.');
+  assert.equal(tierProgressLine(null), null);
 });

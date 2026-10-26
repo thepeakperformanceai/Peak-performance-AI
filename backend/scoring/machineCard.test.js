@@ -132,7 +132,7 @@ test('Mobility uses the sport\'s own mobility tests; Single Leg Squat feeds Bala
   for (const sport of ['football', 'padel', 'cricket', 'general']) assert.equal(mob(sport).balance.value, 70);   // (78 + 63) / 2 = 70.5
   // A mobility test outside the sport's list is shown with VALD's rating, not scored.
   const row = buildMachineReport({ tests: MOBILITY_SET, sport: 'football', profile: PROFILE }).reportContent.testTable.find(r => r.test === 'Trunk Flexion');
-  assert.deepEqual([row.score, row.chip], [null, 'VALD SIGNIFICANTLY ABOVE']);
+  assert.deepEqual([row.score, row.chip], [null, 'Significantly above']);
 });
 
 test('"What it means": each sport\'s own lines; cricket by role', () => {

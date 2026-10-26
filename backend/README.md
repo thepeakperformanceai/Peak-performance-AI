@@ -26,6 +26,7 @@ npm run seed
 - `CLAUDE_API_KEY` - Anthropic API key (for production)
 - `AI_PROVIDER` - Switch between `groq` and `claude`
 - `FRONTEND_URL` - React frontend URL for CORS
+- `REVIEWER_NAME` - (optional) the clinician who reviews client cards. When set, client cards print "Reviewed by <name>, DPT" instead of "Draft – pending clinical review"
 
 ## API Endpoints
 

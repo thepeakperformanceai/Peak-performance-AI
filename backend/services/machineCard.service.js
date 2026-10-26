@@ -10,6 +10,7 @@ const { ALL_TEST_INFO, SPORT_PROFILES } = require('./scoredReport.service');
 
 const SPORT_LIBRARY = require('../library/client_card_sport_lines.json');
 const SPORT_LINES = SPORT_LIBRARY.sports;
+const CARD_TIERS = require('../scoring/card_tiers.json').tiers;
 // Cricket: the role's own lines ("a pace bowler"), else general cricket lines.
 const sportLinesFor = (sportKey, position) =>
   (sportKey === 'cricket' && SPORT_LIBRARY.cricket_roles?.[String(position || '').toUpperCase()]) || SPORT_LINES[sportKey];
@@ -100,8 +101,24 @@ const MOBILITY_WHAT = {
   cricket: 'How far you move through your shoulders and bend sideways through your trunk.'
 };
 
-const tierName = (ovr) => (ovr >= 75 ? 'Gold' : ovr >= 65 ? 'Silver' : 'Bronze');
+// Tiers from card_tiers.json (Bronze under 65, Silver 65–74, Gold 75+).
+const tierOf = (ovr) => [...CARD_TIERS].sort((a, b) => b.min_ovr - a.min_ovr).find(t => ovr >= t.min_ovr);
+const nextTierOf = (ovr) => [...CARD_TIERS].sort((a, b) => a.min_ovr - b.min_ovr).find(t => t.min_ovr > ovr) || null;
+const tierName = (ovr) => tierOf(ovr).label;
+// Under the tier badge: how far the next tier is, from the OVR.
+const tierProgressLine = (ovr) => {
+  if (ovr === null) return null;
+  const next = nextTierOf(ovr);
+  if (!next) return `${tierName(ovr)} tier. Retest to defend it.`;
+  const gap = next.min_ovr - ovr;
+  return `${next.label} at ${next.min_ovr}. You're ${gap} point${gap === 1 ? '' : 's'} away.`;
+};
 const level = (v) => (v >= 75 ? 'a strength' : v >= 65 ? 'solid' : 'an area to build');
+// Short VALD rating for the All Tests STATUS column: "L 8th · R 45th pct".
+const shortRating = (rated) => {
+  const parts = rated.map(x => `${x.side === 'value' ? '' : `${x.side[0].toUpperCase()} `}${isSet(x.percentile) ? ordinal(x.percentile) : VALD_BAND_WORDS[x.band]}`);
+  return `${parts.join(' · ')}${rated.every(x => isSet(x.percentile)) ? ' pct' : ''}`;
+};
 const ratingWords = (sides) => sides.map(x => `${x.side === 'value' ? '' : `${x.side} `}${isSet(x.percentile) ? `${ordinal(x.percentile)} percentile` : VALD_BAND_WORDS[x.band].toLowerCase()}`).join(', ');
 
 // Single Leg Stand: which leg was steadier, only when the metric says which
@@ -203,8 +220,8 @@ const buildMachineReport = ({ tests: testsIn, sport, profile, useProposed, prose
     const feeds = stat === 'Strength' && !st.symmetry.hidden && mcfg.symmetry_tests.includes(t.key) && lsiOf(t) !== null ? 'Strength · Symmetry' : stat;
     if (stat && score !== null) return { ...row, stat: feeds };
     if (!rated.length) return { ...row, notRated: true };
-    // Rated by VALD, but not part of a card stat: VALD's own words, no score.
-    return { ...row, chip: `VALD ${ratingWords(rated.map(x => ({ ...x, side: x.side === 'value' ? 'value' : x.side[0].toUpperCase() })))}`.toUpperCase() };
+    // Rated by VALD, but not part of a card stat: VALD's rating, short, no score.
+    return { ...row, chip: shortRating(rated) };
   });
 
   // Flags: left/right gaps on the lower-body tests Symmetry is scored from,
@@ -266,14 +283,85 @@ const buildMachineReport = ({ tests: testsIn, sport, profile, useProposed, prose
   const best = sorted.length ? sorted[sorted.length - 1][0] : null;
   const missing = mcfg.stats.filter(k => !isSet(st[k].value) && !st[k].hidden && testsFor[k]);
   const ovr = card.ovr.value;
+  const nextTier = ovr === null ? null : nextTierOf(ovr);
+  // One OVR wording everywhere (coach's note, footer), both numbers from the engine.
+  const ovrLine = `OVR = average of your scored stats (${scoredKeys.length} of ${mcfg.stats.length} scored${ovr === null ? `; a rating needs ${mcfg.ovr_min_stats}` : ''}).`;
+
+  // What each stat (and, for padel, each test) affects in the sport.
+  const fx = SPORT_LIBRARY.effects?.[sp.key] || {};
+  const affects = (statKey, testKey) => `${fx.where || 'In your sport'}, this affects ${(testKey && fx.tests?.[testKey]) || fx[statKey]}.`;
+  const statKeyOf = { Strength: 'strength', Balance: 'balance', Movement: 'movement', Mobility: 'mobility' };
+  // A rated side on the card scale (percentile through the anchors, band midpoint).
+  const sideScore = (x) => (isSet(x.percentile) ? throughAnchors(x.percentile, mcfg.vald_percentile_anchors, mcfg.score_floor, mcfg.score_cap)
+    : mcfg.vald_band_midpoints[mcfg.vald_band_labels.indexOf(x.band)]);
+  const worstSide = (t) => ratedSides(t).sort((a, b) => sideScore(a) - sideScore(b))[0] || null;
+  const ratingPhrase = (x, device) => (isSet(x.percentile) ? percentileWords(x.percentile, device)
+    : `${VALD_BAND_WORDS[x.band].toLowerCase()} the normal range for people your age and sex`);
+  const sideDetail = (t, x) => (x.side === 'value' ? `${t.label} is ${ratingPhrase(x, t.device)}` : `On ${t.label}, your ${x.side} side is ${ratingPhrase(x, t.device)}`);
+  const testByLabel = (label) => tests.find(t => t.label === label);
+
+  // The priority stat's weakest test, with VALD's real percentile or band.
+  const weakestOf = (k) => {
+    const s = st[k];
+    if (k === 'strength') {
+      const w = [...s.from].sort((a, b) => a.percentile - b.percentile)[0];
+      const t = testByLabel(w.test);
+      return { test: t, text: `${sideDetail(t, { side: w.side, percentile: w.percentile })}.` };
+    }
+    if (k === 'symmetry') {
+      const w = [...s.from].sort((a, b) => a.lsi - b.lsi)[0];
+      const t = testByLabel(w.test);
+      const l = t.sides.left;
+      const r = t.sides.right;
+      const weak = l.value <= r.value ? { side: 'left', ...l } : { side: 'right', ...r };
+      const pct = isSet(weak.percentile) ? `, and is ${percentileWords(weak.percentile, t.device)}` : '';
+      const short = `On ${t.label}, your weaker side produces ${w.lsi}% of your stronger side's force.`;
+      return { test: t, text: pct ? `${short.slice(0, -1)}${pct}.` : short, short };
+    }
+    const w = [...s.from].sort((a, b) => a.score - b.score)[0];
+    const t = testByLabel(w.test);
+    return { test: t, text: `${sideDetail(t, worstSide(t))}.` };
+  };
+  const weakest = priority ? weakestOf(priority) : null;
+
+  // Coach's note in three parts: your weapon, what's holding you back, next step.
+  const nextStep = ovr === null
+    ? `${mcfg.next_step} Retest with the missing tests to get your first rating.`
+    : `${mcfg.next_step} ${nextTier ? `Retest to move toward ${nextTier.label}.` : `Retest to defend your ${tierName(ovr)} tier.`}`;
+  const note = {
+    weapon: best && best !== priority ? `${STAT_NAMES[best]} is your highest stat at ${st[best].value}. It helps with ${fx[best]}.` : '',
+    holding: priority ? `${STAT_NAMES[priority]} is your lowest stat at ${st[priority].value}. ${weakest.text}` : `No stat is scored yet. Add ${joinAnd([...new Set(missing.map(k => testsFor[k]))])} to your next session.`,
+    next: nextStep
+  };
+
+  // Areas to work on (2–3, never empty): (a) the development priority; (b) any
+  // scored test with a side under the 30th percentile or rated "Slightly
+  // below" or worse; (c) padel: the other arm under 60% of the playing arm,
+  // shown, not scored.
+  const A = mcfg.areas;
+  const lowSide = (x) => (isSet(x.percentile) ? x.percentile < A.percentile_below : A.bands.includes(x.band));
+  const areaA = priority ? [{ kind: 'priority', title: `${STAT_NAMES[priority]} · ${st[priority].value}`, tag: 'Development priority', text: `${weakest.short || weakest.text} ${affects(priority, weakest.test.key)}` }] : [];
+  const areaB = tests
+    .filter(t => statOf(t) && testScore(t) !== null && t !== weakest?.test && ratedSides(t).some(lowSide))
+    .map(t => ({ t, w: worstSide(t) }))
+    .sort((a, b) => sideScore(a.w) - sideScore(b.w))
+    .map(({ t, w }) => {
+      const r = ratingPhrase(w, t.device);
+      return { kind: 'test', title: t.label, tag: statOf(t), text: `${w.side === 'value' ? r[0].toUpperCase() + r.slice(1) : `Your ${w.side} side is ${r}`}. ${affects(statKeyOf[statOf(t)], t.key)}` };
+    });
+  const areaC = sp.key === 'padel' && hand
+    ? armComparison.filter(a => isSet(a.otherPct) && a.otherPct < A.padel_other_arm_below_pct)
+      .map(a => ({ kind: 'other_arm', title: `${a.test} · other arm`, tag: 'Shown, not scored', text: `Your other arm produces ${a.otherPct}% of your playing arm's force. ${fx.where || 'On court'}, this affects ${fx.other_arm}.` }))
+    : [];
+  const room = A.max - areaA.length - Math.min(areaC.length, 1);
+  let areas = [...areaA, ...areaB.slice(0, Math.max(room, 0)), ...areaC].slice(0, A.max);
+  // Nothing beyond the priority qualifies: it is "your next gain".
+  if (areas.length === 1 && areaA.length) areas = [{ ...areaA[0], kind: 'next_gain', tag: 'Your next gain' }];
+  if (!areas.length) areas = [{ kind: 'next_gain', title: 'Complete your card', tag: 'Your next gain', text: note.holding }];
+
   const coachText = {
-    summary: [
-      ovr !== null
-        ? `Your overall rating is ${ovr} (${tierName(ovr)}), the average of ${scoredKeys.length} scored stats.`
-        : `Your rating is pending: ${card.ovr.counted.length} of ${mcfg.stats.length} stats are scored, and a rating needs ${mcfg.ovr_min_stats}.`,
-      best && best !== priority && st[best].value >= 65 ? `Your strongest stat is ${STAT_NAMES[best]}.` : '',
-      priority ? `Your development priority is ${STAT_NAMES[priority]}.` : ''
-    ].filter(Boolean).join(' '),
+    note,
+    summary: [note.weapon, note.holding, note.next].filter(Boolean).join(' '),
     stats: Object.fromEntries(mcfg.stats.map(k => [k, statLine(k)])),
     focus: [
       priority ? `Focus next on ${STAT_FOCUS[priority]}, then retest to see your progress.` : '',
@@ -281,7 +369,8 @@ const buildMachineReport = ({ tests: testsIn, sport, profile, useProposed, prose
     ].filter(Boolean).join(' '),
     flags: flags.map(f => `Your weaker side produces ${f.value}% of your stronger side's force here. Evening this out is an area to build.`)
   };
-  const text = prose || coachText;
+  const text = prose ? { ...prose, summary: [prose.note.weapon, prose.note.holding, prose.note.next].filter(Boolean).join(' ') } : coachText;
+  const reviewer = String(process.env.REVIEWER_NAME || '').trim();
 
   const ovrScores = CARD_ORDER.map(k => {
     if (card.locked[k]) return { name: STAT_NAMES[k], score: null, status: 'locked', lockedText: card.locked[k].text };
@@ -326,6 +415,17 @@ const buildMachineReport = ({ tests: testsIn, sport, profile, useProposed, prose
     testTable,
     flags: flags.map((f, i) => ({ ...f, note: text.flags[i] || '' })),
     summary: text.summary,
+    // Coach's note, in three parts (labels fixed, text chosen in code).
+    coachNote: [
+      { key: 'weapon', label: 'Your weapon', text: text.note.weapon },
+      { key: 'holding', label: 'What\'s holding you back', text: text.note.holding },
+      { key: 'next', label: 'Next step', text: text.note.next }
+    ].filter(p => p.text),
+    // "Areas to work on": chosen in code, never by the AI, never empty.
+    areas,
+    tierProgress: tierProgressLine(ovr),
+    ovrLine,
+    bookingLine: mcfg.booking_line || null,
     fieldMeaning: {
       playerProfile: 'Machine-tested profile, compared with people of the same age and sex.',
       developmentPriority: priority ? STAT_NAMES[priority] : '',
@@ -346,12 +446,14 @@ const buildMachineReport = ({ tests: testsIn, sport, profile, useProposed, prose
     // Every test is in All Tests, so there are no separate extra results.
     additionalVald: [],
     valdFromPdf: true,
-    draftNotice: mcfg.draft_notice || null,
+    // REVIEWER_NAME set: "Reviewed by <name>, DPT" replaces the draft notice.
+    draftNotice: reviewer ? null : (mcfg.draft_notice || null),
+    reviewedNotice: reviewer ? mcfg.reviewed_notice.replace('{name}', reviewer) : null,
     proseSource: prose ? 'gemini' : 'coach',
-    benchmarkNote: footNote || `Scores come from VALD's age- and sex-matched data. OVR = average of the scored stats (3 of 5 needed).${st.symmetry.hidden ? ' Symmetry is not shown until its scale is approved.' : ''}`,
+    benchmarkNote: footNote || `Scores come from VALD's age- and sex-matched data. ${ovrLine}${st.symmetry.hidden ? ' Symmetry is not shown until its scale is approved.' : ''}`,
     configVersion: card.config_version
   };
   return { card, reportContent, coachText };
 };
 
-module.exports = { buildMachineReport, machineTestsFromPdf, classifyTest, clientRoleOf, steadierLeg, STAT_NAMES, CARD_ORDER, SPORTS, GENERAL };
+module.exports = { buildMachineReport, machineTestsFromPdf, classifyTest, clientRoleOf, steadierLeg, tierProgressLine, STAT_NAMES, CARD_ORDER, SPORTS, GENERAL };

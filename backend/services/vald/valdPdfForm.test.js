@@ -108,3 +108,14 @@ test('client card: every PDF test with the stat it feeds, and the stats this PDF
   assert.ok(out.problems.some(p => /^Session date: the PDF doesn't print the test date \(its Report Date, 2026-10-21/.test(p.text)));
   await assert.rejects(() => valdPdfForClient({ files: [FILE], sport: 'tennis' }), /Unknown sport/);
 });
+
+test('client card, padel: missing Single Leg Squat is a warning, never a block', async () => {
+  const { valdPdfForClient } = require('./valdPdfForm');
+  const PAGES2 = require('./fixtures/valdHubPdf2.pages.json');
+  const out = await valdPdfForClient({ files: [{ name: 'two.pdf', pages: PAGES2 }], sport: 'padel' });
+  assert.ok(out.problems.some(p => p.level === 'warn' && p.text === 'Single Leg Squat is missing: Balance will show as NOT TESTED on the client\'s card.'));
+  const withSls = await valdPdfForClient({ files: [FILE], sport: 'padel' });
+  assert.ok(!withSls.problems.some(p => /Single Leg Squat is missing/.test(p.text)));
+  const football = await valdPdfForClient({ files: [{ name: 'two.pdf', pages: PAGES2 }], sport: 'football' });
+  assert.ok(!football.problems.some(p => /Single Leg Squat is missing/.test(p.text)));
+});
