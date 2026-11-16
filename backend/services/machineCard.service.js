@@ -328,9 +328,12 @@ const buildMachineReport = ({ tests: testsIn, sport, profile, useProposed, prose
   const weakest = priority ? weakestOf(priority) : null;
 
   // Coach's note in three parts: your weapon, what's holding you back, next step.
+  // Kickboxing (K7) cards have no tiers: one look whatever the OVR.
+  const noTiers = sp.key === 'kickboxing';
   const nextStep = ovr === null
     ? `${mcfg.next_step} Retest with the missing tests to get your first rating.`
-    : `${mcfg.next_step} ${nextTier ? `Retest to move toward ${nextTier.label}.` : `Retest to defend your ${tierName(ovr)} tier.`}`;
+    : noTiers ? `${mcfg.next_step} Retest to see your progress.`
+      : `${mcfg.next_step} ${nextTier ? `Retest to move toward ${nextTier.label}.` : `Retest to defend your ${tierName(ovr)} tier.`}`;
   const note = {
     weapon: best && best !== priority ? `${STAT_NAMES[best]} is your highest stat at ${st[best].value}. It helps with ${fx[best]}.` : '',
     holding: priority ? `${STAT_NAMES[priority]} is your lowest stat at ${st[priority].value}. ${weakest.text}` : `No stat is scored yet. Add ${joinAnd([...new Set(missing.map(k => testsFor[k]))])} to your next session.`,
@@ -426,7 +429,7 @@ const buildMachineReport = ({ tests: testsIn, sport, profile, useProposed, prose
     ].filter(p => p.text),
     // "Areas to work on": chosen in code, never by the AI, never empty.
     areas,
-    tierProgress: tierProgressLine(ovr),
+    tierProgress: noTiers ? null : tierProgressLine(ovr),
     ovrLine,
     bookingLine: mcfg.booking_line || null,
     fieldMeaning: {

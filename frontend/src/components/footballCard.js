@@ -46,6 +46,14 @@ const TIERS = {
     band: 'linear-gradient(155deg, #f6d3b2 0%, #dca06b 48%, #b9773f 100%)',
     ink: '#241103', soft: '#5a3217', deep: '#8c4f22', bar: '#a8642f', track: '#efdfd0', stripe: 'rgba(255,255,255,0.28)',
   },
+  // K7 kickboxing: one fixed Peak Performance orange look, no tiers.
+  k7: {
+    label: 'K7',
+    page: '#161616',
+    foil: 'linear-gradient(135deg, #7a2c05 0%, #e8661a 28%, #ffb27a 50%, #d4561a 74%, #7a2c05 100%)',
+    band: 'linear-gradient(155deg, #f6a463 0%, #e8661a 50%, #b9480f 100%)',
+    ink: '#1a0d04', soft: '#3d1d08', deep: '#b34700', bar: '#d4601a', track: '#f3e1d2', stripe: 'rgba(255,255,255,0.22)',
+  },
   unrated: {
     label: 'UNRATED',
     page: '#e9ecf0',
@@ -57,6 +65,10 @@ const TIERS = {
 
 export const tierFor = (ovr) =>
   ovr == null ? 'unrated' : ovr >= 75 ? 'gold' : ovr >= 65 ? 'silver' : 'bronze'
+
+// Kickboxing (K7) cards keep one look whatever the OVR; every other sport uses tiers.
+const isK7 = (rc) => rc?.sportKey === 'kickboxing'
+export const themeFor = (rc) => (isK7(rc) ? 'k7' : tierFor(rc?.overallOVR))
 
 // Shared ink for the card body (all tiers).
 const BODY = '#fffdf9', TXT = '#1c1f24', MUTED = '#5c636e', FAINT = '#8d949e', RULE = '#e7e2d9'
@@ -420,6 +432,35 @@ const PADEL_PAGE_LINES = `<svg width="${CARD_WIDTH}" height="${CARD_HEIGHT}" vie
 // Court-blue turf strip with a white line, under the padel header.
 const PADEL_TURF = `<div style="height:9px;background:#1f5f8f;border-top:2px solid #ffffff;border-bottom:2px solid #174a70"></div>`
 
+// ---------- kickboxing (K7) look ----------
+// Ring corner: a padded post and three ropes across the header.
+const ringCorner = () => `<svg width="${CARD_WIDTH}" height="238" viewBox="0 0 ${CARD_WIDTH} 238" xmlns="http://www.w3.org/2000/svg" style="position:absolute;left:0;top:0">
+  ${[64, 120, 176].map(y => `<path d="M-10 ${y - 18} Q 250 ${y + 14} 500 ${y}" fill="none" stroke="#ffffff" stroke-opacity="0.38" stroke-width="7" stroke-linecap="round"/>`).join('')}
+  <rect x="496" y="-10" width="16" height="260" rx="8" fill="#1a0d04" fill-opacity="0.28"/>
+  ${[64, 120, 176].map(y => `<rect x="488" y="${y - 9}" width="32" height="18" rx="5" fill="#ffffff" fill-opacity="0.5"/>`).join('')}
+</svg>`
+
+// Original boxing glove, beside the "K7 · KICKBOXING" badge (fixed box,
+// SVG absolutely positioned inside, as html2canvas needs).
+const gloveIcon = (t) => `<div style="position:relative;width:52px;height:46px;margin-left:10px;flex:0 0 52px"><svg width="52" height="46" viewBox="8 6 50 50" xmlns="http://www.w3.org/2000/svg" style="position:absolute;left:0;top:0">
+  <path d="M18 34c-6-2-8-8-6-13 2-4 7-5 10-3" fill="none" stroke="${t.ink}" stroke-width="2.6" stroke-linecap="round"/>
+  <path d="M22 40V20c0-7 6-12 14-12h4c8 0 14 6 14 14v12c0 4-2 6-5 6H22z" fill="#ffffff" fill-opacity="0.35" stroke="${t.ink}" stroke-width="2.6" stroke-linejoin="round"/>
+  <path d="M22 28c5 0 9 2 11 6" fill="none" stroke="${t.ink}" stroke-width="2.6" stroke-linecap="round"/>
+  <rect x="21" y="40" width="30" height="14" rx="3" fill="none" stroke="${t.ink}" stroke-width="2.6"/>
+  <path d="M29 44l6 6M35 44l-6 6M37 44l6 6M43 44l-6 6" stroke="${t.ink}" stroke-width="2"/>
+</svg></div>`
+
+const K7_CAPTIONS = {}
+
+// Dark page behind a kickboxing card, with ring ropes in the margin.
+const RING_PAGE_LINES = `<svg width="${CARD_WIDTH}" height="${CARD_HEIGHT}" viewBox="0 0 ${CARD_WIDTH} ${CARD_HEIGHT}" xmlns="http://www.w3.org/2000/svg" style="position:absolute;left:0;top:0">
+  <rect x="5" y="5" width="${CARD_WIDTH - 10}" height="${CARD_HEIGHT - 10}" fill="none" stroke="#e8661a" stroke-opacity="0.9" stroke-width="3" rx="6"/>
+  <rect x="11" y="11" width="${CARD_WIDTH - 22}" height="${CARD_HEIGHT - 22}" fill="none" stroke="#e8661a" stroke-opacity="0.5" stroke-width="2" rx="4"/>
+</svg>`
+
+// Black strip with orange rope lines, under the kickboxing header.
+const RING_TURF = `<div style="height:9px;background:#1a1a1a;border-top:2px solid #e8661a;border-bottom:2px solid #e8661a"></div>`
+
 // ---------- "How is my OVR calculated?" (QR + link) ----------
 // Points to that sport's public methodology page (/how-we-score/<sport>).
 // The block sits at a fixed spot so the PDF can put a clickable link on it.
@@ -512,11 +553,13 @@ const sectionTitle = (txt, t, extra = '') =>
  */
 export function footballCardHtml(report) {
   const rc = report.reportContent || {}
-  const tierKey = tierFor(rc.overallOVR)
+  const tierKey = themeFor(rc)
   const t = TIERS[tierKey]
   const name = report.athleteName || rc.athleteName || 'Athlete'
   // Fit the name beside the logo (~316px): Bebas Neue is about 0.41em per character.
-  const nameSize = Math.max(34, Math.min(64, Math.floor(316 / (Math.max(name.length, 1) * 0.41))))
+  // K7 cards carry a bigger logo, so the name starts further right.
+  const nameLeft = isK7(rc) ? 196 : 150
+  const nameSize = Math.max(34, Math.min(64, Math.floor((466 - nameLeft) / (Math.max(name.length, 1) * 0.41))))
   const pending = rc.overallOVR == null
   const provisional = !pending && (rc.ovrStatus === 'provisional' || rc.ovrProvisional)
   const reasons = (rc.ovrReasons || []).join(' · ')
@@ -541,7 +584,10 @@ export function footballCardHtml(report) {
   // keeps its stripes. Tiers, layout and numbers are the same for both.
   const padel = /padel/i.test(rc.sport || '')
   const cricket = /cricket/i.test(rc.sport || '')
-  const look = padel
+  const k7 = isK7(rc)
+  const look = k7
+    ? { word: '· KICKBOXING', motif: ringCorner(), icon: gloveIcon(t), captions: K7_CAPTIONS, page: '#161616', lines: RING_PAGE_LINES, turf: RING_TURF }
+    : padel
     ? { word: '· PADEL', motif: padelCourt(t), icon: padelIcon(t), captions: PADEL_CAPTIONS, page: '#1f5f8f', lines: PADEL_PAGE_LINES, turf: PADEL_TURF }
     : cricket
       ? { word: '· CRICKET', motif: cricketPitch(), icon: cricketIcon(t), captions: CRICKET_CAPTIONS, page: '#2e6b34', lines: CRICKET_PAGE_LINES, turf: CRICKET_TURF }
@@ -562,16 +608,18 @@ ${look ? look.motif : `    <div style="position:absolute;left:232px;top:-120px;w
 
     <div style="position:absolute;right:222px;top:30px;bottom:30px;width:2px;background:${t.ink};opacity:0.18"></div>
 
-    <img src="${LOGO_URL}" alt="Peak Performance" width="134" height="102" style="position:absolute;left:24px;top:18px;width:134px;height:102px;opacity:0.92">
+    ${k7
+      ? `<img src="${LOGO_URL}" alt="Peak Performance" width="184" height="140" style="position:absolute;left:20px;top:14px;width:184px;height:140px">`
+      : `<img src="${LOGO_URL}" alt="Peak Performance" width="134" height="102" style="position:absolute;left:24px;top:18px;width:134px;height:102px;opacity:0.92">`}
 
     <div style="position:absolute;left:28px;right:248px;top:22px">
       <!-- min-height keeps the note and chips below the logo when a mid-length name is drawn smaller -->
-      <div style="min-height:103px">
-      <div style="display:flex;align-items:center;margin-left:150px">
+      <div style="min-height:${k7 ? 134 : 103}px">
+      <div style="display:flex;align-items:center;margin-left:${nameLeft}px">
         <span style="font-family:${DISPLAY};font-size:18px;letter-spacing:2.5px;color:${t.ink};border:2px solid ${t.ink};border-radius:5px;padding:1px 8px 0">${machine && pending ? `RATING PENDING${look ? ` ${look.word}` : ''}` : `${t.label} ${look ? look.word : custom ? '· CUSTOM ASSESSMENT' : 'CARD'}`}</span>${look ? look.icon : ''}
       </div>
-      ${machine && rc.tierProgress ? `<div style="font-family:${TEXT};font-size:11px;font-weight:700;color:${t.ink};margin:-4px 0 0 150px">${esc(rc.tierProgress)}</div>` : ''}
-      <div style="font-family:${DISPLAY};font-size:${nameSize}px;line-height:0.95;color:${t.ink};letter-spacing:1px;margin-top:${machine && rc.tierProgress ? 6 : 16}px;margin-left:150px">${esc(name.toUpperCase())}</div>
+      ${machine && rc.tierProgress ? `<div style="font-family:${TEXT};font-size:11px;font-weight:700;color:${t.ink};margin:-4px 0 0 ${nameLeft}px">${esc(rc.tierProgress)}</div>` : ''}
+      <div style="font-family:${DISPLAY};font-size:${nameSize}px;line-height:0.95;color:${t.ink};letter-spacing:1px;margin-top:${machine && rc.tierProgress ? 6 : 16}px;margin-left:${nameLeft}px">${esc(name.toUpperCase())}</div>
       </div>
       ${rc.fieldMeaning?.playerProfile ? `<div style="font-family:${TEXT};font-size:12.5px;font-style:italic;color:${t.soft};margin-top:6px;line-height:1.35">${esc(rc.fieldMeaning.playerProfile)}</div>` : ''}
       <div style="display:flex;gap:8px;margin-top:14px;flex-wrap:wrap">
@@ -701,7 +749,7 @@ function additionalTable(rows, t) {
 // One extra A4 page in the card's frame (same tier colours and logo).
 function framePage(report, title, sub, inner, footLeft) {
   const rc = report.reportContent || {}
-  const t = TIERS[tierFor(rc.overallOVR)]
+  const t = TIERS[themeFor(rc)]
   const name = report.athleteName || rc.athleteName || 'Athlete'
   return `
 <div style="width:${CARD_WIDTH}px;height:${CARD_HEIGHT}px;box-sizing:border-box;padding:20px;background:${t.page};font-family:${TEXT}">
@@ -729,7 +777,7 @@ export function continuedTestsPagesHtml(report) {
   const rc = report.reportContent || {}
   const rows = testRows(rc)
   if (!(isCustom(rc) || isMachine(rc)) || rows.length <= CARD_MAX_ROWS) return []
-  const t = TIERS[tierFor(rc.overallOVR)]
+  const t = TIERS[themeFor(rc)]
   const rest = rows.slice(CARD_MAX_ROWS - 1)
   const PER_PAGE = 28
   const pages = []
@@ -752,7 +800,7 @@ export function extraPagesHtml(report) {
 export function machineStatsPagesHtml(report) {
   const rc = report.reportContent || {}
   if (!isMachine(rc)) return []
-  const t = TIERS[tierFor(rc.overallOVR)]
+  const t = TIERS[themeFor(rc)]
   const fm = rc.fieldMeaning || {}
   const short = Object.fromEntries(MACHINE_STATS.map(x => [x.name, x.short]))
   const statusChip = (s) => (s.status === 'locked' ? chip('LOCKED', MUTED, '#eef0f2')
@@ -846,7 +894,7 @@ export function valdNormsPagesHtml(report) {
   const rows = Array.isArray(rc.valdNorms) ? rc.valdNorms : []
   // Only worth a page when VALD rated something in its own terms (or a test is unrated).
   if (!rows.some(r => r.notRated || r.sides.some(sd => sd.percentile != null || sd.band))) return []
-  const t = TIERS[tierFor(rc.overallOVR)]
+  const t = TIERS[themeFor(rc)]
   return [framePage(report, 'HOW YOU COMPARE · VALD', '',
     `<div style="font-family:${TEXT};font-size:10.5px;color:${MUTED};margin-bottom:10px;line-height:1.5">
        VALD compares each result with <b style="color:${TXT}">people of the same age and sex</b>.
@@ -866,7 +914,7 @@ export function additionalValdPagesHtml(report) {
   const rc = report.reportContent || {}
   const rows = additionalRows(rc)
   if (!rows.length) return []
-  const t = TIERS[tierFor(rc.overallOVR)]
+  const t = TIERS[themeFor(rc)]
   // Split into pages; a group heading never sits alone at the bottom of a page.
   const pages = [[]]
   rows.forEach((r, i) => {
@@ -914,7 +962,7 @@ export const STORY_HEIGHT = 1920
 
 export function storyCardHtml(report) {
   const rc = report.reportContent || {}
-  const tierKey = tierFor(rc.overallOVR)
+  const tierKey = themeFor(rc)
   const t = TIERS[tierKey]
   const pending = rc.overallOVR == null
   const name = String(report.athleteName || rc.athleteName || 'Athlete').toUpperCase()
@@ -936,7 +984,7 @@ export function storyCardHtml(report) {
       <div style="position:absolute;left:430px;top:-300px;width:50px;height:2600px;background:${t.stripe};transform:rotate(-28deg)"></div>
       <div style="position:relative;display:flex;align-items:center;justify-content:space-between">
         <img src="${LOGO_URL}" alt="Peak Performance" width="250" height="190" style="width:250px;height:190px;opacity:0.95">
-        <span style="font-family:${DISPLAY};font-size:52px;letter-spacing:6px;color:${t.ink};border:4px solid ${t.ink};border-radius:12px;padding:4px 22px 0">${pending ? 'RATING PENDING' : `${t.label} TIER`}</span>
+        <span style="font-family:${DISPLAY};font-size:52px;letter-spacing:6px;color:${t.ink};border:4px solid ${t.ink};border-radius:12px;padding:4px 22px 0">${pending ? 'RATING PENDING' : isK7(rc) ? 'K7 FIGHT CARD' : `${t.label} TIER`}</span>
       </div>
       <div style="position:relative;margin-top:56px;font-family:${DISPLAY};font-size:${nameSize}px;line-height:0.92;letter-spacing:2px;color:${t.ink}">${esc(name)}</div>
       <div style="position:relative;margin-top:14px;font-family:${TEXT};font-size:34px;font-weight:700;letter-spacing:6px;color:${t.soft}">${esc(String(rc.sport || '').toUpperCase())}</div>
