@@ -285,21 +285,6 @@ function areasList(rc, t) {
   }).join('')
 }
 
-// Page 1 call to action, under the OVR: "Book your Rebuild or retest: WhatsApp ...".
-function bookingCta(line, t) {
-  const [lead, how] = String(line).split(/:\s*/, 2)
-  return `<div style="margin:2px 6px 0;border-radius:8px;background:${t.ink};padding:6px 6px 7px;font-family:${TEXT};color:#ffffff;line-height:1.25">
-      <div style="font-size:10px;font-weight:600">${esc(lead)}${how ? ':' : ''}</div>
-      ${how ? (() => {
-        // "WhatsApp +92 …": channel on one line, number on the next, so it never spills out of the box.
-        const m = String(how).match(/^(\S+)\s+(\+?[\d\s]+)$/)
-        return m
-          ? `<div style="font-size:10px;font-weight:700;margin-top:1px">${esc(m[1])}</div><div style="font-size:12.5px;font-weight:800;white-space:nowrap">${esc(m[2])}</div>`
-          : `<div style="font-size:11px;font-weight:800">${esc(how)}</div>`
-      })() : ''}
-    </div>`
-}
-
 // ---------- coach's note (client cards): weapon, holding back, next step ----------
 function coachNote(rc, t) {
   return (rc.coachNote || []).map(p => `<div style="font-family:${TEXT};font-size:10px;line-height:1.38;color:${TXT};margin-bottom:5px">
@@ -611,7 +596,7 @@ ${look ? look.motif : `    <div style="position:absolute;left:232px;top:-120px;w
       <div style="font-family:${DISPLAY};font-size:${pending ? 104 : 118}px;line-height:0.86;color:${t.ink};letter-spacing:1px">${pending ? '—' : esc(rc.overallOVR)}</div>
       <div style="font-family:${TEXT};font-size:10px;font-weight:700;letter-spacing:2px;color:${t.soft};margin-top:4px">OVERALL</div>
       <div style="height:2px;background:${t.ink};opacity:0.35;margin:8px 22px"></div>
-      ${isMachine(rc) ? (rc.bookingLine ? bookingCta(rc.bookingLine, t) : '') : `<div style="font-family:${DISPLAY};font-size:46px;line-height:0.9;color:${t.ink};letter-spacing:2px">${esc(rc.position || '—')}</div>`}
+      ${isMachine(rc) ? '' : `<div style="font-family:${DISPLAY};font-size:46px;line-height:0.9;color:${t.ink};letter-spacing:2px">${esc(rc.position || '—')}</div>`}
       <div style="margin-top:10px">${statusBadge}</div>
     </div>
 
