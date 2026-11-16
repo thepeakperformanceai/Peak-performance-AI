@@ -138,10 +138,19 @@ const reportSchema = new mongoose.Schema({
     type: Number,
     default: undefined
   },
+  // Apple / Google Wallet card made through Passcreator (see services/walletPass.service.js).
+  // identifier/link: the Passcreator pass; imageToken: random key for the public
+  // strip image URL Passcreator downloads.
+  walletPass: {
+    type: mongoose.Schema.Types.Mixed,
+    default: undefined
+  },
   createdAt: {
     type: Date,
     default: Date.now
   }
 });
+
+reportSchema.index({ 'walletPass.imageToken': 1 }, { sparse: true });
 
 module.exports = mongoose.model('Report', reportSchema);

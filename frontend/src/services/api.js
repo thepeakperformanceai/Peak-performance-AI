@@ -27,6 +27,11 @@ export const createBreakdownLink = (reportId) => api.post(`/report/${reportId}/b
 export const deleteBreakdownLink = (reportId) => api.delete(`/report/${reportId}/breakdown-link`)
 export const getSharedBreakdown = (token) => api.get(`/breakdown/${encodeURIComponent(token)}`)
 
+// Wallet card (Apple / Google Wallet pass through Passcreator).
+export const getWalletPass = (reportId) => api.get(`/report/${reportId}/wallet-pass`)
+export const getWalletStripPreview = (reportId) => api.get(`/report/${reportId}/wallet-pass/strip.png`, { responseType: 'blob' })
+export const saveWalletPass = (reportId, body) => api.post(`/report/${reportId}/wallet-pass`, body)
+
 api.interceptors.response.use(
   res => res.data,
   err => {

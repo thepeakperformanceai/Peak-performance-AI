@@ -6,6 +6,7 @@ import { footballCardHtml, extraPagesHtml, CARD_WIDTH, sportKeyOf, publicSiteUrl
 import ScoreBreakdown from '../components/ScoreBreakdown'
 import { downloadPadelReportPdf, padelReportPdfUrl } from '../services/padelExport'
 import { getBreakdown, createBreakdownLink, deleteBreakdownLink } from '../services/api'
+import WalletPassSection from '../components/WalletPassSection'
 
 /* Athlete Test Battery Report — 4-page dark card (matches dashboard) */
 const ORANGE = '#ff4b12', INK = '#f2f4f7', MUTED = '#9aa7b4', FAINT = '#5b6b7c'
@@ -264,6 +265,7 @@ export default function ReportPage() {
           {hasAthleteReport && <PadelReportPreview report={report} />}
         </div>
         <BreakdownSection report={report} />
+        <WalletPassSection report={report} />
       </div>
     )
   }

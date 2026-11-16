@@ -43,6 +43,12 @@ router.get('/:id/breakdown', methodologyController.getBreakdown);
 router.post('/:id/breakdown-link', methodologyController.createLink);
 router.delete('/:id/breakdown-link', methodologyController.deleteLink);
 
+// Wallet card (Apple / Google Wallet pass through Passcreator)
+const walletPassController = require('../controllers/walletPass.controller');
+router.get('/:id/wallet-pass', walletPassController.getWalletPass);
+router.get('/:id/wallet-pass/strip.png', walletPassController.previewStrip);
+router.post('/:id/wallet-pass', walletPassController.createOrUpdateWalletPass);
+
 // GET report by ID
 router.get('/:id', reportController.getReport);
 

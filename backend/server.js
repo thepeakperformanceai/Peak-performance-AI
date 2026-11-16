@@ -107,6 +107,9 @@ app.get('/api/methodology', methodologyController.listSports);
 app.get('/api/methodology/:sport', methodologyController.getMethodology);
 app.get('/api/breakdown/:token', methodologyController.getSharedBreakdown);
 
+// Public: the Wallet card's strip image (Passcreator downloads it; random 192-bit token).
+app.get('/api/wallet/strip/:token', require('./controllers/walletPass.controller').publicStrip);
+
 app.use('/api', protect);
 app.use('/api/report', reportRoutes);
 app.use('/api/exercises', exerciseRoutes);
