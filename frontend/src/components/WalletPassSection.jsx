@@ -16,8 +16,6 @@ export default function WalletPassSection({ report }) {
   const [sendEmail, setSendEmail] = useState(false)
   const [link, setLink] = useState('')
 
-  const hasOvr = typeof report?.scoring?.ovr?.value === 'number'
-
   useEffect(() => () => { if (preview) URL.revokeObjectURL(preview) }, [preview])
 
   const toggle = async () => {
@@ -48,7 +46,7 @@ export default function WalletPassSection({ report }) {
     } catch (e) { toast.error(e.message) } finally { setBusy(false) }
   }
 
-  if (!hasOvr) return null
+  if (!report?._id) return null
 
   const v = info?.values
   const firstName = v?.firstName ? v.firstName.charAt(0) + v.firstName.slice(1).toLowerCase() : ''
