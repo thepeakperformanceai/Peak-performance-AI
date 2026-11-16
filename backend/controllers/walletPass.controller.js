@@ -91,6 +91,13 @@ const createOrUpdateWalletPass = async (req, res, next) => {
     renderStrip(report.scoring); // fails early (no OVR) before anything is sent
 
     const imageToken = report.walletPass?.imageToken || walletPass.newImageToken();
+    // Save the image key first: Passcreator downloads the strip from the public
+    // URL during the call below, so the key has to be in the database already.
+    if (report.walletPass?.imageToken !== imageToken) {
+      report.walletPass = { ...(report.walletPass || {}), imageToken };
+      report.markModified('walletPass');
+      await report.save();
+    }
     const stripUrl = `${publicBaseUrl(req)}/api/wallet/strip/${imageToken}.png`;
     const body = walletPass.passBody(values, stripUrl, { sendEmail: !!sendEmail });
 
@@ -105,8 +112,6 @@ const createOrUpdateWalletPass = async (req, res, next) => {
       if (previous) {
         identifier = previous.walletPass.identifier;
         link = previous.walletPass.link;
-        // Point the old pass at this report's numbers.
-        report.walletPass = { imageToken };
         await walletPass.updatePass(identifier, body);
         action = 'updated-after-retest';
       } else {
