@@ -290,7 +290,13 @@ function bookingCta(line, t) {
   const [lead, how] = String(line).split(/:\s*/, 2)
   return `<div style="margin:2px 6px 0;border-radius:8px;background:${t.ink};padding:6px 6px 7px;font-family:${TEXT};color:#ffffff;line-height:1.25">
       <div style="font-size:10px;font-weight:600">${esc(lead)}${how ? ':' : ''}</div>
-      ${how ? `<div style="font-size:11.5px;font-weight:800;white-space:nowrap">${esc(how)}</div>` : ''}
+      ${how ? (() => {
+        // "WhatsApp +92 …": channel on one line, number on the next, so it never spills out of the box.
+        const m = String(how).match(/^(\S+)\s+(\+?[\d\s]+)$/)
+        return m
+          ? `<div style="font-size:10px;font-weight:700;margin-top:1px">${esc(m[1])}</div><div style="font-size:12.5px;font-weight:800;white-space:nowrap">${esc(m[2])}</div>`
+          : `<div style="font-size:11px;font-weight:800">${esc(how)}</div>`
+      })() : ''}
     </div>`
 }
 
@@ -433,21 +439,24 @@ const PADEL_PAGE_LINES = `<svg width="${CARD_WIDTH}" height="${CARD_HEIGHT}" vie
 const PADEL_TURF = `<div style="height:9px;background:#1f5f8f;border-top:2px solid #ffffff;border-bottom:2px solid #174a70"></div>`
 
 // ---------- kickboxing (K7) look ----------
-// Ring corner: a padded post and three ropes across the header.
+// Ring ropes: three ropes sweeping across the header, fading out before the
+// OVR column (no post, so nothing crosses the divider).
 const ringCorner = () => `<svg width="${CARD_WIDTH}" height="238" viewBox="0 0 ${CARD_WIDTH} 238" xmlns="http://www.w3.org/2000/svg" style="position:absolute;left:0;top:0">
-  ${[64, 120, 176].map(y => `<path d="M-10 ${y - 18} Q 250 ${y + 14} 500 ${y}" fill="none" stroke="#ffffff" stroke-opacity="0.38" stroke-width="7" stroke-linecap="round"/>`).join('')}
-  <rect x="496" y="-10" width="16" height="260" rx="8" fill="#1a0d04" fill-opacity="0.28"/>
-  ${[64, 120, 176].map(y => `<rect x="488" y="${y - 9}" width="32" height="18" rx="5" fill="#ffffff" fill-opacity="0.5"/>`).join('')}
+  <defs><linearGradient id="k7rope" x1="0" y1="0" x2="1" y2="0">
+    <stop offset="0" stop-color="#ffffff" stop-opacity="0.42"/><stop offset="0.75" stop-color="#ffffff" stop-opacity="0.3"/><stop offset="1" stop-color="#ffffff" stop-opacity="0"/>
+  </linearGradient></defs>
+  ${[70, 124, 178].map(y => `<path d="M-10 ${y - 20} Q 240 ${y + 16} 480 ${y - 4}" fill="none" stroke="url(#k7rope)" stroke-width="7" stroke-linecap="round"/>`).join('')}
 </svg>`
 
-// Original boxing glove, beside the "K7 · KICKBOXING" badge (fixed box,
+// Original solid boxing glove, beside the "K7 · KICKBOXING" badge (fixed box,
 // SVG absolutely positioned inside, as html2canvas needs).
-const gloveIcon = (t) => `<div style="position:relative;width:52px;height:46px;margin-left:10px;flex:0 0 52px"><svg width="52" height="46" viewBox="8 6 50 50" xmlns="http://www.w3.org/2000/svg" style="position:absolute;left:0;top:0">
-  <path d="M18 34c-6-2-8-8-6-13 2-4 7-5 10-3" fill="none" stroke="${t.ink}" stroke-width="2.6" stroke-linecap="round"/>
-  <path d="M22 40V20c0-7 6-12 14-12h4c8 0 14 6 14 14v12c0 4-2 6-5 6H22z" fill="#ffffff" fill-opacity="0.35" stroke="${t.ink}" stroke-width="2.6" stroke-linejoin="round"/>
-  <path d="M22 28c5 0 9 2 11 6" fill="none" stroke="${t.ink}" stroke-width="2.6" stroke-linecap="round"/>
-  <rect x="21" y="40" width="30" height="14" rx="3" fill="none" stroke="${t.ink}" stroke-width="2.6"/>
-  <path d="M29 44l6 6M35 44l-6 6M37 44l6 6M43 44l-6 6" stroke="${t.ink}" stroke-width="2"/>
+const gloveIcon = (t) => `<div style="position:relative;width:42px;height:46px;margin-left:12px;flex:0 0 42px"><svg width="42" height="46" viewBox="0 0 40 44" xmlns="http://www.w3.org/2000/svg" style="position:absolute;left:0;top:0">
+  <path d="M10 22 C10 10 16 4 24 4 C32 4 37 10 37 18 L37 27 C37 31 34 33 31 33 L13 33 C11 33 10 31 10 28 Z" fill="${t.ink}"/>
+  <path d="M13 14 C8 11 2 14 3 20 C4 25 9 27 13 25 Z" fill="${t.ink}"/>
+  <path d="M10.5 25 C13.5 22.5 17 22.5 20 25" fill="none" stroke="#f6a463" stroke-width="1.6" stroke-linecap="round"/>
+  <path d="M19 9 C22 7 27 7 30 9.5" fill="none" stroke="#ffffff" stroke-opacity="0.55" stroke-width="2" stroke-linecap="round"/>
+  <rect x="12" y="33" width="24" height="9" rx="2" fill="${t.ink}"/>
+  <rect x="12" y="35.6" width="24" height="3" fill="#f6a463"/>
 </svg></div>`
 
 const K7_CAPTIONS = {}
@@ -616,7 +625,7 @@ ${look ? look.motif : `    <div style="position:absolute;left:232px;top:-120px;w
       <!-- min-height keeps the note and chips below the logo when a mid-length name is drawn smaller -->
       <div style="min-height:${k7 ? 134 : 103}px">
       <div style="display:flex;align-items:center;margin-left:${nameLeft}px">
-        <span style="font-family:${DISPLAY};font-size:18px;letter-spacing:2.5px;color:${t.ink};border:2px solid ${t.ink};border-radius:5px;padding:1px 8px 0">${machine && pending ? `RATING PENDING${look ? ` ${look.word}` : ''}` : `${t.label} ${look ? look.word : custom ? '· CUSTOM ASSESSMENT' : 'CARD'}`}</span>${look ? look.icon : ''}
+        <span style="font-family:${DISPLAY};font-size:${k7 ? 16 : 18}px;letter-spacing:${k7 ? 1.5 : 2.5}px;${k7 ? 'white-space:nowrap;' : ''}color:${t.ink};border:2px solid ${t.ink};border-radius:5px;padding:1px 8px 0">${machine && pending ? `RATING PENDING${look ? ` ${look.word}` : ''}` : `${t.label} ${look ? look.word : custom ? '· CUSTOM ASSESSMENT' : 'CARD'}`}</span>${look ? look.icon : ''}
       </div>
       ${machine && rc.tierProgress ? `<div style="font-family:${TEXT};font-size:11px;font-weight:700;color:${t.ink};margin:-4px 0 0 ${nameLeft}px">${esc(rc.tierProgress)}</div>` : ''}
       <div style="font-family:${DISPLAY};font-size:${nameSize}px;line-height:0.95;color:${t.ink};letter-spacing:1px;margin-top:${machine && rc.tierProgress ? 6 : 16}px;margin-left:${nameLeft}px">${esc(name.toUpperCase())}</div>
