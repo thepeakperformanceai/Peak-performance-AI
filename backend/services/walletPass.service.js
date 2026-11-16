@@ -127,7 +127,9 @@ const passBody = (values, stripUrl, { sendEmail = false } = {}) => {
 
 const config = () => {
   const apiKey = process.env.PASSCREATOR_API_KEY;
-  const templateId = process.env.PASSCREATOR_TEMPLATE_ID;
+  // Accept the template's editor link too: take the ID out of it.
+  const rawTemplate = (process.env.PASSCREATOR_TEMPLATE_ID || '').trim();
+  const templateId = (/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i.exec(rawTemplate) || [rawTemplate])[0];
   if (!apiKey || !templateId) {
     const err = new Error('Wallet cards aren\'t set up yet: PASSCREATOR_API_KEY and PASSCREATOR_TEMPLATE_ID are missing on the server.');
     err.statusCode = 503;

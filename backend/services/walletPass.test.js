@@ -100,6 +100,22 @@ test('createPass calls Passcreator with the template and API key', async () => {
   }
 });
 
+test('template ID can be pasted as the editor link', async () => {
+  process.env.PASSCREATOR_API_KEY = 'k';
+  process.env.PASSCREATOR_TEMPLATE_ID = 'https://app.passcreator.com/ui/templates/afbba13a-8fa7-4072-a731-71abc64564ae/editor?view=passInfo';
+  const orig = axios.post;
+  let params;
+  axios.post = async (url, body, opts) => { params = opts.params; return { data: { identifier: 'p', linkToPassPage: 'l' } }; };
+  try {
+    await walletPass.createPass({});
+    assert.strictEqual(params.passtemplate, 'afbba13a-8fa7-4072-a731-71abc64564ae');
+  } finally {
+    axios.post = orig;
+    delete process.env.PASSCREATOR_API_KEY;
+    delete process.env.PASSCREATOR_TEMPLATE_ID;
+  }
+});
+
 test('missing Passcreator settings give a clear error', async () => {
   await assert.rejects(() => walletPass.createPass({}), /aren't set up yet/);
 });
