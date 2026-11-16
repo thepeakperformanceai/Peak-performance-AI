@@ -9,16 +9,17 @@ import FootballResultsForm, { SCORED_SPORTS, emptyResults, emptyTest, footballPr
 import ValdPdfReview from '../components/ValdPdfReview'
 
 
-const SPORTS = ['Football', 'Cricket', 'Padel', 'General / Gym', 'Custom Assessment']
+const SPORTS = ['Football', 'Cricket', 'Padel', 'Kickboxing', 'General / Gym', 'Custom Assessment']
 
 // Client cards (VALD machine tests only, from the VALD Hub PDF): the default
 // for these sports. Football, padel and cricket can still use the full
 // battery form (manual tests + VALD) through a link on the page.
-const CLIENT_SPORTS = { Football: 'football', Padel: 'padel', Cricket: 'cricket', 'General / Gym': 'general' }
+const CLIENT_SPORTS = { Football: 'football', Padel: 'padel', Cricket: 'cricket', Kickboxing: 'kickboxing', 'General / Gym': 'general' }
 const CLIENT_PROFILE = {
   football: { positions: SCORED_SPORTS.Football.positions, positionLabel: 'Position' },
   padel: { positions: SCORED_SPORTS.Padel.positions, positionLabel: 'Court side' },
   cricket: { positions: SCORED_SPORTS.Cricket.positions, positionLabel: 'Role' },
+  kickboxing: { positions: null, positionLabel: 'Style (e.g. Kickboxing, Boxing)' },
   general: { positions: null, positionLabel: 'Position / role' },
 }
 

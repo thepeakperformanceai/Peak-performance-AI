@@ -15,6 +15,7 @@ const CLIENT_PAGES = {
   'client-football': { sport: 'football', name: 'Football Client Card' },
   'client-padel': { sport: 'padel', name: 'Padel Client Card' },
   'client-cricket': { sport: 'cricket', name: 'Cricket Client Card' },
+  'client-kickboxing': { sport: 'kickboxing', name: 'Kickboxing Client Card' },
   general: { sport: 'general', name: 'General / Gym Client Card' }
 };
 const pageKeyOf = (sport) => (sport === 'general' ? 'general' : `client-${sport}`);

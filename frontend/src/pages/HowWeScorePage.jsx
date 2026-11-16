@@ -18,6 +18,7 @@ const CLIENT_TABS = [
   { key: 'client-football', name: 'Football' },
   { key: 'client-padel', name: 'Padel' },
   { key: 'client-cricket', name: 'Cricket' },
+  { key: 'client-kickboxing', name: 'Kickboxing' },
   { key: 'general', name: 'General / Gym' },
 ]
 

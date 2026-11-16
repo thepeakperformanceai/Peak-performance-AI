@@ -1,0 +1,15 @@
+{
+  "config_version": "kickboxing-v1",
+  "sport": "kickboxing",
+  "notes": "K7 kickboxing client card (VALD machine tests only, no manual tests). Strength: shoulder ER and IR (punch drive and the brakes on every punch) plus hip abduction and adduction (kicking, checking, stance). Symmetry uses the hip tests only, on the approved lower-body scale in machine_card_v1.json. Mobility: shoulder arc of motion and weight-bearing dorsiflexion (mobility_tests_by_sport.kickboxing). Neck strength, trunk rotation and the jump are shown on the report, not scored.",
+  "tests": {
+    "overhead_squat":   {"source": "vald", "bilateral": false, "stat": null, "plausible": null, "citation": "vald_norms"},
+    "trunk_rotation":   {"source": "vald", "bilateral": true,  "stat": null, "plausible": [0, 90], "citation": "vald_norms"},
+    "shoulder_er":      {"source": "vald", "bilateral": true,  "dynamo": true, "stat": "power", "stat_weight": 1.0, "plausible": [20, 1500], "citation": "vald_norms"},
+    "shoulder_ir":      {"source": "vald", "bilateral": true,  "dynamo": true, "stat": "power", "stat_weight": 1.0, "plausible": [20, 1500], "citation": "vald_norms"},
+    "hip_abduction":    {"source": "vald", "bilateral": true,  "dynamo": true, "stat": "power", "stat_weight": 1.0, "plausible": [50, 3000], "citation": "vald_norms"},
+    "hip_adduction":    {"source": "vald", "bilateral": true,  "dynamo": true, "stat": "power", "stat_weight": 1.0, "plausible": [50, 3000], "citation": "vald_norms"}
+  },
+  "lsi": {"amber_below": 90, "red_below": 85},
+  "ovr_min_stats": 3
+}

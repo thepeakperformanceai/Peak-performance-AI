@@ -28,7 +28,7 @@
 const STATUSES = new Set(['completed', 'not_done', 'injured', 'equipment_fault', 'invalid']);
 
 // One config per sport. Football's must stay identical to the Python engine's.
-const CONFIG_FILES = { football: './football_v1.json', padel: './padel_v1.json', cricket: './cricket_v1.json' };
+const CONFIG_FILES = { football: './football_v1.json', padel: './padel_v1.json', cricket: './cricket_v1.json', kickboxing: './kickboxing_v1.json' };
 const loadConfig = (sport = 'football') => {
   const file = CONFIG_FILES[sport];
   if (!file) throw new Error(`no scoring config for sport "${sport}"`);

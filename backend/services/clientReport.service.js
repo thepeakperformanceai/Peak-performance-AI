@@ -53,7 +53,7 @@ const num = (v, field) => {
  */
 const validateClientInput = (profileIn = {}, resultsIn = {}) => {
   const sport = String(resultsIn.sport || '');
-  if (!SPORTS.includes(sport)) throw badRequest('Sport must be football, padel, cricket or general');
+  if (!SPORTS.includes(sport)) throw badRequest('Sport must be football, padel, cricket, kickboxing or general');
   const name = String(profileIn.name || '').trim().slice(0, 80);
   if (!name) throw badRequest('Athlete name is required');
   const dob = parseDate(profileIn.dob, 'Date of birth');

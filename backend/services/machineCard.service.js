@@ -20,7 +20,9 @@ const mean = (xs) => xs.reduce((a, b) => a + b, 0) / xs.length;
 
 // Clients with no sport: General / Gym (its Dynamo tests are in machine_card_v1.json).
 const GENERAL = { key: 'general', displayName: 'General / Gym' };
-const SPORTS = ['football', 'padel', 'cricket', 'general'];
+// Sports with a client card only (no full battery form): their profile here.
+const CLIENT_ONLY = { kickboxing: { key: 'kickboxing', displayName: 'Kickboxing' } };
+const SPORTS = ['football', 'padel', 'cricket', 'kickboxing', 'general'];
 
 // Card stat names, in card order. Speed is the locked slot.
 const STAT_NAMES = { strength: 'Strength', symmetry: 'Symmetry', balance: 'Balance', movement: 'Movement', mobility: 'Mobility', speed: 'Speed' };
@@ -89,7 +91,7 @@ const STAT_FOCUS = {
 // Tests that complete a stat that wasn't tested.
 const STAT_TESTS = { balance: 'Single Leg Squat', movement: 'Overhead Squat', mobility: 'a trunk, shoulder, hip or ankle mobility test' };
 // The chip for a position (never shown in the OVERALL area of a client card).
-const POSITION_CHIP = { football: 'POSITION', padel: 'SIDE', cricket: 'ROLE', general: 'ROLE' };
+const POSITION_CHIP = { football: 'POSITION', padel: 'SIDE', cricket: 'ROLE', kickboxing: 'STYLE', general: 'ROLE' };
 // Role and position codes as they read on the card.
 const POSITION_WORDS = {
   cricket: { BAT: 'Batter', PACE: 'Pace bowler', SPIN: 'Spin bowler', ALL: 'All-rounder', WK: 'Wicketkeeper' },
@@ -98,7 +100,8 @@ const POSITION_WORDS = {
 // What Mobility measures, from the sport's mobility battery.
 const MOBILITY_WHAT = {
   football: 'How far your ankle bends forward with your weight on it.',
-  cricket: 'How far you move through your shoulders and bend sideways through your trunk.'
+  cricket: 'How far you move through your shoulders and bend sideways through your trunk.',
+  kickboxing: 'How far your shoulders rotate and how far your ankles bend with your weight on them.'
 };
 
 // Tiers from card_tiers.json (Bronze under 65, Silver 65–74, Gold 75+).
@@ -177,7 +180,7 @@ const buildMachineReport = ({ tests: testsIn, sport, profile, useProposed, prose
   });
   // General / Gym: its own Dynamo tests and LSI flag lines; no dominant-arm tests.
   const cfg = general ? { tests: generalBattery(mcfg), lsi: mcfg.general_lsi } : loadConfig(sport);
-  const sp = general ? GENERAL : SPORT_PROFILES[sport];
+  const sp = general ? GENERAL : (CLIENT_ONLY[sport] || SPORT_PROFILES[sport]);
   const card = scoreMachineCard(tests, cfg.tests, { useProposed, mcfg, sport });
   const st = card.stats;
   const dyn = Object.keys(cfg.tests).filter(k => cfg.tests[k].source === 'vald' && cfg.tests[k].dynamo);

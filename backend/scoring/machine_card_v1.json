@@ -31,7 +31,8 @@
     "football": ["dorsiflexion"],
     "cricket": ["arc_of_motion", "trunk_lateral_flexion"],
     "padel": ["trunk_flexion", "trunk_extension", "trunk_lateral_flexion", "arc_of_motion", "dorsiflexion", "hip_rotation"],
-    "general": ["trunk_flexion", "trunk_extension", "trunk_lateral_flexion", "arc_of_motion", "dorsiflexion", "hip_rotation"]
+    "general": ["trunk_flexion", "trunk_extension", "trunk_lateral_flexion", "arc_of_motion", "dorsiflexion", "hip_rotation"],
+    "kickboxing": ["arc_of_motion", "dorsiflexion"]
   },
   "never_scored": {
     "single_leg_stand": "VALD has no HumanTrak norms for Single Leg Stand",

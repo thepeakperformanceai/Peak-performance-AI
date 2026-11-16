@@ -36,6 +36,15 @@
       "movement": "A good deep squat helps you lift from the floor, sit down and stand up with control.",
       "mobility": "Trunk, shoulder, hip and ankle range help you reach overhead, twist and bend without stiffness.",
       "speed": "Speed and quickness help you react and move with confidence, in sport and in daily life."
+    },
+    "kickboxing": {
+      "label": "kickboxing",
+      "strength": "Strength drives your punches and kicks, and the muscles that slow your arm down protect your shoulder on every punch you throw.",
+      "symmetry": "Even hips let you kick, check and pivot equally off both sides, so an opponent can't find a weaker side.",
+      "balance": "Single-leg control is the platform for every kick and knee, and helps you return to stance quickly.",
+      "movement": "A good deep squat lets you get low to slip, level-change and absorb a body shot without losing position.",
+      "mobility": "Shoulder and ankle range let you rotate fully into hooks, stay light on your feet and cut angles.",
+      "speed": "Speed decides how fast you close distance and how quickly you get out after an exchange."
     }
   },
   "cricket_roles": {
@@ -132,6 +141,25 @@
       "balance": "staying steady on stairs and uneven ground, and in single-leg training",
       "movement": "lifting from the floor, sitting down and standing up with control",
       "mobility": "reaching overhead, twisting and bending without stiffness"
+    },
+    "kickboxing": {
+      "where": "In the ring",
+      "strength": "the power in your punches and kicks, and protecting your shoulder on every punch",
+      "symmetry": "kicking, checking and pivoting equally off both sides",
+      "balance": "standing steady on one leg for kicks and knees, and returning to stance",
+      "movement": "getting low to slip, level-change and absorb body shots",
+      "mobility": "rotating fully into hooks and staying light on your feet",
+      "tests": {
+        "shoulder_er": "slowing your arm down at the end of every punch, so you can throw hard without guarding the shoulder",
+        "shoulder_ir": "the drive behind your punches",
+        "hip_abduction": "lifting and holding your leg for kicks, and staying stable in your stance",
+        "hip_adduction": "checking kicks and pulling the leg back fast after a kick",
+        "single_leg_squat": "standing steady on one leg for kicks and knees",
+        "overhead_squat": "getting low to slip, level-change and absorb body shots",
+        "arc_of_motion": "a full, free shoulder for hooks, uppercuts and guarding",
+        "dorsiflexion": "bouncing on the balls of your feet and pushing off to close distance"
+      },
+      "other_arm": "throwing equally hard with your lead and rear hand"
     }
   }
 }
