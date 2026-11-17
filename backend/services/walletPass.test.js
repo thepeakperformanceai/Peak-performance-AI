@@ -58,11 +58,10 @@ test('general / gym clients show GENERAL FITNESS', () => {
 
 test('Passcreator body uses the template property names', () => {
   const v = walletPass.passValues(report, { email: 'a@b.com' });
-  const body = walletPass.passBody(v, 'https://x/strip.png', { sendEmail: true });
+  const body = walletPass.passBody(v, 'https://x/strip.png');
   assert.strictEqual(body.FirstName, 'EBRAHEEM');
   assert.strictEqual(body.RetestBy, '03 DEC');
   assert.strictEqual(body.Email, 'a@b.com');
-  assert.strictEqual(body.emailRecipient, 'a@b.com');
   assert.strictEqual(body.urlToBackground, 'https://x/strip.png');
 
   process.env.PASSCREATOR_PROPERTY_NAMES = '{"fullName":"Fullname"}';
@@ -75,10 +74,25 @@ test('Passcreator body uses the template property names', () => {
   }
 });
 
-test('no email → no Email property and no sendout', () => {
-  const body = walletPass.passBody(walletPass.passValues(report), 'u', { sendEmail: true });
+test('no email → no Email property', () => {
+  const body = walletPass.passBody(walletPass.passValues(report), 'u');
   assert.strictEqual(body.Email, undefined);
-  assert.strictEqual(body.emailRecipient, undefined);
+});
+
+test('emailPass calls the deliver endpoint', async () => {
+  process.env.PASSCREATOR_API_KEY = 'k';
+  process.env.PASSCREATOR_TEMPLATE_ID = 't';
+  const orig = axios.post;
+  let url;
+  axios.post = async (u) => { url = u; return { data: {} }; };
+  try {
+    await walletPass.emailPass('pass-1', 'a+b@c.com');
+    assert.strictEqual(url, 'https://app.passcreator.com/api/pass/deliver/pass-1/email/a%2Bb%40c.com');
+  } finally {
+    axios.post = orig;
+    delete process.env.PASSCREATOR_API_KEY;
+    delete process.env.PASSCREATOR_TEMPLATE_ID;
+  }
 });
 
 test('createPass calls Passcreator with the template and API key', async () => {

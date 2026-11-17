@@ -113,7 +113,7 @@ const passValues = (report, overrides = {}) => {
 };
 
 /** Passcreator request body (property names → values, plus the strip image). */
-const passBody = (values, stripUrl, { sendEmail = false } = {}) => {
+const passBody = (values, stripUrl) => {
   const names = propertyNames();
   const body = {};
   for (const [k, v] of Object.entries(values)) {
@@ -121,7 +121,6 @@ const passBody = (values, stripUrl, { sendEmail = false } = {}) => {
     body[names[k]] = v;
   }
   body.urlToBackground = stripUrl;
-  if (sendEmail && values.email) body.emailRecipient = values.email;
   return body;
 };
 
@@ -174,9 +173,26 @@ const updatePass = async (identifier, body) => {
   }
 };
 
+/**
+ * Emails the pass link using the email template chosen in the pass template's
+ * sendout settings (Passcreator's email sendout must be activated).
+ */
+const emailPass = async (identifier, email) => {
+  const { apiKey } = config();
+  try {
+    await axios.post(
+      `${PASSCREATOR_URL}/api/pass/deliver/${encodeURIComponent(identifier)}/email/${encodeURIComponent(email)}`,
+      {},
+      { headers: { Authorization: apiKey, Accept: 'application/json' }, timeout: 30000 }
+    );
+  } catch (e) {
+    throw passcreatorError(e);
+  }
+};
+
 const newImageToken = () => crypto.randomBytes(24).toString('hex');
 
 module.exports = {
-  passValues, passBody, createPass, updatePass, newImageToken, defaultFix, testDateOf, shortDate, sportOf,
+  passValues, passBody, createPass, updatePass, emailPass, newImageToken, defaultFix, testDateOf, shortDate, sportOf,
   propertyNames, DEFAULT_PROPERTY_NAMES, RETEST_WEEKS
 };

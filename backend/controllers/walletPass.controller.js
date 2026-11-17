@@ -99,7 +99,7 @@ const createOrUpdateWalletPass = async (req, res, next) => {
       await report.save();
     }
     const stripUrl = `${publicBaseUrl(req)}/api/wallet/strip/${imageToken}.png`;
-    const body = walletPass.passBody(values, stripUrl, { sendEmail: !!sendEmail });
+    const body = walletPass.passBody(values, stripUrl);
 
     let identifier = report.walletPass?.identifier;
     let link = report.walletPass?.link;
@@ -120,20 +120,31 @@ const createOrUpdateWalletPass = async (req, res, next) => {
       }
     }
 
+    // Email the link (separate call: Passcreator doesn't email on create/update).
+    let emailError = null;
+    if (sendEmail && values.email) {
+      try {
+        await walletPass.emailPass(identifier, values.email);
+      } catch (e) {
+        emailError = e.message;
+      }
+    }
+    const emailed = !!(sendEmail && values.email && !emailError);
+
     const now = new Date();
     report.walletPass = {
       identifier,
       link,
       imageToken,
       email: values.email || report.walletPass?.email || '',
-      sentAt: sendEmail && values.email ? now : report.walletPass?.sentAt,
+      sentAt: emailed ? now : report.walletPass?.sentAt,
       createdAt: report.walletPass?.createdAt || now,
       updatedAt: now
     };
     report.markModified('walletPass');
     await report.save();
 
-    res.json({ action, link, values, emailed: !!(sendEmail && values.email) });
+    res.json({ action, link, values, emailed, emailError });
   } catch (error) {
     next(error);
   }

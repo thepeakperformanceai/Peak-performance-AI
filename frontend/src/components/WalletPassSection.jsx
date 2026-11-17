@@ -43,6 +43,7 @@ export default function WalletPassSection({ report }) {
         : r.action === 'updated-after-retest' ? 'Their existing Wallet card now shows the new results'
           : 'Wallet card updated'
       toast.success(r.emailed ? `${msg} and emailed` : msg)
+      if (r.emailError) toast.error(`Email not sent: ${r.emailError}`, { duration: 8000 })
     } catch (e) { toast.error(e.message) } finally { setBusy(false) }
   }
 
