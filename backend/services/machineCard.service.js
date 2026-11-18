@@ -328,8 +328,8 @@ const buildMachineReport = ({ tests: testsIn, sport, profile, useProposed, prose
   const weakest = priority ? weakestOf(priority) : null;
 
   // Coach's note in three parts: your weapon, what's holding you back, next step.
-  // Kickboxing (K7) cards have no tiers: one look whatever the OVR.
-  const noTiers = sp.key === 'kickboxing';
+  // Client cards have no tiers (Nov 2026): one standard card whatever the OVR.
+  const noTiers = true;
   const nextStep = ovr === null
     ? `${mcfg.next_step} Retest with the missing tests to get your first rating.`
     : noTiers ? `${mcfg.next_step} Retest to see your progress.`

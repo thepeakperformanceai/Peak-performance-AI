@@ -54,6 +54,15 @@ const TIERS = {
     band: 'linear-gradient(155deg, #f6a463 0%, #e8661a 50%, #b9480f 100%)',
     ink: '#1a0d04', soft: '#3d1d08', deep: '#b34700', bar: '#d4601a', track: '#f3e1d2', stripe: 'rgba(255,255,255,0.22)',
   },
+  // Client cards (VALD machine tests): one standard copper look for every
+  // score — no Bronze / Silver / Gold (Nov 2026).
+  standard: {
+    label: 'RATING',
+    page: '#f3e8de',
+    foil: 'linear-gradient(135deg, #5a3216 0%, #c0814c 26%, #f3cfab 50%, #ab6a37 74%, #5e3518 100%)',
+    band: 'linear-gradient(155deg, #f6d3b2 0%, #dca06b 48%, #b9773f 100%)',
+    ink: '#241103', soft: '#5a3217', deep: '#8c4f22', bar: '#a8642f', track: '#efdfd0', stripe: 'rgba(255,255,255,0.28)',
+  },
   unrated: {
     label: 'UNRATED',
     page: '#e9ecf0',
@@ -66,9 +75,13 @@ const TIERS = {
 export const tierFor = (ovr) =>
   ovr == null ? 'unrated' : ovr >= 75 ? 'gold' : ovr >= 65 ? 'silver' : 'bronze'
 
-// Kickboxing (K7) cards keep one look whatever the OVR; every other sport uses tiers.
+// Kickboxing (K7) cards keep their own fixed look; other client cards (VALD
+// machine tests) use one standard look whatever the OVR. Only the older
+// battery cards still use Bronze / Silver / Gold.
 const isK7 = (rc) => rc?.sportKey === 'kickboxing'
-export const themeFor = (rc) => (isK7(rc) ? 'k7' : tierFor(rc?.overallOVR))
+export const themeFor = (rc) => (isK7(rc) ? 'k7'
+  : rc?.statSet === 'machine_v1' ? (rc?.overallOVR == null ? 'unrated' : 'standard')
+    : tierFor(rc?.overallOVR))
 
 // Shared ink for the card body (all tiers).
 const BODY = '#fffdf9', TXT = '#1c1f24', MUTED = '#5c636e', FAINT = '#8d949e', RULE = '#e7e2d9'
@@ -612,8 +625,8 @@ ${look ? look.motif : `    <div style="position:absolute;left:232px;top:-120px;w
       <div style="display:flex;align-items:center;margin-left:${nameLeft}px">
         <span style="font-family:${DISPLAY};font-size:${k7 ? 16 : 18}px;letter-spacing:${k7 ? 1.5 : 2.5}px;${k7 ? 'white-space:nowrap;' : ''}color:${t.ink};border:2px solid ${t.ink};border-radius:5px;padding:1px 8px 0">${machine && pending ? `RATING PENDING${look ? ` ${look.word}` : ''}` : `${t.label} ${look ? look.word : custom ? '· CUSTOM ASSESSMENT' : 'CARD'}`}</span>${look ? look.icon : ''}
       </div>
-      ${machine && rc.tierProgress ? `<div style="font-family:${TEXT};font-size:11px;font-weight:700;color:${t.ink};margin:-4px 0 0 ${nameLeft}px">${esc(rc.tierProgress)}</div>` : ''}
-      <div style="font-family:${DISPLAY};font-size:${nameSize}px;line-height:0.95;color:${t.ink};letter-spacing:1px;margin-top:${machine && rc.tierProgress ? 6 : 16}px;margin-left:${nameLeft}px">${esc(name.toUpperCase())}</div>
+      ${machine && rc.tierProgress && tierKey !== 'standard' ? `<div style="font-family:${TEXT};font-size:11px;font-weight:700;color:${t.ink};margin:-4px 0 0 ${nameLeft}px">${esc(rc.tierProgress)}</div>` : ''}
+      <div style="font-family:${DISPLAY};font-size:${nameSize}px;line-height:0.95;color:${t.ink};letter-spacing:1px;margin-top:${machine && rc.tierProgress && tierKey !== 'standard' ? 6 : 16}px;margin-left:${nameLeft}px">${esc(name.toUpperCase())}</div>
       </div>
       ${rc.fieldMeaning?.playerProfile ? `<div style="font-family:${TEXT};font-size:12.5px;font-style:italic;color:${t.soft};margin-top:6px;line-height:1.35">${esc(rc.fieldMeaning.playerProfile)}</div>` : ''}
       <div style="display:flex;gap:8px;margin-top:14px;flex-wrap:wrap">
@@ -978,7 +991,7 @@ export function storyCardHtml(report) {
       <div style="position:absolute;left:430px;top:-300px;width:50px;height:2600px;background:${t.stripe};transform:rotate(-28deg)"></div>
       <div style="position:relative;display:flex;align-items:center;justify-content:space-between">
         <img src="${LOGO_URL}" alt="Peak Performance" width="250" height="190" style="width:250px;height:190px;opacity:0.95">
-        <span style="font-family:${DISPLAY};font-size:52px;letter-spacing:6px;color:${t.ink};border:4px solid ${t.ink};border-radius:12px;padding:4px 22px 0">${pending ? 'RATING PENDING' : isK7(rc) ? 'K7 FIGHT CARD' : `${t.label} TIER`}</span>
+        <span style="font-family:${DISPLAY};font-size:52px;letter-spacing:6px;color:${t.ink};border:4px solid ${t.ink};border-radius:12px;padding:4px 22px 0">${pending ? 'RATING PENDING' : isK7(rc) ? 'K7 FIGHT CARD' : tierKey === 'standard' ? 'RATING CARD' : `${t.label} TIER`}</span>
       </div>
       <div style="position:relative;margin-top:56px;font-family:${DISPLAY};font-size:${nameSize}px;line-height:0.92;letter-spacing:2px;color:${t.ink}">${esc(name)}</div>
       <div style="position:relative;margin-top:14px;font-family:${TEXT};font-size:34px;font-weight:700;letter-spacing:6px;color:${t.soft}">${esc(String(rc.sport || '').toUpperCase())}</div>

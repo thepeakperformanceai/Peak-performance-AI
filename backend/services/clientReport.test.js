@@ -41,11 +41,11 @@ test('no AI: the report uses the code\'s own sentences, and keeps the draft foot
   assert.deepEqual(rc.coachNote.map(p => [p.label, p.text]), [
     ['Your weapon', 'Symmetry is your highest stat at 95. It helps with pushing off equally to your forehand and backhand side.'],
     ['What\'s holding you back', 'Mobility is your lowest stat at 48. On Shoulder Arc of Motion, your right side is significantly below the normal range for people your age and sex.'],
-    ['Next step', 'A 6-week Rebuild targets exactly this. Retest to move toward Silver.']
+    ['Next step', 'A 6-week Rebuild targets exactly this. Retest to see your progress.']
   ]);
   assert.equal(rc.ovrLine, 'OVR = average of your scored stats (4 of 5 scored).');
   assert.match(rc.benchmarkNote, /OVR = average of your scored stats \(4 of 5 scored\)\./);
-  assert.equal(rc.tierProgress, 'Silver at 65. You\'re 3 points away.');
+  assert.equal(rc.tierProgress, null); // one standard card, no tiers
   assert.equal(rc.bookingLine, 'Book your Rebuild or retest: WhatsApp +92 303 901 9991');
   assert.deepEqual(rc.fieldMeaning.stats.map(s => [s.name, s.status]), [
     ['Strength', 'scored'], ['Symmetry', 'scored'], ['Balance', 'scored'], ['Movement', 'not_tested'], ['Mobility', 'scored'], ['Speed', 'locked']
@@ -79,7 +79,8 @@ test('AI rewording is used only when it passes every check', async () => {
   const check = (patch) => problemsWith({ ...good, ...patch, stats: { ...good.stats, ...(patch.stats || {}) } }, payload).join(' | ');
   assert.match(check({ note: { ...good.note, weapon: 'Your rating is 71.' } }), /numbers that are not in the payload: 71/);
   assert.match(check({ note: { ...good.note, holding: 'Mobility is your lowest stat. Your shoulder range is below normal.' } }), /note.holding dropped 48/);
-  assert.match(check({ note: { ...good.note, next: 'A 6-week Rebuild targets exactly this. Retest soon.' } }), /note.next must still name Silver/);
+  // No tiers on client cards, so the next step no longer has to name one.
+  assert.doesNotMatch(check({ note: { ...good.note, next: 'A 6-week Rebuild targets exactly this. Retest soon.' } }), /must still name/);
   assert.match(check({ focus: 'Do 3 sets of 10 to fix this.' }), /prescription/);
   assert.match(check({ focus: 'Add some lunges and planks.' }), /exercises or training.*lunges.*planks/);
   assert.match(check({ stats: { strength: 'Dynamo shows Strength 49.' } }), /testing device/);
