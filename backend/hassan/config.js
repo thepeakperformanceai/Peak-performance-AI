@@ -56,7 +56,8 @@ const config = () => ({
 
   gemini: {
     key: process.env.HASSAN_GEMINI_API_KEY || process.env.GEMINI_API_KEY,
-    model: process.env.HASSAN_GEMINI_MODEL || 'gemini-2.5-flash'
+    // Tried in order; a model Google has retired (404) is skipped.
+    models: [...new Set([process.env.HASSAN_GEMINI_MODEL, 'gemini-3.6-flash', process.env.GEMINI_MODEL].filter(Boolean))]
   },
 
   alertEmail: process.env.HASSAN_ALERT_EMAIL || '',

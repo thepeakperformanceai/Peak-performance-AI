@@ -46,31 +46,47 @@ const parseDecision = (text) => {
   };
 };
 
-const think = async (cfg, input) => {
-  if (!cfg.gemini.key) throw new Error('Hassan has no Gemini key (set HASSAN_GEMINI_API_KEY or GEMINI_API_KEY).');
-  let res;
+const callModel = async (cfg, model, input) => {
   try {
-    res = await axios.post(
-    `https://generativelanguage.googleapis.com/v1beta/models/${cfg.gemini.model}:generateContent`,
-    {
-      systemInstruction: { parts: [{ text: buildSystemPrompt(cfg) }] },
-      contents: [{ role: 'user', parts: [{ text: buildUserPrompt(input) }] }],
-      generationConfig: {
-        temperature: 0.4,
-        responseMimeType: 'application/json',
-        maxOutputTokens: 1024,
-        // Flash models: skip "thinking" so replies are fast and use less free quota.
-        ...(/flash/i.test(cfg.gemini.model) ? { thinkingConfig: { thinkingBudget: 0 } } : {})
-      }
-    },
-    { headers: { 'x-goog-api-key': cfg.gemini.key, 'Content-Type': 'application/json' }, timeout: 30000 }
+    const res = await axios.post(
+      `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`,
+      {
+        systemInstruction: { parts: [{ text: buildSystemPrompt(cfg) }] },
+        contents: [{ role: 'user', parts: [{ text: buildUserPrompt(input) }] }],
+        generationConfig: {
+          temperature: 0.4,
+          responseMimeType: 'application/json',
+          maxOutputTokens: 2048,
+          // 2.5 Flash: skip "thinking" so replies are fast and use less free quota.
+          ...(/2\.5-flash/i.test(model) ? { thinkingConfig: { thinkingBudget: 0 } } : {})
+        }
+      },
+      { headers: { 'x-goog-api-key': cfg.gemini.key, 'Content-Type': 'application/json' }, timeout: 30000 }
     );
+    const parts = res.data?.candidates?.[0]?.content?.parts || [];
+    const text = parts.filter(p => !p.thought).map(p => p.text || '').join('');
+    return parseDecision(text);
   } catch (e) {
     const g = e.response?.data?.error;
-    throw new Error(g ? `Gemini ${e.response.status} ${g.status || ''}: ${g.message}` : e.message);
+    const err = new Error(g ? `Gemini ${e.response.status} ${g.status || ''} (${model}): ${g.message}` : e.message);
+    err.status = e.response?.status;
+    throw err;
   }
-  const text = res.data?.candidates?.[0]?.content?.parts?.[0]?.text;
-  return parseDecision(text);
+};
+
+const think = async (cfg, input) => {
+  if (!cfg.gemini.key) throw new Error('Hassan has no Gemini key (set HASSAN_GEMINI_API_KEY or GEMINI_API_KEY).');
+  let last;
+  for (const model of cfg.gemini.models) {
+    try {
+      return await callModel(cfg, model, input);
+    } catch (e) {
+      last = e;
+      if (e.status !== 404) throw e; // only a retired/unknown model moves on to the next one
+      console.warn(`[hassan] ${e.message}; trying the next model`);
+    }
+  }
+  throw last;
 };
 
 module.exports = { think, buildUserPrompt, parseDecision };

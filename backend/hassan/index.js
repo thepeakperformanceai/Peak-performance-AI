@@ -42,6 +42,19 @@ webhookRouter.get('/status', (req, res) => {
   });
 });
 
+// Turn Hassan back on for one chat: /resume?key=…&phone=923001234567
+webhookRouter.get('/resume', async (req, res) => {
+  if (!keyOk(req)) return res.sendStatus(403);
+  const phone = String(req.query.phone || '').replace(/\D/g, '');
+  if (!phone) return res.status(400).json({ error: 'Add &phone=<number with country code, digits only>' });
+  try {
+    const lead = await getAgent().setPaused(phone, false);
+    res.json({ phone: lead.phone, hassanOn: !lead.paused, stage: lead.stage });
+  } catch (e) {
+    res.status(e.statusCode || 500).json({ error: e.message });
+  }
+});
+
 webhookRouter.get('/connect', async (req, res) => {
   if (!keyOk(req)) return res.sendStatus(403);
   const cfg = config();

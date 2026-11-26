@@ -41,7 +41,7 @@ Turn him back on from the Inbox.
 | `WHATSAPP_APP_SECRET` | Meta app → Settings → Basic → App secret |
 | `WHATSAPP_VERIFY_TOKEN` | Any long random text; paste the same text into Meta's webhook form |
 | `HASSAN_GEMINI_API_KEY` | Gemini key for Hassan (falls back to `GEMINI_API_KEY`) |
-| `HASSAN_GEMINI_MODEL` | Default `gemini-2.5-flash` |
+| `HASSAN_GEMINI_MODEL` | Optional. Tried first; then `gemini-3.6-flash`, then `GEMINI_MODEL` |
 | `HASSAN_ALERT_EMAIL` | Where booking and handoff alerts go (uses the existing SMTP settings) |
 | `HASSAN_TPL_DAY3`, `HASSAN_TPL_DAY7`, `HASSAN_TPL_REMINDER` | Names of the approved templates below |
 | `HASSAN_CLIENTS_PER_SLOT` | Default `1` |
