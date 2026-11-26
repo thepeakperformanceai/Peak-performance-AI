@@ -140,7 +140,7 @@ body{padding-bottom:72px}
 </div>
 <div style="flex:1 1 460px;min-width:0;max-width:580px;display:flex;flex-wrap:wrap;gap:20px;align-items:center;justify-content:center">
 <div style="flex:0 0 220px;display:flex;flex-direction:column;gap:6px">
-<video src="/assets/lab-test.mp4" poster="/assets/lab-poster.jpg" autoplay muted loop playsinline preload="auto" aria-label="Video: a client getting a strength and movement test at the Peak Performance lab in DHA, Karachi" style="display:block;width:220px;height:391px;object-fit:cover;border-radius:14px;background:#1A1A1A"></video>
+<div style="position:relative;width:220px"><video src="/assets/lab-test.mp4" poster="/assets/lab-poster.jpg" id="heroVid" autoplay muted loop playsinline preload="auto" aria-label="Video: a client getting a strength and movement test at the Peak Performance lab in DHA, Karachi" style="display:block;width:220px;height:391px;object-fit:cover;border-radius:14px;background:#1A1A1A"></video><button id="soundBtn" type="button" aria-label="Turn sound on" style="position:absolute;left:50%;bottom:12px;transform:translateX(-50%);display:inline-flex;align-items:center;gap:6px;min-height:40px;padding:0 16px;border:0;border-radius:999px;background:rgba(11,11,11,.8);color:#fff;font:600 14px Inter,system-ui,sans-serif;cursor:pointer;white-space:nowrap">🔊 Tap for sound</button></div>
 <p style="margin:0;color:#A8A8A8;font-size:13px;text-align:center">Inside a Peak test</p>
 </div>
 <div style="flex:1 1 280px;min-width:0;max-width:320px;display:flex;flex-direction:column;gap:6px">
@@ -248,5 +248,18 @@ body{padding-bottom:72px}
 <div class="sticky" role="region" aria-label="Book on WhatsApp"><span>Full body test · PKR 8,000</span><a href="https://wa.me/923039019991?text=Hi%20Peak%20Performance!%20I%27d%20like%20to%20book%20the%20PKR%208%2C000%20Full%20Body%20Assessment.%20My%20preferred%20day%2Ftime%20is...">Book on WhatsApp</a></div>
 
 </div>
+<script>
+(function(){
+  var v=document.getElementById('heroVid'), b=document.getElementById('soundBtn');
+  if(!v||!b) return;
+  function sync(){ b.innerHTML = v.muted ? '🔊 Tap for sound' : '🔇 Mute'; b.setAttribute('aria-label', v.muted ? 'Turn sound on' : 'Mute'); }
+  function toggle(){ v.muted = !v.muted; if(!v.muted){ v.volume=1; } v.play().catch(function(){}); sync(); }
+  b.addEventListener('click', function(e){ e.stopPropagation(); toggle(); });
+  v.addEventListener('click', toggle);
+  // Try sound first; browsers that block it fall back to a silent loop
+  v.muted = false;
+  v.play().then(sync).catch(function(){ v.muted = true; v.play().catch(function(){}); sync(); });
+})();
+</script>
 </body>
 </html>
