@@ -168,6 +168,7 @@ const createAgent = (deps) => {
 
     // A person is handling this chat: stay quiet, nudge them.
     if (lead.paused) {
+      log.log?.(`[hassan] paused on ...${String(lead.phone).slice(-4)}, not replying (turn him back on from the inbox)`);
       if (!lead.lastAlertAt || now() - new Date(lead.lastAlertAt) > 30 * MIN) {
         lead.lastAlertAt = now();
         await alert(`New message from ${lead.name || lead.profileName || lead.phone} (Hassan paused)`, `"${text ?? `[${msg.type}]`}"\n\nReply from the Inbox in the PP dashboard.`);
