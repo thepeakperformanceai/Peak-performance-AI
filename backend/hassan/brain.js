@@ -74,16 +74,31 @@ const callModel = async (cfg, model, input) => {
   }
 };
 
-const think = async (cfg, input) => {
+const sleep = (ms) => new Promise(r => setTimeout(r, ms));
+const BUSY = new Set([429, 500, 503, 504]);
+
+const think = async (cfg, input, wait = sleep) => {
   if (!cfg.gemini.key) throw new Error('Hassan has no Gemini key (set HASSAN_GEMINI_API_KEY or GEMINI_API_KEY).');
+  const delays = cfg.gemini.retryDelaysMs || [];
   let last;
   for (const model of cfg.gemini.models) {
-    try {
-      return await callModel(cfg, model, input);
-    } catch (e) {
-      last = e;
-      if (e.status !== 404) throw e; // only a retired/unknown model moves on to the next one
-      console.warn(`[hassan] ${e.message}; trying the next model`);
+    for (let attempt = 0; attempt <= delays.length; attempt++) {
+      try {
+        return await callModel(cfg, model, input);
+      } catch (e) {
+        last = e;
+        const busy = BUSY.has(e.status) || /timeout|ECONNRESET|socket hang up/i.test(e.message);
+        if (busy && attempt < delays.length) {
+          console.warn(`[hassan] ${e.message}; retrying in ${delays[attempt] / 1000}s`);
+          await wait(delays[attempt]);
+          continue;
+        }
+        if (busy || e.status === 404) {
+          console.warn(`[hassan] ${e.message}; trying the next model`);
+          break; // next model
+        }
+        throw e; // a real problem (bad key, bad request): don't hide it
+      }
     }
   }
   throw last;

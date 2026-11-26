@@ -392,3 +392,26 @@ test('resume after handoff: Hassan answers again', async () => {
   const r = await h.say('ok which slots?');
   assert.strictEqual(r.action, 'replied');
 });
+
+test('Gemini busy: retries, then falls back to the next model', async () => {
+  const axios = require('axios');
+  const brain = require('./brain');
+  const orig = axios.post; const tried = [];
+  axios.post = async (url) => {
+    const m = url.match(/models\/(.+):/)[1]; tried.push(m);
+    if (m === 'busy-model') { const e = new Error('x'); e.response = { status: 503, data: { error: { status: 'UNAVAILABLE', message: 'high demand' } } }; throw e; }
+    if (m === 'old-model') { const e = new Error('x'); e.response = { status: 404, data: { error: { status: 'NOT_FOUND', message: 'not found' } } }; throw e; }
+    return { data: { candidates: [{ content: { parts: [{ text: '{"reply":"Hi, Hassan here from Peak Performance."}' }] } }] } };
+  };
+  const warn = console.warn; console.warn = () => {};
+  try {
+    const c = { ...cfg(), gemini: { key: 'k', models: ['old-model', 'busy-model', 'good-model'], retryDelaysMs: [1, 1] } };
+    const d = await brain.think(c, { lead: { stage: 'new' }, messages: [], slots: [], now: T0 }, async () => {});
+    assert.strictEqual(d.reply, 'Hi, Hassan here from Peak Performance.');
+    assert.deepStrictEqual(tried, ['old-model', 'busy-model', 'busy-model', 'busy-model', 'good-model']);
+    // a bad key is not retried
+    tried.length = 0;
+    axios.post = async () => { const e = new Error('x'); e.response = { status: 400, data: { error: { status: 'INVALID_ARGUMENT', message: 'API key not valid' } } }; throw e; };
+    await assert.rejects(brain.think(c, { lead: { stage: 'new' }, messages: [], slots: [], now: T0 }, async () => {}), /API key not valid/);
+  } finally { axios.post = orig; console.warn = warn; }
+});

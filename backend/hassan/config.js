@@ -57,7 +57,8 @@ const config = () => ({
   gemini: {
     key: process.env.HASSAN_GEMINI_API_KEY || process.env.GEMINI_API_KEY,
     // Tried in order; a model Google has retired (404) is skipped.
-    models: [...new Set([process.env.HASSAN_GEMINI_MODEL, 'gemini-3.6-flash', process.env.GEMINI_MODEL].filter(Boolean))]
+    models: [...new Set([process.env.HASSAN_GEMINI_MODEL, 'gemini-3.6-flash', 'gemini-flash-latest', 'gemini-flash-lite-latest', process.env.GEMINI_MODEL].filter(Boolean))],
+    retryDelaysMs: [1500, 4000] // when Google is busy (429/500/503), wait and try the same model again
   },
 
   alertEmail: process.env.HASSAN_ALERT_EMAIL || '',
