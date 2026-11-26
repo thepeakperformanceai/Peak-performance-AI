@@ -13,15 +13,17 @@ Free mode (default) only sends messages that cost nothing:
 
 ## How it decides
 
-1. Hard rules first (no AI): price pushback, discounts, deals or "talk to
-   someone" → Faraz; "are you a bot?" → honest answer. Pain or injury → Hassan
+1. Hard rules first (no AI): partnerships, complaints or "talk to someone" →
+   Faraz; "are you a bot?" → honest answer. Price pushback or discount requests
+   → Hassan says our prices are fixed and the same for everyone, then offers two
+   slots (if the AI can't write a safe reply, a standard fixed-price reply is sent). Pain or injury → Hassan
    says he's noted it, that they need to visit our physio to assess it, gives
    the physio price and offers two slots (no advice, no diagnosis). If the AI
    can't write a safe reply, a standard physio referral is sent instead.
 2. Otherwise Gemini writes the reply from the playbook (`playbook.js`).
 3. Every reply is checked (`rules.js`): only list prices, no equipment brands,
    no "online", no discounts or guarantees, never claims to be human. A failing
-   reply is retried once, then the chat is handed to Faraz.
+   reply is retried once, then the chat is handed to Faraz (or, for price or pain, the standard reply is sent).
 4. Bookings are made by the server, not the AI: the slot must be free, and the
    confirmation text is fixed.
 

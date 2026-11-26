@@ -8,17 +8,22 @@ const HOUR = 60 * 60 * 1000;
 // Medical: Hassan notes it and steers them to a physio assessment. English + Roman Urdu.
 const MEDICAL = /\b(pain|painful|hurts?|hurting|surgery|surgeries|operation|fracture[ds]?|sprain(ed)?|torn|tear in|dislocat\w*|medication|medicines?|painkillers?|dard|chot|takleef|sujan|swelling|swollen)\b/i;
 
-// Price pushback / deals / wanting a person / unhappy: always goes to Faraz.
-const FARAZ = /\b(discount|cheaper|kam kar\w*|kam ho\w*|kam hoga|sasta|mehe?nga|mahanga|expensive|too much|zyada hai|deal|package|partnership|collab\w*|sponsor\w*|refund|complain\w*|complaint|scam|fraud|talk to (a |someone|somebody|faraz|the owner|manager)|call me|phone kar\w*|manager|owner)\b/i;
+// Price pushback: Hassan says the price is fixed (no handoff).
+const PRICE = /\b(discount|cheaper|kam kar\w*|kam ho\w*|kam hoga|sasta|mehe?nga|mahanga|expensive|too much|zyada hai|deal|package|best price|last price|final price|concession|rate kam)\b/i;
+
+// Partnerships, wanting a person, unhappy: always goes to Faraz.
+const FARAZ = /\b(partnership|collab\w*|sponsor\w*|refund|complain\w*|complaint|scam|fraud|talk to (a |someone|somebody|faraz|the owner|manager)|call me|phone kar\w*|manager|owner)\b/i;
 
 // "Am I talking to a bot?" — answered honestly, without a handoff.
 const BOT_CHECK = /\b(are you (a )?(bot|robot|real|human|ai)|is this (a )?(bot|robot|real person|human|ai)|bot ho|real (person|insaan)|insaan ho|machine ho|automated)\b/i;
 
 const detectIntent = (text = '') => {
-  if (FARAZ.test(text)) return { handoff: 'faraz', reason: 'Price, deal or asked for a person' };
-  if (MEDICAL.test(text)) return { medical: true };
-  if (BOT_CHECK.test(text)) return { botCheck: true };
-  return {};
+  if (FARAZ.test(text)) return { handoff: 'faraz', reason: 'Partnership, complaint or asked for a person' };
+  const out = {};
+  if (PRICE.test(text)) out.pricePushback = true;
+  if (MEDICAL.test(text)) out.medical = true;
+  if (!out.pricePushback && !out.medical && BOT_CHECK.test(text)) out.botCheck = true;
+  return out;
 };
 
 // ── Outbound checks (run on every AI reply) ──────────────────────────────────
@@ -72,6 +77,10 @@ const checkMedicalReply = (reply) => {
   return problems;
 };
 
+// Price pushback: the reply must say the price is fixed (and never discount).
+const checkFixedPriceReply = (reply) =>
+  /\b(fix|fixed|same (price )?for everyone|standard price)\b/i.test(reply || '') ? [] : ['did not say the price is fixed'];
+
 // ── WhatsApp windows (what is free to send) ──────────────────────────────────
 
 // 24h customer-service window: free-form messages allowed.
@@ -83,4 +92,4 @@ const adWindowOpen = (lead, now, cfg) =>
   !!lead.fromAd && !!lead.adEntryAt &&
   now - new Date(lead.adEntryAt).getTime() < cfg.adFreeWindowHours * HOUR;
 
-module.exports = { detectIntent, checkReply, checkMedicalReply, amountsIn, serviceWindowOpen, adWindowOpen, HOUR };
+module.exports = { detectIntent, checkReply, checkMedicalReply, checkFixedPriceReply, amountsIn, serviceWindowOpen, adWindowOpen, HOUR };

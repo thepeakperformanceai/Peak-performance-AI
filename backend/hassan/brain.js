@@ -5,7 +5,7 @@ const { label } = require('./slots');
 
 const HISTORY_LIMIT = 20;
 
-const buildUserPrompt = ({ lead, messages, slots, now, feedback, medical }) => {
+const buildUserPrompt = ({ lead, messages, slots, now, feedback, medical, priceFixed }) => {
   const history = messages.slice(-HISTORY_LIMIT).map(m => {
     const who = m.by === 'lead' ? 'LEAD' : m.by === 'staff' ? 'TEAM (Faraz)' : 'HASSAN';
     return `${who}: ${m.text}`;
@@ -26,6 +26,7 @@ const buildUserPrompt = ({ lead, messages, slots, now, feedback, medical }) => {
     history,
     '',
     medical ? 'IMPORTANT: their last message mentions pain or an injury. Say you have noted it and that they need to visit our physiotherapist so it can be assessed properly. Give the physio session price, offer two slots, set service to "physio". No advice, no diagnosis, no questions about symptoms.\n' : '',
+    priceFixed ? 'IMPORTANT: they are pushing back on price. Politely say our prices are fixed and the same for everyone, remind them in one line what they get, then offer two slots. Do not use the word "discount" and never lower the price.\n' : '',
     feedback ? `YOUR LAST DRAFT BROKE THESE RULES, fix them: ${feedback}\n` : '',
     'Write Hassan\'s next message as the JSON object.'
   ].join('\n');

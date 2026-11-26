@@ -1,5 +1,5 @@
 // Hassan's decision loop: one inbound WhatsApp message in, at most one reply out.
-const { detectIntent, checkReply, checkMedicalReply, serviceWindowOpen, adWindowOpen, HOUR } = require('./rules');
+const { detectIntent, checkReply, checkMedicalReply, checkFixedPriceReply, serviceWindowOpen, adWindowOpen, HOUR } = require('./rules');
 const { slotsToOffer, freeSlots, parseSlotId, label } = require('./slots');
 const { pkr } = require('./playbook');
 
@@ -8,11 +8,16 @@ const monthKey = (d) => d.toISOString().slice(0, 7);
 const firstName = (lead) => (lead.name || lead.fullName || lead.profileName || '').split(/\s+/)[0] || '';
 
 const HOLDING = {
-  faraz: 'Totally fair question. Let me get Faraz to message you personally on this.',
+  faraz: 'Of course. Let me get Faraz to message you personally on this.',
   error: 'Thanks for your message! Someone from the team will reply to you shortly.'
 };
 const BOT_REPLY = "Yes, I'm Hassan, Peak Performance's AI assistant. Happy to help you, or Faraz can message you himself. Which would you prefer?";
 const NON_TEXT_REPLY = 'Sorry, I can only read typed messages here. Could you type your question for me?';
+
+// Used when the lead pushes back on price and the AI can't produce a safe reply.
+const fixedPriceReply = (service, price, slots) =>
+  `I understand. Our prices are fixed and the same for everyone: the ${service} is ${price}. ` +
+  (slots.length >= 2 ? `I have ${slots[0].label} or ${slots[1].label}. Which suits you?` : 'Shall I find you a time this week?');
 
 // Used when the lead mentions pain or injury and the AI can't produce a safe reply.
 const physioReferral = (price, slots) =>
@@ -186,6 +191,8 @@ const createAgent = (deps) => {
 
     // Pain or injury: noted, and we steer them to a physio assessment (no handoff).
     const medical = !!intent.medical;
+    const priceFixed = !!intent.pricePushback;
+    if (priceFixed) record(lead, 'system', 'Pushed back on price: Hassan told them prices are fixed', { kind: 'note' });
     if (medical) {
       lead.mentionedPain = true;
       lead.service = 'physio';
@@ -198,7 +205,16 @@ const createAgent = (deps) => {
     const slots = slotsToOffer(cfg, t, await store.bookingsBetween(t, horizon));
     const problemsWith = (d) => {
       if (d.book || d.handoff) return [];
-      return [...checkReply(d.reply, cfg), ...(medical ? checkMedicalReply(d.reply) : [])];
+      return [...checkReply(d.reply, cfg), ...(medical ? checkMedicalReply(d.reply) : []), ...(priceFixed ? checkFixedPriceReply(d.reply) : [])];
+    };
+    const fallback = (why) => (medical ? physioFallback(why) : priceFixed ? priceFallback(why) : null);
+    const priceFallback = async (why) => {
+      const key = cfg.services[lead.service] ? lead.service : 'assessment';
+      const svc = cfg.services[key];
+      lead.stage = 'slot_offered';
+      await sendText(lead, fixedPriceReply(svc.label, pkr(svc.price), slots));
+      log.error(`[hassan] used the standard fixed-price reply (${why})`);
+      return { lead: await store.saveLead(lead), action: 'fixed_price' };
     };
     const physioFallback = async (why) => {
       lead.stage = 'slot_offered';
@@ -208,20 +224,20 @@ const createAgent = (deps) => {
     };
     let decision;
     try {
-      decision = await brain.think(cfg, { lead, messages: lead.messages, slots, now: t, medical });
+      decision = await brain.think(cfg, { lead, messages: lead.messages, slots, now: t, medical, priceFixed });
       let problems = problemsWith(decision);
       if (problems.length) {
-        decision = await brain.think(cfg, { lead, messages: lead.messages, slots, now: t, medical, feedback: problems.join('; ') });
+        decision = await brain.think(cfg, { lead, messages: lead.messages, slots, now: t, medical, priceFixed, feedback: problems.join('; ') });
         problems = problemsWith(decision);
         if (problems.length) {
-          if (medical) return physioFallback(problems.join('; '));
+          if (medical || priceFixed) return fallback(problems.join('; '));
           await handOff(lead, 'faraz', `Hassan's reply failed the safety check (${problems.join('; ')})`, HOLDING.error);
           return { lead: await store.saveLead(lead), action: 'unsafe_reply' };
         }
       }
     } catch (e) {
       log.error('[hassan] AI failed:', e.message);
-      if (medical) return physioFallback(`AI error: ${e.message}`);
+      if (medical || priceFixed) return fallback(`AI error: ${e.message}`);
       await handOff(lead, 'faraz', `Hassan couldn't think of a reply (AI error: ${e.message})`, HOLDING.error);
       return { lead: await store.saveLead(lead), action: 'ai_error' };
     }
@@ -376,4 +392,4 @@ const createAgent = (deps) => {
   return { handleInbound, runScheduled, staffReply, setPaused, followUpLead };
 };
 
-module.exports = { createAgent, HOLDING, BOT_REPLY, NON_TEXT_REPLY, physioReferral };
+module.exports = { createAgent, HOLDING, BOT_REPLY, NON_TEXT_REPLY, physioReferral, fixedPriceReply };

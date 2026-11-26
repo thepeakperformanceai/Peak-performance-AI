@@ -3,7 +3,7 @@ const test = require('node:test');
 const assert = require('node:assert');
 const crypto = require('crypto');
 const { createAgent, HOLDING, BOT_REPLY, NON_TEXT_REPLY } = require('./agent');
-const { detectIntent, checkReply, checkMedicalReply, serviceWindowOpen, adWindowOpen } = require('./rules');
+const { detectIntent, checkReply, checkMedicalReply, checkFixedPriceReply, serviceWindowOpen, adWindowOpen } = require('./rules');
 const { allSlots, slotsToOffer, label, fromPkt } = require('./slots');
 const { parseDecision } = require('./brain');
 const { validSignature, parseWebhook } = require('./whatsapp');
@@ -63,8 +63,9 @@ test('pain and injury words are spotted (English and Roman Urdu), no handoff', (
   assert.ok(detectIntent('ghutne mein dard hai').medical);
   assert.strictEqual(detectIntent('ghutne mein dard hai').handoff, undefined);
   assert.ok(!detectIntent('I want to prevent injuries').medical);
-  // price pushback still wins
-  assert.strictEqual(detectIntent('knee pain, but 3000 is expensive').handoff, 'faraz');
+  // pain and price together: both flagged
+  const both = detectIntent('knee pain, but 3000 is expensive');
+  assert.ok(both.medical && both.pricePushback);
 });
 
 test('physio reply check: must send them to the physio, no treatment tips', () => {
@@ -73,11 +74,21 @@ test('physio reply check: must send them to the physio, no treatment tips', () =
   assert.match(checkMedicalReply('Noted. Ice it tonight and see our physio tomorrow.').join(), /advice/);
 });
 
-test('price pushback and asking for a person go to Faraz', () => {
-  for (const t of ['Can you do 5000?? too expensive', 'thora kam kar dein', 'any discount', 'can I talk to someone']) {
+test('price pushback is spotted (no handoff); partnerships and asking for a person go to Faraz', () => {
+  for (const t of ['Can you do 5000?? too expensive', 'thora kam kar dein', 'any discount', 'last price batao']) {
+    const i = detectIntent(t);
+    assert.ok(i.pricePushback, t); assert.strictEqual(i.handoff, undefined, t);
+  }
+  for (const t of ['can I talk to someone', 'we want a partnership for our club', 'I want a refund']) {
     assert.strictEqual(detectIntent(t).handoff, 'faraz', t);
   }
-  assert.strictEqual(detectIntent('bhai ye test kitne ka hai aur online hota hai?').handoff, undefined);
+  assert.deepStrictEqual(detectIntent('bhai ye test kitne ka hai aur online hota hai?'), {});
+});
+
+test('fixed-price reply check', () => {
+  assert.deepStrictEqual(checkFixedPriceReply('Our prices are fixed and the same for everyone.'), []);
+  assert.deepStrictEqual(checkFixedPriceReply('Bhai price fix hai, sab ke liye same.'), []);
+  assert.match(checkFixedPriceReply('Let me see what I can do!').join(), /fixed/);
 });
 
 test('bot check is spotted', () => {
@@ -194,11 +205,30 @@ test('pain lead books a physio slot', async () => {
   assert.match(h.wa.sent[0].body, /Physiotherapy session .* PKR 3,000/);
 });
 
-test('price push "can you do 5000?" goes to Faraz, no discount', async () => {
-  const h = setup([]);
-  await h.say('Can you do 5000? too expensive');
-  assert.strictEqual(h.wa.sent[0].body, HOLDING.faraz);
-  assert.strictEqual((await h.store.getLead('923001234567')).handoffTo, 'faraz');
+test('price push "can you do 5000?": told the price is fixed, offered slots, no handoff', async () => {
+  const h = setup([{ reply: 'I understand. Our prices are fixed and the same for everyone: PKR 8,000. In 30 minutes you will know exactly what to work on. Thursday 7pm or Saturday 6:30pm?', stage: 'slot_offered' }]);
+  const r = await h.say('Can you do 5000? too expensive');
+  assert.strictEqual(r.action, 'replied');
+  assert.ok(h.brain.calls[0].priceFixed);
+  assert.match(h.wa.sent[0].body, /fixed/);
+  const lead = await h.store.getLead('923001234567');
+  assert.ok(!lead.paused); assert.strictEqual(h.alerts.length, 0);
+});
+
+test('price push: AI offers a deal twice → standard fixed-price reply', async () => {
+  const h = setup([{ reply: 'For you, PKR 6,000!' }, { reply: 'Let me check with Faraz what we can do.' }]);
+  const r = await h.say('thora kam kar dein bhai');
+  assert.strictEqual(r.action, 'fixed_price');
+  assert.match(h.wa.sent[0].body, /^I understand\. Our prices are fixed and the same for everyone: the Full Body Assessment is PKR 8,000\. I have .+ or .+\. Which suits you\?$/);
+  assert.ok(!h.wa.sent.some(x => /6,000/.test(x.body || '')));
+});
+
+test('price push for a physio lead quotes the physio price', async () => {
+  const h = setup([{ reply: "Noted. You'll need our physiotherapist to assess it. PKR 3,000. Thu 6pm or 6:30pm?" }, new Error('down')]);
+  await h.say('my back hurts');
+  const r = await h.say('3000 is too much');
+  assert.strictEqual(r.action, 'fixed_price');
+  assert.match(h.wa.sent[1].body, /Physiotherapy session is PKR 3,000/);
 });
 
 test('"Am I talking to a real person?" gets an honest answer', async () => {
@@ -326,7 +356,7 @@ test('a reply from the lead resets the follow-up clock', async () => {
 
 test('booked and paused leads get no follow-ups', async () => {
   const h = setup([]);
-  await h.say('any discount?'); // → paused
+  await h.say('can I talk to someone?'); // → paused
   h.advance(30 * HOUR);
   assert.strictEqual((await h.agent.runScheduled()).followUps, 0);
 });
@@ -348,7 +378,7 @@ test('reminder: free-form inside the window, template for ad lead outside it', a
 
 test('team reply: works inside 24h, refused after', async () => {
   const h = setup([]);
-  await h.say('any discount?');
+  await h.say('can I talk to someone?');
   const lead = await h.agent.staffReply('923001234567', 'Hi Ali, Faraz here. Happy to help.');
   assert.strictEqual(lead.messages[lead.messages.length - 1].by, 'staff');
   h.advance(25 * HOUR);
