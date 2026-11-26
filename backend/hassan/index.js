@@ -1,6 +1,7 @@
 // Plugs Hassan into the Express app: Meta's webhook (public), the Inbox API
 // (admins only) and the follow-up timer.
 const express = require('express');
+const axios = require('axios');
 const { config } = require('./config');
 const { createAgent } = require('./agent');
 const { mongoStore } = require('./store');
@@ -24,6 +25,37 @@ const getAgent = () => {
 // ── Public webhook: Meta calls this ──────────────────────────────────────────
 const webhookRouter = express.Router();
 
+// What the webhook last saw (no secrets), for /status.
+const recent = { lastPostAt: null, lastResult: null, lastMessages: 0, posts: 0 };
+const keyOk = (req) => { const t = config().whatsapp.verifyToken; return !!t && req.query.key === t; };
+
+// Diagnostics, protected by the verify token: /status?key=… and /connect?key=…&waba=…
+webhookRouter.get('/status', (req, res) => {
+  if (!keyOk(req)) return res.sendStatus(403);
+  const cfg = config();
+  res.json({
+    hassanEnabled: cfg.enabled,
+    hasToken: !!cfg.whatsapp.token, hasPhoneNumberId: !!cfg.whatsapp.phoneNumberId,
+    hasAppSecret: !!cfg.whatsapp.appSecret, hasGeminiKey: !!cfg.gemini.key,
+    webhookPostsSinceRestart: recent.posts, lastPostAt: recent.lastPostAt,
+    lastResult: recent.lastResult, lastMessages: recent.lastMessages
+  });
+});
+
+webhookRouter.get('/connect', async (req, res) => {
+  if (!keyOk(req)) return res.sendStatus(403);
+  const cfg = config();
+  const waba = String(req.query.waba || '').replace(/\D/g, '');
+  if (!waba) return res.status(400).json({ error: 'Add &waba=<WhatsApp account ID>' });
+  try {
+    const r = await axios.post(`https://graph.facebook.com/${cfg.whatsapp.apiVersion}/${waba}/subscribed_apps`, {}, { headers: { Authorization: `Bearer ${cfg.whatsapp.token}` }, timeout: 20000 });
+    const list = await axios.get(`https://graph.facebook.com/${cfg.whatsapp.apiVersion}/${waba}/subscribed_apps`, { headers: { Authorization: `Bearer ${cfg.whatsapp.token}` }, timeout: 20000 });
+    res.json({ subscribed: r.data, appsNowConnected: (list.data?.data || []).map(a => a.whatsapp_business_api_data?.name || a.name || a.id) });
+  } catch (e) {
+    res.status(502).json({ error: e.response?.data?.error?.message || e.message });
+  }
+});
+
 // Meta's one-time check when you save the webhook URL.
 webhookRouter.get('/', (req, res) => {
   const cfg = config();
@@ -35,7 +67,9 @@ webhookRouter.get('/', (req, res) => {
 
 webhookRouter.post('/', (req, res) => {
   const cfg = config();
+  recent.posts++; recent.lastPostAt = new Date().toISOString();
   if (!wa.validSignature(cfg, req.rawBody, req.get('x-hub-signature-256'))) {
+    recent.lastResult = cfg.whatsapp.appSecret ? 'rejected: app secret does not match' : 'rejected: WHATSAPP_APP_SECRET not set';
     console.warn(`[hassan] webhook rejected: signature check failed (${cfg.whatsapp.appSecret ? 'WHATSAPP_APP_SECRET does not match the Meta app secret' : 'WHATSAPP_APP_SECRET is not set'})`);
     return res.sendStatus(401);
   }
@@ -43,6 +77,7 @@ webhookRouter.post('/', (req, res) => {
 
   const messages = wa.parseWebhook(req.body);
   console.log(`[hassan] webhook received: ${messages.length} message(s)`);
+  recent.lastResult = 'accepted'; recent.lastMessages = messages.length;
   if (!cfg.enabled) return console.warn('[hassan] HASSAN_ENABLED is not true, so not replying');
   for (const m of messages) {
     console.log(`[hassan] message from ...${String(m.from).slice(-4)} (${m.type})`);
