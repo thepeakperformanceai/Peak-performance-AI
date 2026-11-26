@@ -13,6 +13,7 @@ import ResetPasswordPage from './pages/ResetPasswordPage'
 import { useAuth } from './context/AuthContext'
 import HowWeScorePage from './pages/HowWeScorePage'
 import SharedBreakdownPage from './pages/SharedBreakdownPage'
+import InboxPage from './pages/InboxPage'
 
 // Public pages (no login): /how-we-score/<sport> and /breakdown/<private token>.
 const publicPage = () => {
@@ -28,6 +29,7 @@ const PAGE_TITLES = {
   upload: 'New report',
   report: 'Report viewer',
   past:   'Past reports',
+  inbox:  'Hassan inbox',
   admin:  'Admin panel',
   settings: 'Settings',
 }
@@ -111,6 +113,7 @@ function SignedInApp() {
           )}
           {activePage === 'report' && <ReportPage />}
           {activePage === 'past' && <PastReports onNavigate={setActivePage} />}
+          {activePage === 'inbox'  && <InboxPage />}
           {activePage === 'admin'  && <AdminPage />}
           {activePage === 'settings' && <SettingsPage />}
         </main>

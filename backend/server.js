@@ -50,7 +50,8 @@ app.use(cors({
   credentials: true, // needed if you're sending cookies/auth headers
 }));
 
-app.use(express.json());
+// Keep the raw bytes too: Meta's WhatsApp webhook signature is checked against them.
+app.use(express.json({ verify: (req, res, buf) => { req.rawBody = buf; } }));
 app.use(express.urlencoded({ extended: true }));
 
 // Database connection
@@ -110,10 +111,16 @@ app.get('/api/breakdown/:token', methodologyController.getSharedBreakdown);
 // Public: the Wallet card's strip image (Passcreator downloads it; random 192-bit token).
 app.get('/api/wallet/strip/:token', require('./controllers/walletPass.controller').publicStrip);
 
+// Public: Meta's WhatsApp webhook for Hassan (checked by Meta's signature, not a login).
+const hassan = require('./hassan');
+app.use('/api/whatsapp/webhook', hassan.webhookRouter);
+
 app.use('/api', protect);
 app.use('/api/report', reportRoutes);
 app.use('/api/exercises', exerciseRoutes);
 app.use('/api/vald', valdRoutes);
+app.use('/api/hassan', require('./middleware/auth.middleware').adminOnly, hassan.inboxRouter);
+hassan.startScheduler();
 
 // Error handling middleware (must be last)
 app.use(errorHandler);

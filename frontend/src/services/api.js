@@ -399,3 +399,11 @@ export const deleteExercise = id => api.delete(`/exercises/${id}`)
 
 export const getParameters = () => api.get('/parameters')
 export const saveParameters = data => api.post('/parameters', data)
+// Hassan (WhatsApp sales agent) inbox — admins only.
+export const hassanStatus = () => api.get('/hassan/status')
+export const hassanLeads = () => api.get('/hassan/leads')
+export const hassanLead = (phone) => api.get(`/hassan/leads/${encodeURIComponent(phone)}`)
+export const hassanReply = (phone, text) => api.post(`/hassan/leads/${encodeURIComponent(phone)}/reply`, { text })
+export const hassanPause = (phone, paused) => api.post(`/hassan/leads/${encodeURIComponent(phone)}/pause`, { paused })
+export const hassanBookings = () => api.get('/hassan/bookings')
+export const hassanBookingStatus = (id, status) => api.post(`/hassan/bookings/${id}/status`, { status })

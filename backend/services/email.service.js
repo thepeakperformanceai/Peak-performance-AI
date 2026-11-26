@@ -158,4 +158,19 @@ const sendResetEmail = async (to, name, url, minutes) => {
   });
 };
 
-module.exports = { sendOtpEmail, sendResetEmail };
+// Plain-text alert to the team (Hassan bookings and handoffs).
+const sendAlertEmail = async (to, subject, text) => {
+  const tx = getTransporter();
+  if (!tx || !to) {
+    console.warn(`[email] alert not emailed (${!tx ? 'SMTP not configured' : 'no recipient'}): ${subject}\n${text}`);
+    return;
+  }
+  await tx.sendMail({
+    from: process.env.MAIL_FROM || `PeakPerformance <${process.env.SMTP_USER}>`,
+    to,
+    subject,
+    text: `${text}\n\n— Hassan, PeakPerformance`
+  });
+};
+
+module.exports = { sendOtpEmail, sendResetEmail, sendAlertEmail };

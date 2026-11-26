@@ -2,6 +2,7 @@ const NAV_ITEMS = [
   { id: 'upload', label: 'New report',    icon: '＋' },
   { id: 'report', label: 'Report viewer', icon: '📄' },
   { id: 'past',   label: 'Past reports',  icon: '📋' },
+  { id: 'inbox',  label: 'Hassan inbox',  icon: '💬' },
   { id: 'admin',    label: 'Admin panel', icon: '⚙' },
   { id: 'settings', label: 'Settings',    icon: '👤' },
 ]
@@ -57,7 +58,9 @@ export default function Sidebar({ activePage, onNavigate }) {
           Workspace
         </p>
 
-        {NAV_ITEMS.slice(0, 3).map(item => (
+        {NAV_ITEMS.slice(0, 4)
+          .filter(item => item.id !== 'inbox' || user?.role === 'admin')
+          .map(item => (
           <button
             key={item.id}
             onClick={() => onNavigate(item.id)}
@@ -79,7 +82,7 @@ export default function Sidebar({ activePage, onNavigate }) {
           Settings
         </p>
 
-        {NAV_ITEMS.slice(3)
+        {NAV_ITEMS.slice(4)
           .filter(item => item.id !== 'admin' || user?.role === 'admin')
           .map(item => (
           <button
