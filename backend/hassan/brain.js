@@ -61,7 +61,7 @@ const callModel = async (cfg, model, input) => {
           ...(/2\.5-flash/i.test(model) ? { thinkingConfig: { thinkingBudget: 0 } } : {})
         }
       },
-      { headers: { 'x-goog-api-key': cfg.gemini.key, 'Content-Type': 'application/json' }, timeout: 30000 }
+      { headers: { 'x-goog-api-key': cfg.gemini.key, 'Content-Type': 'application/json' }, timeout: cfg.gemini.timeoutMs || 12000 }
     );
     const parts = res.data?.candidates?.[0]?.content?.parts || [];
     const text = parts.filter(p => !p.thought).map(p => p.text || '').join('');
