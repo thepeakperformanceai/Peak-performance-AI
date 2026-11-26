@@ -96,7 +96,8 @@ const think = async (cfg, input, wait = sleep) => {
       } catch (e) {
         last = e;
         const busy = BUSY.has(e.status) || /timeout|ECONNRESET|socket hang up/i.test(e.message);
-        if (busy && attempt < delays.length) {
+        const dailyLimit = e.status === 429 && /per day|PerDay|free_tier/i.test(e.message);
+        if (busy && !dailyLimit && attempt < delays.length) {
           console.warn(`[hassan] ${e.message}; retrying in ${delays[attempt] / 1000}s`);
           await wait(delays[attempt]);
           continue;
