@@ -69,6 +69,7 @@ const createAgent = (deps) => {
     }
     try {
       const waId = await wa.sendText(cfg, lead.phone, text);
+      log.log?.(`[hassan] replied to ...${String(lead.phone).slice(-4)}`);
       record(lead, by, text, { waId });
       lead.lastOutboundAt = now();
       if (!freeByAd) {

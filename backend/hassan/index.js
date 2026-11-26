@@ -35,12 +35,17 @@ webhookRouter.get('/', (req, res) => {
 
 webhookRouter.post('/', (req, res) => {
   const cfg = config();
-  if (!wa.validSignature(cfg, req.rawBody, req.get('x-hub-signature-256'))) return res.sendStatus(401);
+  if (!wa.validSignature(cfg, req.rawBody, req.get('x-hub-signature-256'))) {
+    console.warn(`[hassan] webhook rejected: signature check failed (${cfg.whatsapp.appSecret ? 'WHATSAPP_APP_SECRET does not match the Meta app secret' : 'WHATSAPP_APP_SECRET is not set'})`);
+    return res.sendStatus(401);
+  }
   res.sendStatus(200); // answer Meta at once; work happens after
 
-  if (!cfg.enabled) return;
   const messages = wa.parseWebhook(req.body);
+  console.log(`[hassan] webhook received: ${messages.length} message(s)`);
+  if (!cfg.enabled) return console.warn('[hassan] HASSAN_ENABLED is not true, so not replying');
   for (const m of messages) {
+    console.log(`[hassan] message from ...${String(m.from).slice(-4)} (${m.type})`);
     getAgent().handleInbound(m).catch(e => console.error('[hassan] inbound failed:', e.message));
   }
 });
