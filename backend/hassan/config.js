@@ -72,7 +72,11 @@ const config = () => ({
   slotsToOffer: num(process.env.HASSAN_SLOTS_TO_OFFER, 8),
   paymentNote: process.env.HASSAN_PAYMENT_NOTE || 'Payment is at the lab on the day.',
 
-  contactNumber: process.env.HASSAN_CONTACT_NUMBER || '+92 303 901 9991'
+  contactNumber: process.env.HASSAN_CONTACT_NUMBER || '+92 303 901 9991',
+  // Real Google Maps link for the lab. Hassan may share ONLY this link.
+  mapsLink: process.env.HASSAN_MAPS_LINK || '',
+  // Wait this long after a message so quick back-to-back messages get one reply.
+  replyDelayMs: num(process.env.HASSAN_REPLY_DELAY_MS, 6000)
 });
 
 module.exports = { config, DEFAULT_SERVICES, DEFAULT_LOCATIONS };

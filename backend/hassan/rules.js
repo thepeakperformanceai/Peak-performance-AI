@@ -61,6 +61,10 @@ const checkReply = (reply, cfg) => {
     if (!allowed.has(a)) problems.push(`quoted a price that isn't on the list (${a})`);
   }
 
+  const links = reply.match(/\bhttps?:\/\/[^\s)]+|\bwww\.[^\s)]+|\b[a-z0-9-]+\.(?:com|pk|net|org|io|app|gl|ly|me|link|co)\/[^\s)]*/gi) || [];
+  const okLink = (u) => !!cfg.mapsLink && u.replace(/[.,!?]+$/, '').replace(/\/$/, '') === cfg.mapsLink.replace(/\/$/, '');
+  for (const u of links) if (!okLink(u)) problems.push(`shared a link that isn't ours (${u})`);
+
   if (/\bonline\b/i.test(reply) && !/\b(not|no|nahi|nahin|in[- ]person)\b/i.test(reply)) {
     problems.push('suggested the assessment is online');
   }

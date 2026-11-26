@@ -147,7 +147,8 @@ const createAgent = (deps) => {
     `Reply here if anything changes. See you then!`;
 
   // ── inbound ──────────────────────────────────────────────────────────────
-  const handleInbound = (msg) => serial(msg.from, async () => {
+  // 1) Save every incoming message straight away.
+  const storeInbound = (msg) => serial(msg.from, async () => {
     let lead = await store.getLead(msg.from);
     if (!lead) lead = { phone: msg.from, stage: 'new', messages: [], followUpsSent: [], paused: false };
     if (lead.messages.some(m => m.waId && m.waId === msg.id)) return { skipped: 'duplicate' };
@@ -162,21 +163,53 @@ const createAgent = (deps) => {
       lead.adEntryAt = at;
       lead.adHeadline = msg.adHeadline;
     }
-    const text = msg.text;
-    record(lead, 'lead', text ?? `[${msg.type} message]`, { waId: msg.id, kind: msg.type || 'text' });
+    record(lead, 'lead', msg.text ?? `[${msg.type} message]`, { waId: msg.id, kind: msg.type || 'text' });
     if (wa.markRead) Promise.resolve().then(() => wa.markRead(cfg, msg.id)).catch(() => {});
+    return { lead: await store.saveLead(lead), stored: true };
+  });
+
+  // 2) Wait a few seconds so quick back-to-back messages get one reply.
+  const timers = new Map();
+  const handleInbound = async (msg) => {
+    const s = await storeInbound(msg);
+    if (s.skipped) return s;
+    if (!cfg.replyDelayMs) return respond(msg.from);
+    clearTimeout(timers.get(msg.from));
+    timers.set(msg.from, setTimeout(() => {
+      timers.delete(msg.from);
+      respond(msg.from).catch(e => log.error('[hassan] reply failed:', e.message));
+    }, cfg.replyDelayMs));
+    return { action: 'queued' };
+  };
+
+  const TEXT_KINDS = new Set(['text', 'button', 'interactive']);
+
+  // 3) Answer everything the lead said since our last message.
+  const respond = (phone) => serial(phone, async () => {
+    const lead = await store.getLead(phone);
+    if (!lead) return { skipped: 'no_lead' };
+    const pending = [];
+    for (let i = lead.messages.length - 1; i >= 0; i--) {
+      const m = lead.messages[i];
+      if (m.by === 'lead') pending.unshift(m);
+      else if (m.by === 'system') continue;
+      else break;
+    }
+    if (!pending.length) return { skipped: 'already_answered' };
+    const texts = pending.filter(m => TEXT_KINDS.has(m.kind || 'text')).map(m => m.text);
+    const text = texts.length ? texts.join('\n') : null;
 
     // A person is handling this chat: stay quiet, nudge them.
     if (lead.paused) {
       log.log?.(`[hassan] paused on ...${String(lead.phone).slice(-4)}, not replying (turn him back on from the inbox)`);
       if (!lead.lastAlertAt || now() - new Date(lead.lastAlertAt) > 30 * MIN) {
         lead.lastAlertAt = now();
-        await alert(`New message from ${lead.name || lead.profileName || lead.phone} (Hassan paused)`, `"${text ?? `[${msg.type}]`}"\n\nReply from the Inbox in the PP dashboard.`);
+        await alert(`New message from ${lead.name || lead.profileName || lead.phone} (Hassan paused)`, `"${pending.map(m => m.text).join(' / ')}"\n\nReply from the Inbox in the PP dashboard.`);
       }
       return { lead: await store.saveLead(lead), action: 'paused' };
     }
 
-    if (text === null || text === undefined) {
+    if (text === null) {
       await sendText(lead, NON_TEXT_REPLY);
       return { lead: await store.saveLead(lead), action: 'non_text' };
     }
@@ -391,7 +424,7 @@ const createAgent = (deps) => {
     return store.saveLead(lead);
   });
 
-  return { handleInbound, runScheduled, staffReply, setPaused, followUpLead };
+  return { handleInbound, respond, runScheduled, staffReply, setPaused, followUpLead };
 };
 
 module.exports = { createAgent, HOLDING, BOT_REPLY, NON_TEXT_REPLY, physioReferral, fixedPriceReply };

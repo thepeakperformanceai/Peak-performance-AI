@@ -46,6 +46,8 @@ Turn him back on from the Inbox.
 | `HASSAN_TPL_DAY3`, `HASSAN_TPL_DAY7`, `HASSAN_TPL_REMINDER` | Names of the approved templates below |
 | `HASSAN_CLIENTS_PER_SLOT` | Default `1` |
 | `HASSAN_SLOT_MINUTES` | Default `30` |
+| `HASSAN_MAPS_LINK` | Your real Google Maps share link for the lab. Hassan shares only this link; any other link is blocked |
+| `HASSAN_REPLY_DELAY_MS` | Default `6000`: waits this long so back-to-back messages get one reply |
 | `HASSAN_PAYMENT_NOTE` | Default "Payment is at the lab on the day." |
 | `HASSAN_LOCATIONS` | JSON list of places, days (0=Sun) and hours; default Lab every evening 6–10pm, K7 Wed/Thu 6–10pm |
 | `HASSAN_SERVICES` | JSON of services and prices; default 8,000 / 3,000 / 6,000 / 10,000 |

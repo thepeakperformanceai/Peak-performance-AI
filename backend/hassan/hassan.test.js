@@ -11,7 +11,7 @@ const { config } = require('./config');
 const { buildSystemPrompt } = require('./playbook');
 
 const HOUR = 3600 * 1000;
-const cfg = () => ({ ...config(), freeMode: true, freeServiceMessagesPerMonth: 1000, serviceWarnAt: 900,
+const cfg = () => ({ ...config(), replyDelayMs: 0, mapsLink: '', freeMode: true, freeServiceMessagesPerMonth: 1000, serviceWarnAt: 900,
   whatsapp: { ...config().whatsapp, appSecret: 'shh', templates: { day3: 'pp_day3', day7: 'pp_day7', reminder: 'pp_reminder' } } });
 
 // ── fakes ────────────────────────────────────────────────────────────────────
@@ -414,4 +414,35 @@ test('Gemini busy: retries, then falls back to the next model', async () => {
     axios.post = async () => { const e = new Error('x'); e.response = { status: 400, data: { error: { status: 'INVALID_ARGUMENT', message: 'API key not valid' } } }; throw e; };
     await assert.rejects(brain.think(c, { lead: { stage: 'new' }, messages: [], slots: [], now: T0 }, async () => {}), /API key not valid/);
   } finally { axios.post = orig; console.warn = warn; }
+});
+
+test('links: made-up map links are blocked; only the real pin passes', () => {
+  assert.match(checkReply('Here is our pin: https://maps.app.goo.gl/peakperformance. Friday 6pm?', cfg()).join(), /link/);
+  const c = { ...cfg(), mapsLink: 'https://maps.app.goo.gl/AbC123' };
+  assert.deepStrictEqual(checkReply('Here is our pin: https://maps.app.goo.gl/AbC123. Friday 6pm?', c), []);
+  assert.match(checkReply('Pin: https://maps.app.goo.gl/XyZ999', c).join(), /link/);
+  assert.match(checkReply('See peakperformance.pk/book', c).join(), /link/);
+  const p1 = buildSystemPrompt(cfg()); assert.match(p1, /do NOT have a map link/);
+  const p2 = buildSystemPrompt(c); assert.match(p2, /maps\.app\.goo\.gl\/AbC123/);
+});
+
+test('made-up link from the AI is retried, never sent', async () => {
+  const h = setup([{ reply: 'Pin: https://maps.app.goo.gl/peakperformance' }, { reply: "We're at Peak Performance Lab, Khayaban-e-Rahat. I'll have the team send you the exact pin. Friday 6pm or Saturday 6pm?" }]);
+  const r = await h.say('send location');
+  assert.strictEqual(r.action, 'replied');
+  assert.ok(!h.wa.sent.some(x => /goo\.gl/.test(x.body || '')));
+  assert.match(h.brain.calls[1].feedback, /link/);
+});
+
+test('back-to-back messages get one reply', async () => {
+  const c = { ...cfg(), replyDelayMs: 30 };
+  const h = setup([{ reply: "Here's where we are: Peak Performance Lab, Khayaban-e-Rahat. Friday 6pm or Saturday 6pm?" }], { cfg: c });
+  const a = await h.say('Google link');
+  const b = await h.say('Google maps');
+  assert.strictEqual(a.action, 'queued'); assert.strictEqual(b.action, 'queued');
+  await new Promise(r => setTimeout(r, 120));
+  assert.strictEqual(h.wa.sent.length, 1, 'one reply');
+  assert.strictEqual(h.brain.calls.length, 1);
+  const lastLead = h.brain.calls[0].messages.filter(m => m.by === 'lead').map(m => m.text);
+  assert.deepStrictEqual(lastLead, ['Google link', 'Google maps']);
 });
