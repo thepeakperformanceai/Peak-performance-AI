@@ -48,7 +48,9 @@ const parseDecision = (text) => {
 
 const think = async (cfg, input) => {
   if (!cfg.gemini.key) throw new Error('Hassan has no Gemini key (set HASSAN_GEMINI_API_KEY or GEMINI_API_KEY).');
-  const res = await axios.post(
+  let res;
+  try {
+    res = await axios.post(
     `https://generativelanguage.googleapis.com/v1beta/models/${cfg.gemini.model}:generateContent`,
     {
       systemInstruction: { parts: [{ text: buildSystemPrompt(cfg) }] },
@@ -62,7 +64,11 @@ const think = async (cfg, input) => {
       }
     },
     { headers: { 'x-goog-api-key': cfg.gemini.key, 'Content-Type': 'application/json' }, timeout: 30000 }
-  );
+    );
+  } catch (e) {
+    const g = e.response?.data?.error;
+    throw new Error(g ? `Gemini ${e.response.status} ${g.status || ''}: ${g.message}` : e.message);
+  }
   const text = res.data?.candidates?.[0]?.content?.parts?.[0]?.text;
   return parseDecision(text);
 };
