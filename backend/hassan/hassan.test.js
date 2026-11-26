@@ -421,6 +421,7 @@ test('links: made-up map links are blocked; only the real pin passes', () => {
   const c = { ...cfg(), mapsLink: 'https://maps.app.goo.gl/AbC123' };
   assert.deepStrictEqual(checkReply('Here is our pin: https://maps.app.goo.gl/AbC123. Friday 6pm?', c), []);
   assert.match(checkReply('Pin: https://maps.app.goo.gl/XyZ999', c).join(), /link/);
+  assert.deepStrictEqual(checkReply('Pin: https://maps.app.goo.gl/AbC123?g_st=ic', c), []);
   assert.match(checkReply('See peakperformance.pk/book', c).join(), /link/);
   const p1 = buildSystemPrompt(cfg()); assert.match(p1, /do NOT have a map link/);
   const p2 = buildSystemPrompt(c); assert.match(p2, /maps\.app\.goo\.gl\/AbC123/);

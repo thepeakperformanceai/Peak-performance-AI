@@ -62,7 +62,8 @@ const checkReply = (reply, cfg) => {
   }
 
   const links = reply.match(/\bhttps?:\/\/[^\s)]+|\bwww\.[^\s)]+|\b[a-z0-9-]+\.(?:com|pk|net|org|io|app|gl|ly|me|link|co)\/[^\s)]*/gi) || [];
-  const okLink = (u) => !!cfg.mapsLink && u.replace(/[.,!?]+$/, '').replace(/\/$/, '') === cfg.mapsLink.replace(/\/$/, '');
+  const clean = (u) => String(u).replace(/[.,!?]+$/, '').split('?')[0].replace(/\/$/, '').replace(/^https?:\/\//, '').toLowerCase();
+  const okLink = (u) => !!cfg.mapsLink && clean(u) === clean(cfg.mapsLink);
   for (const u of links) if (!okLink(u)) problems.push(`shared a link that isn't ours (${u})`);
 
   if (/\bonline\b/i.test(reply) && !/\b(not|no|nahi|nahin|in[- ]person)\b/i.test(reply)) {
