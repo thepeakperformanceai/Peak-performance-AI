@@ -22,9 +22,9 @@ const DEFAULT_SERVICES = {
 };
 
 // Where and when Hassan can book. days: 0=Sun … 6=Sat. Times are Karachi time.
+// Open Monday to Saturday, 6pm to 10pm (last 30-minute slot starts 9:30pm). Closed Sundays.
 const DEFAULT_LOCATIONS = [
-  { id: 'lab', label: 'Peak Performance Lab, Khayaban-e-Rahat', days: [0, 1, 2, 3, 4, 5, 6], start: '18:00', end: '22:00' },
-  { id: 'k7',  label: 'K7, kickboxing gym',                     days: [3, 4],                start: '18:00', end: '22:00' }
+  { id: 'lab', label: 'Peak Performance Lab, Khayaban-e-Rahat', days: [1, 2, 3, 4, 5, 6], start: '18:00', end: '22:00' }
 ];
 
 const config = () => ({
@@ -70,14 +70,19 @@ const config = () => ({
   clientsPerSlot: num(process.env.HASSAN_CLIENTS_PER_SLOT, 1),
   minHoursAhead: num(process.env.HASSAN_MIN_HOURS_AHEAD, 2),
   bookingDaysAhead: num(process.env.HASSAN_BOOKING_DAYS_AHEAD, 7),
-  slotsToOffer: num(process.env.HASSAN_SLOTS_TO_OFFER, 8),
+  slotsToOffer: num(process.env.HASSAN_SLOTS_TO_OFFER, 64),
   paymentNote: process.env.HASSAN_PAYMENT_NOTE || 'Payment is at the lab on the day.',
 
   contactNumber: process.env.HASSAN_CONTACT_NUMBER || '+92 303 901 9991',
   // Real Google Maps link for the lab. Hassan may share ONLY this link.
   mapsLink: process.env.HASSAN_MAPS_LINK || '',
   // Wait this long after a message so quick back-to-back messages get one reply.
-  replyDelayMs: num(process.env.HASSAN_REPLY_DELAY_MS, 6000)
+  replyDelayMs: num(process.env.HASSAN_REPLY_DELAY_MS, 6000),
+
+  // Google Calendar (optional): bookings are added, cancellations removed,
+  // and anything else in the calendar blocks that time.
+  calendarId: process.env.GOOGLE_CALENDAR_ID || '',
+  serviceAccountJson: process.env.GOOGLE_SERVICE_ACCOUNT_JSON || ''
 });
 
 module.exports = { config, DEFAULT_SERVICES, DEFAULT_LOCATIONS };

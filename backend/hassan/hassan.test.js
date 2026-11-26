@@ -122,7 +122,10 @@ test('slots: evenings in Karachi time, 2h ahead, K7 only Wed/Thu', () => {
   const s = allSlots(cfg(), T0); // Thu 3pm
   assert.strictEqual(s[0].label, 'Thu 26 Nov, 6pm');
   assert.ok(s.every(x => { const h = new Date(x.start.getTime() + 5 * HOUR).getUTCHours(); return h >= 18 && h < 22; }));
-  assert.ok(s.filter(x => x.locationId === 'k7').every(x => /^(Wed|Thu)/.test(x.label)));
+  assert.ok(!s.some(x => /^Sun/.test(x.label)), 'closed Sundays');
+  assert.ok(s.some(x => x.label === 'Fri 27 Nov, 9:30pm'), 'last slot 9:30pm');
+  assert.ok(!s.some(x => x.label === 'Fri 27 Nov, 10pm'), 'no 10pm start');
+  assert.strictEqual(s.filter(x => /^Fri 27 Nov/.test(x.label)).length, 8, '8 half-hour slots an evening');
   assert.strictEqual(label(fromPkt(2026, 10, 28, 18, 30)), 'Sat 28 Nov, 6:30pm');
   const offer = slotsToOffer(cfg(), T0, []);
   assert.ok(offer.length <= cfg().slotsToOffer && offer.length > 2);
@@ -446,4 +449,87 @@ test('back-to-back messages get one reply', async () => {
   assert.strictEqual(h.brain.calls.length, 1);
   const lastLead = h.brain.calls[0].messages.filter(m => m.by === 'lead').map(m => m.text);
   assert.deepStrictEqual(lastLead, ['Google link', 'Google maps']);
+});
+
+// ── hours and calendar ───────────────────────────────────────────────────────
+const { buildUserPrompt } = require('./brain');
+const { createCalendar } = require('./calendar');
+
+test('the AI sees every free slot, so "7 o\'clock?" can be booked', () => {
+  const slots = slotsToOffer(cfg(), T0, []);
+  const prompt = buildUserPrompt({ lead: { stage: 'qualified' }, messages: [{ by: 'lead', text: '7 o\'clock?' }], slots, now: T0 });
+  assert.match(prompt, /- Fri 27 Nov \(Peak Performance Lab, Khayaban-e-Rahat\): 6pm \[lab@.+\] · 6:30pm .+ · 7pm \[lab@/);
+  assert.doesNotMatch(prompt, /Sun 29 Nov/);
+  assert.match(buildSystemPrompt(cfg()), /Monday to Saturday, 6pm to 10pm/);
+});
+
+const fakeCalendar = (busy = [], fail = false) => {
+  const created = [], deleted = [];
+  return { created, deleted,
+    async busyBetween() { return busy; },
+    async createEvent(b, minutes) { if (fail) throw new Error('calendar down'); created.push({ ...b, minutes }); return `ev${created.length}`; },
+    async deleteEvent(id) { deleted.push(id); } };
+};
+
+test('booking goes into the calendar', async () => {
+  const slot = allSlots(cfg(), T0).find(s => s.label === 'Fri 27 Nov, 7pm');
+  const cal = fakeCalendar();
+  const store = memoryStore(); const wa = fakeWa();
+  const agent = createAgent({ cfg: cfg(), store, wa, calendar: cal, brain: scriptedBrain([{ reply: '', service: 'assessment', book: { slotId: slot.id, fullName: 'Ali Khan' } }]), now: () => T0, alert: async () => {}, log: { error() {} } });
+  const r = await agent.handleInbound({ id: 'c1', from: '923001234567', at: T0, type: 'text', text: 'Friday 7pm, Ali Khan' });
+  assert.strictEqual(r.action, 'booked');
+  assert.strictEqual(cal.created.length, 1);
+  assert.strictEqual(cal.created[0].serviceLabel, 'Full Body Assessment');
+  assert.strictEqual(cal.created[0].minutes, 30);
+  assert.strictEqual(store.bookings[0].calendarEventId, 'ev1');
+});
+
+test('time you block in the calendar is not offered or booked', async () => {
+  const slot = allSlots(cfg(), T0).find(s => s.label === 'Fri 27 Nov, 7pm');
+  const busy = [{ start: slot.start, end: new Date(slot.start.getTime() + 60 * 60000) }]; // you blocked 7-8pm
+  const cal = fakeCalendar(busy);
+  const brain = scriptedBrain([{ reply: '', book: { slotId: slot.id, fullName: 'Ali Khan' } }]);
+  const store = memoryStore(); const wa = fakeWa();
+  const agent = createAgent({ cfg: cfg(), store, wa, calendar: cal, brain, now: () => T0, alert: async () => {}, log: { error() {} } });
+  const r = await agent.handleInbound({ id: 'c2', from: '923001234567', at: T0, type: 'text', text: 'Friday 7pm, Ali Khan' });
+  assert.strictEqual(r.action, 'slot_gone');
+  const offered = brain.calls[0].slots.map(s => s.label);
+  assert.ok(!offered.includes('Fri 27 Nov, 7pm') && !offered.includes('Fri 27 Nov, 7:30pm'));
+  assert.ok(offered.includes('Fri 27 Nov, 6:30pm') && offered.includes('Fri 27 Nov, 8pm'));
+  assert.strictEqual(store.bookings.length, 0);
+});
+
+test('calendar down: booking still made, Faraz told to add it by hand', async () => {
+  const slot = allSlots(cfg(), T0).find(s => s.label === 'Fri 27 Nov, 7pm');
+  const alerts = [];
+  const store = memoryStore();
+  const agent = createAgent({ cfg: cfg(), store, wa: fakeWa(), calendar: fakeCalendar([], true), brain: scriptedBrain([{ reply: '', book: { slotId: slot.id, fullName: 'Ali Khan' } }]), now: () => T0, alert: async (s) => alerts.push(s), log: { error() {} } });
+  const r = await agent.handleInbound({ id: 'c3', from: '923001234567', at: T0, type: 'text', text: 'Friday 7pm, Ali Khan' });
+  assert.strictEqual(r.action, 'booked');
+  assert.ok(alerts.some(a => /Add to calendar by hand/.test(a)));
+});
+
+test('calendar client: signs in with the service account and creates the event', async () => {
+  const { privateKey } = crypto.generateKeyPairSync('rsa', { modulusLength: 2048 });
+  const sa = { client_email: 'hassan@pp.iam.gserviceaccount.com', private_key: privateKey.export({ type: 'pkcs8', format: 'pem' }) };
+  const calls = [];
+  const http = {
+    async post(url, body) { calls.push({ url, body }); return { data: { access_token: 'tok', expires_in: 3600 } }; },
+    async request(o) { calls.push(o); return { data: o.method === 'post' ? { id: 'evt123' } : { items: [
+      { start: { dateTime: '2026-11-27T19:00:00+05:00' }, end: { dateTime: '2026-11-27T20:00:00+05:00' } },
+      { start: { dateTime: '2026-11-27T18:00:00+05:00' }, end: { dateTime: '2026-11-27T18:30:00+05:00' }, extendedProperties: { private: { hassanBooking: 'x' } } }
+    ] } }; }
+  };
+  const cal = createCalendar({ calendarId: 'pp@group.calendar.google.com', serviceAccount: sa, http });
+  const id = await cal.createEvent({ _id: 'b1', fullName: 'Ali Khan', serviceLabel: 'Full Body Assessment', phone: '923001234567', price: 8000, location: 'Peak Performance Lab', start: '2026-11-27T14:00:00.000Z' }, 30);
+  assert.strictEqual(id, 'evt123');
+  assert.match(calls[0].url, /oauth2\.googleapis\.com\/token/);
+  const assertion = new URLSearchParams(calls[0].body).get('assertion');
+  assert.strictEqual(assertion.split('.').length, 3);
+  const ev = calls[1];
+  assert.match(ev.url, /calendars\/pp%40group\.calendar\.google\.com\/events$/);
+  assert.strictEqual(ev.data.summary, 'PP: Ali Khan – Full Body Assessment');
+  assert.strictEqual(ev.data.end.dateTime, '2026-11-27T14:30:00.000Z');
+  const busy = await cal.busyBetween(new Date('2026-11-27T00:00:00Z'), new Date('2026-11-28T00:00:00Z'));
+  assert.strictEqual(busy.length, 1, 'our own booking events are not double-counted');
 });

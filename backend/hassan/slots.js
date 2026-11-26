@@ -57,30 +57,20 @@ const allSlots = (cfg, now) => {
   return out.sort((a, b) => a.start - b.start);
 };
 
-// Free slots, given bookings [{ slotId, status }].
-const freeSlots = (cfg, now, bookings) => {
+// Free slots, given bookings [{ slotId, status }] and busy times [{ start, end }]
+// from the calendar (things you blocked yourself).
+const freeSlots = (cfg, now, bookings, busy = []) => {
   const taken = new Map();
   for (const b of bookings) {
     if (b.status === 'cancelled') continue;
     taken.set(b.slotId, (taken.get(b.slotId) || 0) + 1);
   }
-  return allSlots(cfg, now).filter(s => (taken.get(s.id) || 0) < cfg.clientsPerSlot);
+  const len = cfg.slotMinutes * 60000;
+  const blocked = (s) => busy.some(b => new Date(b.start) < new Date(s.start.getTime() + len) && new Date(b.end) > s.start);
+  return allSlots(cfg, now).filter(s => (taken.get(s.id) || 0) < cfg.clientsPerSlot && !blocked(s));
 };
 
-// A short, spread-out list to show the AI: a few per evening, soonest first.
-const slotsToOffer = (cfg, now, bookings) => {
-  const free = freeSlots(cfg, now, bookings);
-  const perDay = new Map();
-  const picked = [];
-  for (const s of free) {
-    const key = `${s.locationId}:${pkt(s.start).d}`;
-    const n = perDay.get(key) || 0;
-    if (n >= 2) continue;
-    perDay.set(key, n + 1);
-    picked.push(s);
-    if (picked.length >= cfg.slotsToOffer) break;
-  }
-  return picked;
-};
+// Every free slot in the booking window, soonest first (capped for safety).
+const slotsToOffer = (cfg, now, bookings, busy = []) => freeSlots(cfg, now, bookings, busy).slice(0, cfg.slotsToOffer);
 
 module.exports = { allSlots, freeSlots, slotsToOffer, slotId, parseSlotId, label, pkt, fromPkt };

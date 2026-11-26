@@ -119,6 +119,15 @@ const createAgent = (deps) => {
 
   // ── booking ──────────────────────────────────────────────────────────────
   const bookingLock = { key: '__bookings__' };
+  const calendar = deps.calendar || null;
+
+  // Times blocked in Google Calendar. If the calendar can't be reached, carry on
+  // without it rather than stop booking.
+  const calendarBusy = async (from, to) => {
+    if (!calendar) return [];
+    try { return await calendar.busyBetween(from, to); }
+    catch (e) { log.error('[hassan] calendar read failed:', e.response?.data?.error?.message || e.message); return []; }
+  };
 
   const tryBook = (lead, decision) => serial(bookingLock.key, async () => {
     const t = now();
@@ -129,15 +138,25 @@ const createAgent = (deps) => {
     const parsed = parseSlotId(decision.book.slotId);
     const horizon = new Date(t.getTime() + (cfg.bookingDaysAhead + 1) * 24 * HOUR);
     const bookings = await store.bookingsBetween(t, horizon);
-    const free = freeSlots(cfg, t, bookings);
+    const free = freeSlots(cfg, t, bookings, await calendarBusy(t, horizon));
     const slot = parsed && free.find(s => s.id === decision.book.slotId);
     if (!slot) return { ok: false, reason: 'slot_gone', free };
 
-    const booking = await store.createBooking({
+    let booking = await store.createBooking({
       lead: lead._id, phone: lead.phone, fullName: decision.book.fullName,
       service: serviceKey, price: service.price, slotId: slot.id,
       locationId: slot.locationId, location: slot.location, start: slot.start, status: 'booked'
     });
+    if (calendar) {
+      try {
+        const calendarEventId = await calendar.createEvent({ ...booking, serviceLabel: service.label }, cfg.slotMinutes);
+        booking = await store.saveBooking({ ...booking, calendarEventId });
+      } catch (e) {
+        const why = e.response?.data?.error?.message || e.message;
+        log.error('[hassan] calendar event failed:', why);
+        await alert(`Add to calendar by hand: ${booking.fullName}, ${slot.label}`, `Hassan booked this slot but couldn't add it to Google Calendar (${why}).`);
+      }
+    }
     return { ok: true, booking, slot, service, serviceKey };
   });
 
@@ -237,7 +256,7 @@ const createAgent = (deps) => {
     // Ask the AI, then check its answer against the hard rules.
     const t = now();
     const horizon = new Date(t.getTime() + (cfg.bookingDaysAhead + 1) * 24 * HOUR);
-    const slots = slotsToOffer(cfg, t, await store.bookingsBetween(t, horizon));
+    const slots = slotsToOffer(cfg, t, await store.bookingsBetween(t, horizon), await calendarBusy(t, horizon));
     const problemsWith = (d) => {
       if (d.book || d.handoff) return [];
       return [...checkReply(d.reply, cfg), ...(medical ? checkMedicalReply(d.reply) : []), ...(priceFixed ? checkFixedPriceReply(d.reply) : [])];

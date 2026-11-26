@@ -49,7 +49,9 @@ Turn him back on from the Inbox.
 | `HASSAN_MAPS_LINK` | Your real Google Maps share link for the lab. Hassan shares only this link; any other link is blocked |
 | `HASSAN_REPLY_DELAY_MS` | Default `6000`: waits this long so back-to-back messages get one reply |
 | `HASSAN_PAYMENT_NOTE` | Default "Payment is at the lab on the day." |
-| `HASSAN_LOCATIONS` | JSON list of places, days (0=Sun) and hours; default Lab every evening 6–10pm, K7 Wed/Thu 6–10pm |
+| `HASSAN_LOCATIONS` | JSON list of places, days (0=Sun) and hours; default Lab Monday–Saturday 6–10pm (30-minute slots, last start 9:30pm), closed Sundays |
+| `GOOGLE_CALENDAR_ID` | The PP Bookings calendar's ID (Calendar settings → Integrate calendar) |
+| `GOOGLE_SERVICE_ACCOUNT_JSON` | The whole JSON key file of the service account the calendar is shared with |
 | `HASSAN_SERVICES` | JSON of services and prices; default 8,000 / 3,000 / 6,000 / 10,000 |
 
 ## Connecting WhatsApp
@@ -63,6 +65,16 @@ Turn him back on from the Inbox.
 4. Switch day: export chats you want to keep, turn off two-step verification,
    delete the WhatsApp account on the business number in the app, then add the
    number in the Meta app and verify it by SMS.
+
+## Google Calendar (free)
+
+1. console.cloud.google.com (Peak account) → project **PP Hassan** → APIs & Services → Library → enable **Google Calendar API**.
+2. IAM & Admin → Service accounts → Create (name: `hassan-calendar`, no roles needed) → Keys → Add key → JSON. A file downloads.
+3. calendar.google.com → create a calendar **PP Bookings** → its Settings → Share with specific people → add the service account's email (ends in `iam.gserviceaccount.com`) with **Make changes to events**.
+4. Same settings page → Integrate calendar → copy the **Calendar ID**.
+5. Render: `GOOGLE_CALENDAR_ID` = that ID, `GOOGLE_SERVICE_ACCOUNT_JSON` = the whole JSON file's contents.
+
+Bookings appear as "PP: Name – Service". Cancelling in the inbox removes the event. Anything else you put in that calendar blocks those times for Hassan.
 
 ## Templates to submit (WhatsApp Manager → Message templates, category Marketing, language English)
 

@@ -11,15 +11,23 @@ const buildUserPrompt = ({ lead, messages, slots, now, feedback, medical, priceF
     return `${who}: ${m.text}`;
   }).join('\n');
 
-  const slotLines = slots.length
-    ? slots.map(s => `- id: ${s.id} | ${s.label} | ${s.location}`).join('\n')
+  // One line per evening: "Fri 27 Nov (Peak Performance Lab…): 6pm [id] · 6:30pm [id] …"
+  const byDay = new Map();
+  for (const s of slots) {
+    const [day, time] = s.label.split(', ');
+    const key = `${day} (${s.location})`;
+    if (!byDay.has(key)) byDay.set(key, []);
+    byDay.get(key).push(`${time} [${s.id}]`);
+  }
+  const slotLines = byDay.size
+    ? [...byDay].map(([day, times]) => `- ${day}: ${times.join(' · ')}`).join('\n')
     : '- none free this week: say a team member will confirm a time, and hand off to "faraz"';
 
   return [
     `NOW (Karachi): ${label(now)}`,
     `LEAD: name=${lead.name || 'unknown'}, stage=${lead.stage}, service=${lead.service || 'unknown'}, came from ${lead.fromAd ? 'a Meta ad' : 'a direct message'}`,
     '',
-    'AVAILABLE SLOTS (offer exactly two; only these ids can be booked):',
+    'AVAILABLE SLOTS (every free 30-minute slot for the next week; book using the id in [brackets]):',
     slotLines,
     '',
     'CONVERSATION SO FAR:',

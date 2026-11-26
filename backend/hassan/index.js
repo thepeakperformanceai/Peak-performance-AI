@@ -4,6 +4,7 @@ const express = require('express');
 const axios = require('axios');
 const { config } = require('./config');
 const { createAgent } = require('./agent');
+const { createCalendar, parseServiceAccount } = require('./calendar');
 const { mongoStore } = require('./store');
 const brain = require('./brain');
 const wa = require('./whatsapp');
@@ -12,11 +13,20 @@ const { sendAlertEmail } = require('../services/email.service');
 const HassanBooking = require('../models/HassanBooking.model');
 
 let agent = null;
+let calendar;
+const getCalendar = () => {
+  if (calendar !== undefined) return calendar;
+  const cfg = config();
+  calendar = createCalendar({ calendarId: cfg.calendarId, serviceAccount: parseServiceAccount(cfg.serviceAccountJson) });
+  if (cfg.calendarId && !calendar) console.warn('[hassan] GOOGLE_CALENDAR_ID is set but GOOGLE_SERVICE_ACCOUNT_JSON is missing or unreadable: bookings will not reach the calendar');
+  return calendar;
+};
+
 const getAgent = () => {
   if (agent) return agent;
   const cfg = config();
   agent = createAgent({
-    cfg, store: mongoStore, brain, wa,
+    cfg, store: mongoStore, brain, wa, calendar: getCalendar(),
     alert: (subject, text) => sendAlertEmail(cfg.alertEmail, subject, text).catch(e => console.error('[hassan] alert failed:', e.message))
   });
   return agent;
@@ -37,6 +47,7 @@ webhookRouter.get('/status', (req, res) => {
     hassanEnabled: cfg.enabled,
     hasToken: !!cfg.whatsapp.token, hasPhoneNumberId: !!cfg.whatsapp.phoneNumberId,
     hasAppSecret: !!cfg.whatsapp.appSecret, hasGeminiKey: !!cfg.gemini.key,
+    calendarConnected: !!getCalendar(), hasMapsLink: !!cfg.mapsLink,
     webhookPostsSinceRestart: recent.posts, lastPostAt: recent.lastPostAt,
     lastResult: recent.lastResult, lastMessages: recent.lastMessages
   });
@@ -165,6 +176,10 @@ inboxRouter.post('/bookings/:id/status', wrap(async (req, res) => {
   if (!['booked', 'cancelled', 'done', 'no_show'].includes(status)) return res.status(400).json({ error: 'Unknown status' });
   const b = await HassanBooking.findByIdAndUpdate(req.params.id, { $set: { status } }, { new: true }).lean();
   if (!b) return res.status(404).json({ error: 'Booking not found' });
+  if (status === 'cancelled' && b.calendarEventId && getCalendar()) {
+    try { await getCalendar().deleteEvent(b.calendarEventId); }
+    catch (e) { console.error('[hassan] calendar delete failed:', e.response?.data?.error?.message || e.message); }
+  }
   res.json(b);
 }));
 

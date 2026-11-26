@@ -12,7 +12,8 @@ const bookingSchema = new mongoose.Schema({
   location: String,
   start: { type: Date, index: true },
   status: { type: String, enum: ['booked', 'cancelled', 'done', 'no_show'], default: 'booked' },
-  remindersSent: { type: [String], default: [] }
+  remindersSent: { type: [String], default: [] },
+  calendarEventId: String
 }, { timestamps: true });
 
 module.exports = mongoose.models.HassanBooking || mongoose.model('HassanBooking', bookingSchema);
