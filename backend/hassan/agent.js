@@ -392,6 +392,9 @@ const createAgent = (deps) => {
       { key: 'two_hours', from: start - 2.5 * HOUR, to: start - 0.5 * HOUR }
     ].find(r => t >= r.from && t < r.to && !(b.remindersSent || []).includes(r.key));
     if (!due) return null;
+    // Booked recently? They've just had the confirmation, so no reminder yet.
+    const bookedAgo = b.createdAt ? t - new Date(b.createdAt).getTime() : Infinity;
+    if (bookedAgo < (due.key === 'day_before' ? 12 : 3) * HOUR) return null;
 
     const service = cfg.services[b.service] || { label: 'session' };
     const n = firstName(lead);

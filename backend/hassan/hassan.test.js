@@ -533,3 +533,15 @@ test('calendar client: signs in with the service account and creates the event',
   const busy = await cal.busyBetween(new Date('2026-11-27T00:00:00Z'), new Date('2026-11-28T00:00:00Z'));
   assert.strictEqual(busy.length, 1, 'our own booking events are not double-counted');
 });
+
+test('no reminder right after booking (the confirmation is enough)', async () => {
+  const slot = allSlots(cfg(), T0).find(s => s.label === 'Fri 27 Nov, 8pm'); // ~29h away
+  const h = setup([{ reply: '', book: { slotId: slot.id, fullName: 'Faraz Khawaja' } }]);
+  await h.say('Friday 8pm, Faraz Khawaja');
+  h.store.bookings[0].createdAt = h.now().toISOString();
+  h.advance(5 * HOUR); // now ~24h before: inside the day-before window, but booked only 5h ago
+  assert.strictEqual((await h.agent.runScheduled()).reminders, 0);
+  h.advance(16 * HOUR); // ~3h before the slot... and then 2 hours before
+  h.advance(0.6 * HOUR);
+  assert.strictEqual((await h.agent.runScheduled()).reminders, 1, 'the 2-hour reminder still goes');
+});
