@@ -43,11 +43,28 @@ const parseAdminEntries = () => {
   return [...entries.entries()].map(([email, password]) => ({ email, password }));
 };
 
+// ADMIN_EMAILS: comma-separated emails of EXISTING accounts to make admins
+// (they keep their own password). Admins see Admin and the Hassan inbox.
+const promoteAdmins = async () => {
+  const emails = (process.env.ADMIN_EMAILS || '')
+    .split(',').map(e => e.toLowerCase().trim()).filter(Boolean);
+  for (const email of emails) {
+    try {
+      const res = await User.updateOne({ email, role: { $ne: 'admin' } }, { $set: { role: 'admin' } });
+      if (res.modifiedCount) console.log(`✓ ${email} is now an admin`);
+      else if (!(await User.exists({ email }))) console.warn(`ADMIN_EMAILS: no account found for ${email} (sign up first)`);
+    } catch (error) {
+      console.error(`Admin promotion failed for ${email}:`, error.message);
+    }
+  }
+};
+
 const seedAdminUser = async () => {
+  await promoteAdmins();
   const admins = parseAdminEntries();
 
   if (!admins.length) {
-    console.warn('No admins configured — set AUTH_EMAILS + AUTH_PASSWORD, AUTH_ADMINS, or AUTH_EMAIL + AUTH_PASSWORD');
+    if (!process.env.ADMIN_EMAILS) console.warn('No admins configured — set ADMIN_EMAILS, AUTH_EMAILS + AUTH_PASSWORD, AUTH_ADMINS, or AUTH_EMAIL + AUTH_PASSWORD');
     return;
   }
 
