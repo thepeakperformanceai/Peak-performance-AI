@@ -160,6 +160,11 @@ inboxRouter.post('/leads/:phone/reply', wrap(async (req, res) => {
   res.json({ ...summary(lead, Date.now()), messages: lead.messages });
 }));
 
+inboxRouter.post('/start', wrap(async (req, res) => {
+  const lead = await getAgent().staffStart(req.body?.phone, req.body?.name);
+  res.json({ ...summary(lead, Date.now()), messages: lead.messages });
+}));
+
 inboxRouter.post('/leads/:phone/pause', wrap(async (req, res) => {
   const lead = await getAgent().setPaused(req.params.phone, !!req.body?.paused);
   res.json({ ...summary(lead, Date.now()), messages: lead.messages });

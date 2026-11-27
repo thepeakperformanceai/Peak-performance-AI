@@ -46,11 +46,14 @@ const config = () => ({
     appSecret: process.env.WHATSAPP_APP_SECRET,
     verifyToken: process.env.WHATSAPP_VERIFY_TOKEN,
     apiVersion: process.env.WHATSAPP_API_VERSION || 'v21.0',
+    // What the opening template says ({{1}} = first name), so the chat history and Hassan see it.
+    openText: process.env.HASSAN_TPL_OPEN_TEXT || "Hi {{1}}, Hassan here from Peak Performance. Following up on your interest in a session at our lab in Khayaban-e-Rahat. Would you like me to share this week's available slots?",
     templateLanguage: process.env.HASSAN_TEMPLATE_LANGUAGE || 'en',
     templates: {
       day3: process.env.HASSAN_TPL_DAY3 || '',
       day7: process.env.HASSAN_TPL_DAY7 || '',
-      reminder: process.env.HASSAN_TPL_REMINDER || ''
+      reminder: process.env.HASSAN_TPL_REMINDER || '',
+      open: process.env.HASSAN_TPL_OPEN || 'pp_open'
     }
   },
 

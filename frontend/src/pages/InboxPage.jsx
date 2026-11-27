@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, useCallback } from 'react'
 import toast from 'react-hot-toast'
 import {
-  hassanStatus, hassanLeads, hassanLead, hassanReply, hassanPause,
+  hassanStatus, hassanLeads, hassanLead, hassanReply, hassanPause, hassanStart,
   hassanBookings, hassanBookingStatus
 } from '../services/api'
 
@@ -91,6 +91,7 @@ function Chats() {
   const [loading, setLoading] = useState(true)
   const [filter, setFilter] = useState('all')
   const [selected, setSelected] = useState(null)
+  const [starting, setStarting] = useState(false)
 
   const load = useCallback(() => {
     hassanLeads()
@@ -116,6 +117,12 @@ function Chats() {
     <div className="flex bg-white border border-gray-100 rounded-xl overflow-hidden" style={{ height: 'calc(100vh - 210px)', minHeight: 420 }}>
       {/* List */}
       <div className="w-80 border-r border-gray-100 flex flex-col">
+        <div className="p-2 border-b border-gray-100">
+          <button onClick={() => { setStarting(true); setSelected(null) }}
+            className="w-full text-sm font-medium bg-pp-orange text-white rounded-lg py-2 hover:opacity-90">
+            + New message
+          </button>
+        </div>
         <div className="flex gap-1 p-2 border-b border-gray-100 text-xs">
           {[['all', 'All'], ['needs_you', `Needs you${needsYou ? ` (${needsYou})` : ''}`], ['active', 'Hassan'], ['booked', 'Booked']].map(([id, label]) => (
             <button key={id} onClick={() => setFilter(id)}
@@ -128,7 +135,7 @@ function Chats() {
           {loading && <p className="p-4 text-sm text-gray-400">Loading…</p>}
           {!loading && !shown.length && <p className="p-4 text-sm text-gray-400">No chats yet. When someone messages your WhatsApp, they show up here.</p>}
           {shown.map(l => (
-            <button key={l.phone} onClick={() => setSelected(l.phone)}
+            <button key={l.phone} onClick={() => { setSelected(l.phone); setStarting(false) }}
               className={`w-full text-left px-3 py-2.5 border-b border-gray-50 hover:bg-gray-50 ${selected === l.phone ? 'bg-pp-orangeLite/60' : ''}`}>
               <div className="flex items-center justify-between gap-2">
                 <span className="text-sm font-medium text-gray-900 truncate">{l.name || `+${l.phone}`}</span>
@@ -152,7 +159,9 @@ function Chats() {
 
       {/* Thread */}
       <div className="flex-1 flex flex-col min-w-0">
-        {selected ? <Thread phone={selected} onChange={load} /> : (
+        {starting ? (
+          <NewMessage onDone={(phone) => { setStarting(false); setSelected(phone); load() }} onCancel={() => setStarting(false)} />
+        ) : selected ? <Thread phone={selected} onChange={load} /> : (
           <div className="flex-1 flex items-center justify-center text-sm text-gray-400">Pick a chat</div>
         )}
       </div>
@@ -322,5 +331,64 @@ function Bookings() {
         </tbody>
       </table>
     </div>
+  )
+}
+
+// Start a chat with someone who hasn't messaged yet. WhatsApp only allows an
+// approved template for this; once they reply, the chat works as normal.
+function NewMessage({ onDone, onCancel }) {
+  const [phone, setPhone] = useState('')
+  const [name, setName] = useState('')
+  const [sending, setSending] = useState(false)
+  const [error, setError] = useState('')
+  const first = name.trim().split(/\s+/)[0] || 'there'
+
+  const send = async (e) => {
+    e.preventDefault()
+    if (!phone.trim()) { setError('Enter their WhatsApp number.'); return }
+    setSending(true); setError('')
+    try {
+      const lead = await hassanStart(phone.trim(), name.trim())
+      toast.success('Message sent')
+      onDone(lead.phone)
+    } catch (err) {
+      setError(err.message || 'Could not send.')
+    } finally {
+      setSending(false)
+    }
+  }
+
+  return (
+    <form onSubmit={send} className="p-6 max-w-lg space-y-4">
+      <div>
+        <h3 className="text-base font-semibold text-gray-900">New message</h3>
+        <p className="text-xs text-gray-500 mt-1">
+          For people who haven't messaged you yet. WhatsApp only allows this approved opening message, and Meta charges a small fee for each one.
+          When they reply, the chat shows up here and Hassan takes it from there.
+        </p>
+      </div>
+      <label className="block">
+        <span className="text-xs font-medium text-gray-700">WhatsApp number</span>
+        <input value={phone} onChange={e => setPhone(e.target.value)} placeholder="0300 1234567"
+          className="mt-1 w-full border border-gray-200 rounded-lg px-3 py-2 text-sm" />
+      </label>
+      <label className="block">
+        <span className="text-xs font-medium text-gray-700">Name</span>
+        <input value={name} onChange={e => setName(e.target.value)} placeholder="Ali Khan"
+          className="mt-1 w-full border border-gray-200 rounded-lg px-3 py-2 text-sm" />
+      </label>
+      <div className="bg-gray-50 rounded-lg p-3 text-sm text-gray-700">
+        <p className="text-[10px] uppercase tracking-wide text-gray-400 mb-1">They will receive</p>
+        Hi {first}, Hassan here from Peak Performance. Following up on your interest in a session at our lab in Khayaban-e-Rahat. Would you like me to share this week's available slots?
+      </div>
+      {error && <p className="text-sm text-red-600">{error}</p>}
+      <div className="flex gap-2">
+        <button type="submit" disabled={sending}
+          className="bg-pp-orange text-white text-sm font-medium rounded-lg px-4 py-2 disabled:opacity-50">
+          {sending ? 'Sending…' : 'Send'}
+        </button>
+        <button type="button" onClick={onCancel} className="text-sm text-gray-500 px-3">Cancel</button>
+      </div>
+    </form>
   )
 }

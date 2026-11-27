@@ -2,7 +2,7 @@
 const test = require('node:test');
 const assert = require('node:assert');
 const crypto = require('crypto');
-const { createAgent, HOLDING, BOT_REPLY, NON_TEXT_REPLY } = require('./agent');
+const { createAgent, normalizePhone, HOLDING, BOT_REPLY, NON_TEXT_REPLY } = require('./agent');
 const { detectIntent, checkReply, checkMedicalReply, checkFixedPriceReply, serviceWindowOpen, adWindowOpen } = require('./rules');
 const { allSlots, slotsToOffer, label, fromPkt } = require('./slots');
 const { parseDecision } = require('./brain');
@@ -12,7 +12,7 @@ const { buildSystemPrompt } = require('./playbook');
 
 const HOUR = 3600 * 1000;
 const cfg = () => ({ ...config(), replyDelayMs: 0, mapsLink: '', freeMode: true, freeServiceMessagesPerMonth: 1000, serviceWarnAt: 900,
-  whatsapp: { ...config().whatsapp, appSecret: 'shh', templates: { day3: 'pp_day3', day7: 'pp_day7', reminder: 'pp_reminder' } } });
+  whatsapp: { ...config().whatsapp, appSecret: 'shh', templates: { day3: 'pp_day3', day7: 'pp_day7', reminder: 'pp_reminder', open: 'pp_open' } } });
 
 // ── fakes ────────────────────────────────────────────────────────────────────
 const memoryStore = () => {
@@ -544,4 +544,31 @@ test('no reminder right after booking (the confirmation is enough)', async () =>
   h.advance(16 * HOUR); // ~3h before the slot... and then 2 hours before
   h.advance(0.6 * HOUR);
   assert.strictEqual((await h.agent.runScheduled()).reminders, 1, 'the 2-hour reminder still goes');
+});
+
+// ── team starts a chat ──────────────────────────────────────────────────────
+test('phone numbers in local or international form are normalised', () => {
+  assert.strictEqual(normalizePhone('0300 1234567'), '923001234567');
+  assert.strictEqual(normalizePhone('+92 300-1234567'), '923001234567');
+  assert.strictEqual(normalizePhone('3001234567'), '923001234567');
+  assert.strictEqual(normalizePhone('0092 300 1234567'), '923001234567');
+  assert.strictEqual(normalizePhone('12'), null);
+});
+
+test('New message sends the opening template, even in free mode, and logs its text', async () => {
+  const { agent, wa, store } = setup();
+  const lead = await agent.staffStart('0300 1234567', 'Ali Khan');
+  assert.deepStrictEqual(wa.sent[0], { to: '923001234567', template: 'pp_open', params: ['Ali'] });
+  assert.match(lead.messages[0].text, /^Hi Ali, Hassan here from Peak Performance/);
+  assert.strictEqual(lead.messages[0].by, 'staff');
+  assert.strictEqual((await store.getLead('923001234567')).name, 'Ali Khan');
+});
+
+test('New message is refused when they messaged in the last 24h (reply in the chat instead)', async () => {
+  const { agent, say, wa } = setup([{ reply: 'Hi, Hassan here from Peak Performance.' }]);
+  await say('hi');
+  await new Promise(r => setTimeout(r, 0));
+  const before = wa.sent.length;
+  await assert.rejects(agent.staffStart('923001234567', 'Ali'), /last 24 hours/);
+  assert.strictEqual(wa.sent.length, before);
 });

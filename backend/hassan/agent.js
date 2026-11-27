@@ -437,6 +437,35 @@ const createAgent = (deps) => {
     return saved;
   });
 
+  // Team starts a new chat: WhatsApp only allows an approved template for this.
+  const staffStart = (phoneIn, name) => {
+    const phone = normalizePhone(phoneIn);
+    if (!phone) return Promise.reject(Object.assign(new Error('Enter a valid number, e.g. 0300 1234567 or +92 300 1234567.'), { statusCode: 400 }));
+    return serial(phone, async () => {
+      let lead = await store.getLead(phone);
+      if (lead && serviceWindowOpen(lead, now().getTime())) {
+        throw Object.assign(new Error('This person messaged in the last 24 hours. Open their chat and reply there instead.'), { statusCode: 409 });
+      }
+      if (!lead) lead = { phone, stage: 'new', messages: [], followUpsSent: [], paused: false };
+      const first = String(name || '').trim().split(/\s+/)[0] || 'there';
+      if (name && !lead.name) lead.name = String(name).trim();
+      const tpl = cfg.whatsapp.templates.open;
+      if (!tpl) throw Object.assign(new Error('No opening template is set up yet.'), { statusCode: 400 });
+      const text = String(cfg.whatsapp.openText || '').replace('{{1}}', first);
+      try {
+        const waId = await wa.sendTemplate(cfg, phone, tpl, [first]);
+        record(lead, 'staff', text, { waId, kind: 'template' });
+        lead.lastOutboundAt = now();
+        await store.bumpStat(monthKey(now()), 'templatesSent');
+      } catch (e) {
+        const why = e.response?.data?.error?.message || e.message;
+        log.error('[hassan] opening template failed:', why);
+        throw Object.assign(new Error(`WhatsApp did not send it: ${why}`), { statusCode: 502 });
+      }
+      return store.saveLead(lead);
+    });
+  };
+
   const setPaused = (phone, paused) => serial(phone, async () => {
     const lead = await store.getLead(phone);
     if (!lead) throw Object.assign(new Error('Lead not found'), { statusCode: 404 });
@@ -446,7 +475,16 @@ const createAgent = (deps) => {
     return store.saveLead(lead);
   });
 
-  return { handleInbound, respond, runScheduled, staffReply, setPaused, followUpLead };
+  return { handleInbound, respond, runScheduled, staffReply, staffStart, setPaused, followUpLead };
 };
 
-module.exports = { createAgent, HOLDING, BOT_REPLY, NON_TEXT_REPLY, physioReferral, fixedPriceReply };
+// 0300 1234567 / +92 300 1234567 / 923001234567 -> 923001234567
+const normalizePhone = (raw) => {
+  let d = String(raw || '').replace(/\D/g, '');
+  if (d.startsWith('00')) d = d.slice(2);
+  if (d.startsWith('0')) d = '92' + d.slice(1);
+  else if (d.length === 10 && d.startsWith('3')) d = '92' + d;
+  return d.length >= 10 && d.length <= 15 ? d : null;
+};
+
+module.exports = { createAgent, normalizePhone, HOLDING, BOT_REPLY, NON_TEXT_REPLY, physioReferral, fixedPriceReply };
