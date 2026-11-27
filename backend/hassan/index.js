@@ -104,6 +104,12 @@ webhookRouter.post('/', (req, res) => {
   recent.lastResult = 'accepted'; recent.lastMessages = messages.length;
   if (!cfg.enabled) return console.warn('[hassan] HASSAN_ENABLED is not true, so not replying');
   for (const m of messages) {
+    // The Meta app can hold more than one number (e.g. the old test number).
+    // Only answer messages sent to Hassan's own number.
+    if (m.to && cfg.whatsapp.phoneNumberId && m.to !== cfg.whatsapp.phoneNumberId) {
+      console.log(`[hassan] ignored a message sent to another number in the app (${m.to})`);
+      continue;
+    }
     console.log(`[hassan] message from ...${String(m.from).slice(-4)} (${m.type})`);
     getAgent().handleInbound(m).catch(e => console.error('[hassan] inbound failed:', e.message));
   }

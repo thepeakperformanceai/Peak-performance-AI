@@ -572,3 +572,9 @@ test('New message is refused when they messaged in the last 24h (reply in the ch
   await assert.rejects(agent.staffStart('923001234567', 'Ali'), /last 24 hours/);
   assert.strictEqual(wa.sent.length, before);
 });
+
+test('webhook messages carry which of our numbers they were sent to', () => {
+  const { parseWebhook } = require('./whatsapp');
+  const [m] = parseWebhook({ entry: [{ changes: [{ value: { metadata: { phone_number_id: '111' }, messages: [{ id: 'x', from: '923001234567', timestamp: '1700000000', type: 'text', text: { body: 'hi' } }] } }] }] });
+  assert.strictEqual(m.to, '111');
+});

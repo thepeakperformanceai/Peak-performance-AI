@@ -60,6 +60,7 @@ const parseWebhook = (body) => {
         out.push({
           id: m.id,
           from: m.from,
+          to: v.metadata?.phone_number_id || null, // which of our numbers it was sent to
           profileName: names.get(m.from) || null,
           at: new Date(Number(m.timestamp) * 1000),
           type: m.type,
