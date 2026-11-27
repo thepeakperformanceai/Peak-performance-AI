@@ -3,6 +3,8 @@ import react from '@vitejs/plugin-react'
 
 export default defineConfig({
   plugins: [react()],
+  // Where the app lives. '/' by default; '/app/' when it runs at peakaiperformance.com/app.
+  base: process.env.VITE_BASE || '/',
   // Client-facing settings (PUBLIC_SITE_URL, PUBLIC_INSTAGRAM_HANDLE) are read
   // from PUBLIC_* environment variables, as well as the usual VITE_* ones.
   envPrefix: ['VITE_', 'PUBLIC_'],

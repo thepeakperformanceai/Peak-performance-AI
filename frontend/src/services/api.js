@@ -37,8 +37,9 @@ api.interceptors.response.use(
   err => {
     if (err.response?.status === 401) {
       clearAuthToken()
-      if (window.location.pathname !== '/') {
-        window.location.href = '/'
+      const home = import.meta.env.BASE_URL || '/'
+      if (window.location.pathname !== home) {
+        window.location.href = home
       } else {
         window.location.reload()
       }

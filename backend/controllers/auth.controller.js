@@ -311,7 +311,9 @@ const forgotPassword = async (req, res, next) => {
     user.resetPasswordExpires = new Date(Date.now() + RESET_TTL_MINUTES * 60 * 1000);
     await user.save();
 
-    const base = (process.env.FRONTEND_URL || 'http://localhost:3000').replace(/\/$/, '');
+    // APP_URL = where the app lives (e.g. https://peakaiperformance.com/app).
+    // Falls back to the first FRONTEND_URL origin (it may be a comma list).
+    const base = (process.env.APP_URL || (process.env.FRONTEND_URL || 'http://localhost:3000').split(',')[0]).trim().replace(/\/$/, '');
     const resetUrl = `${base}/?token=${rawToken}`;
 
     try {

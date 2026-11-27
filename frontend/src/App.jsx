@@ -17,7 +17,10 @@ import InboxPage from './pages/InboxPage'
 
 // Public pages (no login): /how-we-score/<sport> and /breakdown/<private token>.
 const publicPage = () => {
-  const path = window.location.pathname
+  // The app may live under a sub-path (e.g. /app/); match pages relative to it.
+  const base = import.meta.env.BASE_URL || '/'
+  const full = window.location.pathname
+  const path = full.startsWith(base) ? '/' + full.slice(base.length) : full
   const how = /^\/how-we-score\/?([a-z-]*)\/?$/.exec(path)
   if (how) return { kind: 'how', sport: how[1] || 'football' }
   const share = /^\/breakdown\/([A-Za-z0-9_-]+)\/?$/.exec(path)

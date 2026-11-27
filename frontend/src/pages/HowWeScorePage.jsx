@@ -255,14 +255,14 @@ export default function HowWeScorePage({ sport }) {
         </div>
         <nav className="max-w-4xl mx-auto px-4 pb-3 flex flex-wrap gap-1.5">
           {SPORT_TABS.map(s => (
-            <a key={s.key} href={`/how-we-score/${s.key}`}
+            <a key={s.key} href={`${import.meta.env.BASE_URL || '/'}how-we-score/${s.key}`}
               className={`text-sm px-3 py-1.5 rounded-lg ${s.key === sport ? 'bg-gray-900 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}>{s.name}</a>
           ))}
         </nav>
         <nav className="max-w-4xl mx-auto px-4 pb-3 flex flex-wrap items-center gap-1.5">
           <span className="text-xs text-gray-500 mr-1">Client cards:</span>
           {CLIENT_TABS.map(s => (
-            <a key={s.key} href={`/how-we-score/${s.key}`}
+            <a key={s.key} href={`${import.meta.env.BASE_URL || '/'}how-we-score/${s.key}`}
               className={`text-sm px-3 py-1.5 rounded-lg ${s.key === sport ? 'bg-gray-900 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}>{s.name}</a>
           ))}
         </nav>

@@ -136,7 +136,7 @@ function BreakdownSection({ report }) {
     catch (e) { toast.error(e.message) } finally { setBusy(false) }
   }
 
-  const methodologyHref = `/how-we-score/${sportKeyOf(report.reportContent || {})}`
+  const methodologyHref = `${import.meta.env.BASE_URL || '/'}how-we-score/${sportKeyOf(report.reportContent || {})}`
   return (
     <div style={{ marginTop: 24 }} className="rounded-2xl bg-gray-50 border border-gray-200 p-4">
       <div className="flex flex-wrap items-center gap-2">

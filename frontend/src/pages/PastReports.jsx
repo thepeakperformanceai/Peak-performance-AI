@@ -64,7 +64,7 @@ export default function PastReports({ onNavigate }) {
       ) : reports.length === 0 ? (
         <div className="card text-center py-12">
           <p className="text-gray-400 mb-4">No reports yet</p>
-          <a href="/" className="btn btn-primary text-xs px-4 py-2">+ Create new report</a>
+          <a href={import.meta.env.BASE_URL || '/'} className="btn btn-primary text-xs px-4 py-2">+ Create new report</a>
         </div>
       ) : (
         <div className="space-y-2">
